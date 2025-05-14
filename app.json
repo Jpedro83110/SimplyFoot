@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "SimplyFoot",
+    "slug": "simplyfoot",
+    "version": "1.0.0",
+    "scheme": "simplyfoot",
+    "orientation": "portrait",
+    "icon": "./assets/chat.png",
+    "userInterfaceStyle": "automatic",
+
+    "splash": {
+      "image": "./assets/chat.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#121212"
+    },
+
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 0
+    },
+
+    "assetBundlePatterns": ["**/*"],
+
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.simplyfoot.app"
+    },
+
+    "android": {
+      "package": "com.simplyfoot.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/chat.png",
+        "backgroundColor": "#121212"
+      },
+      "permissions": []
+    },
+
+    "web": {
+      "favicon": "./assets/chat.png",
+      "bundler": "metro"
+    },
+
+    "plugins": ["expo-router"]
+  }
+}

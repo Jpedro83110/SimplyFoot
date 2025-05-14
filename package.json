@@ -1,0 +1,38 @@
+{
+  "name": "SimplyFoot",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "web": "expo start --web",
+    "build": "expo export:web"
+  },
+  "dependencies": {
+    "@expo/config-plugins": "~10.0.0",
+    "@expo/prebuild-config": "~9.0.0",
+    "@react-native-picker/picker": "2.11.0",
+    "@react-navigation/drawer": "^7.3.12",
+    "@react-navigation/native": "^7.1.9",
+    "@supabase/supabase-js": "^2.49.4",
+    "expo": "^53.0.9",
+    "expo-router": "~5.0.6",
+    "metro": "^0.82.0",
+    "moti": "^0.30.0",
+    "nativewind": "^4.1.23",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-native": "0.79.2",
+    "react-native-chart-kit": "^6.12.0",
+    "react-native-gesture-handler": "~2.24.0",
+    "react-native-linear-gradient": "^2.8.3",
+    "react-native-reanimated": "~3.17.4",
+    "react-native-safe-area-context": "^5.4.0",
+    "react-native-svg": "^15.11.2",
+    "react-native-web": "^0.20.0",
+    "expo-linear-gradient": "~14.1.4"
+  },
+  "devDependencies": {
+    "babel-plugin-module-resolver": "^5.0.2"
+  }
+}
