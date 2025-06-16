@@ -1,22 +1,70 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Slider, TouchableOpacity, Dimensions, Alert, ScrollView } from 'react-native';
+// app/joueur/motivation.js
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+  Alert,
+  ScrollView,
+} from 'react-native';
+import Slider from '@react-native-community/slider';
 import { LineChart } from 'react-native-chart-kit';
+import { supabase } from '../../lib/supabase';
 
+const demoMode = true;
 const motivationQuotes = [
   'Tu as déjà survécu à 100% de tes mauvaises journées.',
   'Chaque jour est une nouvelle chance.',
-  'L’équipe avant tout.',
-  'Tu n’abandonnes pas. Tu grandis.',
+  "L’équipe avant tout.",
+  "Tu n’abandonnes pas. Tu grandis.",
   'Un effort aujourd’hui, une victoire demain.',
 ];
 
 export default function Motivation() {
   const [motivation, setMotivation] = useState(5);
-  const [history, setHistory] = useState([6, 7, 5, 8, 9, 7, 6]); // exemple historique (sur 7 jours)
+  const [history, setHistory] = useState([]);
+  const [quote, setQuote] = useState('');
 
-  const handleSave = () => {
-    Alert.alert('✅ Motivation enregistrée', `Tu te sens à ${motivation}/10 aujourd’hui`);
-    // ➕ Tu peux ici enregistrer dans Supabase
+  useEffect(() => {
+    setQuote(motivationQuotes[Math.floor(Math.random() * motivationQuotes.length)]);
+
+    if (demoMode) {
+      setHistory([6, 7, 5, 8, 9, 7, 6]);
+    } else {
+      (async () => {
+        const session = await supabase.auth.getSession();
+        const joueurId = session.data.session.user.id;
+
+        const { data } = await supabase
+          .from('suivi_joueurs')
+          .select('motivation')
+          .eq('joueur_id', joueurId)
+          .order('created_at', { ascending: false })
+          .limit(7);
+
+        const lastSeven = data?.map((d) => d.motivation) || [];
+        setHistory(lastSeven.reverse());
+      })();
+    }
+  }, []);
+
+  const handleSave = async () => {
+    if (demoMode) {
+      Alert.alert('✅ Motivation enregistrée', `Tu te sens à ${motivation}/10 aujourd’hui`);
+    } else {
+      const session = await supabase.auth.getSession();
+      const joueurId = session.data.session.user.id;
+
+      const { error } = await supabase.from('suivi_joueurs').insert({
+        joueur_id: joueurId,
+        motivation,
+      });
+
+      if (error) Alert.alert('Erreur', error.message);
+      else Alert.alert('✅ Motivation enregistrée', `Tu te sens à ${motivation}/10 aujourd’hui`);
+    }
   };
 
   return (
@@ -44,7 +92,7 @@ export default function Motivation() {
       <LineChart
         data={{
           labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
-          datasets: [{ data: history }],
+          datasets: [{ data: history.length ? history : [0] }],
         }}
         width={Dimensions.get('window').width - 40}
         height={220}
@@ -61,9 +109,7 @@ export default function Motivation() {
       />
 
       <Text style={styles.sectionTitle}>💬 Citation du jour</Text>
-      <Text style={styles.quote}>
-        {motivationQuotes[Math.floor(Math.random() * motivationQuotes.length)]}
-      </Text>
+      <Text style={styles.quote}>{quote}</Text>
 
       <TouchableOpacity style={styles.badgeButton} onPress={() => Alert.alert('🎖️ À venir', 'Système de badges bientôt disponible')}>
         <Text style={styles.badgeText}>Voir mes badges</Text>

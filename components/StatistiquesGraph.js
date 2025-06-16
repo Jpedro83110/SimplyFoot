@@ -1,29 +1,40 @@
+// components/StatistiquesGraph.js
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { LineChart } from 'react-native-chart-kit';
 
-export default function StatistiquesGraph() {
+export default function StatistiquesGraph({ data, equipe = 'U17', dateMaj = '15 mai 2025' }) {
+  const chartConfig = {
+    backgroundGradientFrom: '#1a1a1a',
+    backgroundGradientTo: '#1a1a1a',
+    decimalPlaces: 0,
+    color: (opacity = 1) => `rgba(0, 255, 136, ${opacity})`,
+    labelColor: () => '#fff',
+    propsForDots: {
+      r: '4',
+      strokeWidth: '2',
+      stroke: '#00ff88',
+    },
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Graphique des Statistiques</Text>
-      <Text style={styles.subtitle}>Graphiques à venir...</Text>
+    <View>
+      <Text style={styles.sub}>Équipe : {equipe}</Text>
+      <LineChart
+        data={data}
+        width={Dimensions.get('window').width - 40}
+        height={220}
+        chartConfig={chartConfig}
+        style={styles.chart}
+        bezier
+      />
+      <Text style={styles.note}>Dernière mise à jour : {dateMaj}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#f5f6fa',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#2f3640',
-    marginBottom: 20,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#2f3640',
-  },
+  sub: { color: '#fff', fontSize: 16, marginBottom: 8 },
+  chart: { borderRadius: 12, marginBottom: 30 },
+  note: { color: '#888', fontSize: 12, textAlign: 'center' },
 });

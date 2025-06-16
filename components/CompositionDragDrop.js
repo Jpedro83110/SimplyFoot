@@ -1,5 +1,4 @@
-// CompositionDragDrop.js - version split visuelle : terrain collé à gauche + icônes plus petites
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,39 +7,107 @@ import {
   Animated,
   Image,
   Dimensions,
-  ScrollView,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from 'react-native';
+import { supabase } from '../lib/supabase';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
-const initialPositions = {
-  1: { x: 20, y: 30 },
-  2: { x: 80, y: 100 },
-  3: { x: 200, y: 100 },
-  4: { x: 80, y: 170 },
-  5: { x: 200, y: 170 },
-  6: { x: 120, y: 240 },
-};
+export default function CompositionDragDrop({ evenementId }) {
+  const [presents, setPresents] = useState([]);
+  const [absents, setAbsents] = useState([]);
+  const [indecis, setIndecis] = useState([]); // non répondu
+  const [positions, setPositions] = useState({});
+  const [equipeId, setEquipeId] = useState(null);
+  const [coachId, setCoachId] = useState(null);
 
-export default function CompositionDragDrop() {
-  const [players] = useState([
-    { id: 1, nom: 'Jean', poste: 'Gardien' },
-    { id: 2, nom: 'Paul', poste: 'Défenseur' },
-    { id: 3, nom: 'Max', poste: 'Défenseur' },
-    { id: 4, nom: 'Alex', poste: 'Milieu' },
-    { id: 5, nom: 'Léo', poste: 'Milieu' },
-    { id: 6, nom: 'Yanis', poste: 'Attaquant' },
-  ]);
+  useEffect(() => {
+    const fetchData = async () => {
+      // 1. Récupère l’évènement (coach_id, equipe_id)
+      const { data: evt, error: evtError } = await supabase
+        .from('evenements')
+        .select('equipe_id, coach_id')
+        .eq('id', evenementId)
+        .single();
 
-  const [positions] = useState(
-    players.reduce((acc, p) => {
-      acc[p.id] = new Animated.ValueXY(initialPositions[p.id]);
-      return acc;
-    }, {})
-  );
+      if (evtError || !evt) {
+        Alert.alert('Erreur', 'Événement introuvable.');
+        return;
+      }
+      setEquipeId(evt.equipe_id);
+      setCoachId(evt.coach_id);
+
+      // 2. Récupère toutes les participations
+      const { data: participations, error: partError } = await supabase
+        .from('participations_evenement')
+        .select('joueur_id, reponse, besoin_transport')
+        .eq('evenement_id', evenementId);
+
+      if (partError || !participations) {
+        setPresents([]); setAbsents([]); setIndecis([]);
+        return;
+      }
+
+      // 3. Trie les joueurs
+      const presentsIds = participations.filter(p => p.reponse === 'present').map(p => ({ id: p.joueur_id, besoin_transport: p.besoin_transport }));
+      const absentsIds  = participations.filter(p => p.reponse === 'absent').map(p => ({ id: p.joueur_id, besoin_transport: p.besoin_transport }));
+      const allIds = participations.map(p => p.joueur_id);
+
+      // Récupère tous les joueurs de l’équipe liés à cet événement
+      const { data: allJoueurs } = await supabase
+        .from('joueurs')
+        .select('id, nom, poste')
+        .eq('equipe_id', evt.equipe_id);
+
+      // 4. Génère la liste non répondu
+      const reponduIds = new Set([...presentsIds, ...absentsIds].map(j => j.id));
+      const indecisIds = allJoueurs.filter(j => !reponduIds.has(j.id)).map(j => j.id);
+
+      // 5. Récupère infos complètes pour chaque catégorie
+      // PRESENTS
+      const presentsInfos = allJoueurs
+        .filter(j => presentsIds.map(p => p.id).includes(j.id))
+        .map(j => ({
+          ...j,
+          besoin_transport: presentsIds.find(p => p.id === j.id)?.besoin_transport,
+        }));
+
+      // ABSENTS
+      const absentsInfos = allJoueurs
+        .filter(j => absentsIds.map(p => p.id).includes(j.id))
+        .map(j => ({
+          ...j,
+          besoin_transport: absentsIds.find(p => p.id === j.id)?.besoin_transport,
+        }));
+
+      // INDECIS
+      const indecisInfos = allJoueurs
+        .filter(j => indecisIds.includes(j.id))
+        .map(j => ({
+          ...j,
+          besoin_transport: false,
+        }));
+
+      // 6. Init positions drag&drop pour présents
+      const initPositions = {};
+      presentsInfos.forEach((j, i) => {
+        initPositions[j.id] = new Animated.ValueXY({
+          x: 30 + (i % 3) * 100,
+          y: 60 + Math.floor(i / 3) * 80,
+        });
+      });
+
+      setPresents(presentsInfos);
+      setAbsents(absentsInfos);
+      setIndecis(indecisInfos);
+      setPositions(initPositions);
+    };
+
+    fetchData();
+  }, [evenementId]);
 
   const createPanResponder = (playerId) =>
     PanResponder.create({
@@ -61,135 +128,119 @@ export default function CompositionDragDrop() {
       },
     });
 
-  const handleValider = () => {
-    Alert.alert('✅ Composition validée', 'Les positions ont été sauvegardées (simulation).');
+  const handleValider = async () => {
+    const payload = {};
+    presents.forEach(j => {
+      payload[j.id] = {
+        x: positions[j.id].x._value,
+        y: positions[j.id].y._value,
+      };
+    });
+
+    const { data: existing } = await supabase
+      .from('compositions')
+      .select('id')
+      .eq('evenement_id', evenementId)
+      .single();
+
+    let result;
+    if (existing) {
+      result = await supabase
+        .from('compositions')
+        .update({ joueurs: payload })
+        .eq('id', existing.id);
+    } else {
+      result = await supabase
+        .from('compositions')
+        .insert({
+          evenement_id: evenementId,
+          coach_id: coachId,
+          equipe_id: equipeId,
+          joueurs: payload,
+        });
+    }
+
+    if (result.error) {
+      Alert.alert('Erreur', 'Échec de la sauvegarde de la composition.');
+    } else {
+      Alert.alert('✅ Composition enregistrée');
+    }
   };
 
   return (
-    <View style={styles.wrapper}>
-      <Text style={styles.titre}>📋 Composition d'équipe</Text>
+    <ScrollView style={styles.wrapper}>
+      <Text style={styles.titre}>📋 Composition</Text>
+
       <View style={styles.haut}>
-        <Image
-          source={require('../assets/terrain.png')}
-          style={styles.terrain}
-          resizeMode="contain"
-        />
+        <Image source={require('../assets/terrain.png')} style={styles.terrain} resizeMode="contain" />
         <View style={styles.joueurOverlay}>
-          {players.map((player) => {
+          {presents.map((player) => {
             const panResponder = createPanResponder(player.id);
             return (
               <Animated.View
                 key={player.id}
-                style={[styles.joueur, positions[player.id].getLayout()]}
+                style={[positions[player.id]?.getLayout(), { position: 'absolute', alignItems: 'center' }]}
                 {...panResponder.panHandlers}
               >
-                <Text style={styles.joueurNom}>{player.nom}</Text>
-                <Text style={styles.joueurPoste}>{player.poste}</Text>
+                <Image source={require('../assets/maillot.png')} style={styles.maillot} resizeMode="contain" />
+                <Text style={styles.joueurNom}>
+                  {player.nom} {player.poste ? `(${player.poste})` : ''}
+                  {player.besoin_transport && <Text style={{ color: '#00bfff', fontSize: 13 }}> 🚗</Text>}
+                </Text>
               </Animated.View>
             );
           })}
         </View>
       </View>
 
-      <View style={styles.bas}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {players.map((player) => (
-            <View key={player.id} style={styles.bulle}>
-              <Text style={styles.bulleText}>{player.nom}</Text>
-              <Text style={styles.bullePoste}>{player.poste}</Text>
+      <TouchableOpacity style={styles.bouton} onPress={handleValider}>
+        <Text style={styles.boutonText}>Valider la composition</Text>
+      </TouchableOpacity>
+
+      {/* Absents */}
+      {absents.length > 0 && (
+        <View style={styles.listeStatut}>
+          <Text style={styles.absentTitle}>❌ Absents :</Text>
+          {absents.map(j => (
+            <View key={j.id} style={styles.absentItem}>
+              <Image source={require('../assets/maillot.png')} style={styles.maillotAbs} resizeMode="contain" />
+              <Text style={styles.absentNom}>
+                {j.nom} {j.poste ? `(${j.poste})` : ''}
+                {j.besoin_transport && <Text style={{ color: '#00bfff', fontSize: 13 }}> 🚗</Text>}
+              </Text>
             </View>
           ))}
-        </ScrollView>
-        <TouchableOpacity style={styles.bouton} onPress={handleValider}>
-          <Text style={styles.boutonText}>Valider</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+        </View>
+      )}
+
+      {/* Indécis */}
+      {indecis.length > 0 && (
+        <View style={styles.listeStatut}>
+          <Text style={styles.absentTitle}>❔ Non répondu :</Text>
+          {indecis.map(j => (
+            <View key={j.id} style={styles.absentItem}>
+              <Image source={require('../assets/maillot.png')} style={styles.maillotAbs} resizeMode="contain" />
+              <Text style={styles.absentNom}>
+                {j.nom} {j.poste ? `(${j.poste})` : ''}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  titre: {
-    color: '#00ff88',
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  haut: {
-    flex: 1,
-    alignItems: 'flex-start',
-    position: 'relative',
-  },
-  terrain: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.5,
-    alignSelf: 'flex-start',
-  },
-  joueurOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  joueur: {
-    position: 'absolute',
-    width: 40,
-    height: 24,
-    backgroundColor: '#00c896',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#00ff88',
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 10,
-    padding: 2,
-  },
-  joueurNom: {
-    color: '#000',
-    fontWeight: '700',
-    fontSize: 10,
-  },
-  joueurPoste: {
-    color: '#111',
-    fontSize: 6,
-    opacity: 0.6,
-  },
-  bas: {
-    backgroundColor: '#111',
-    paddingVertical: 12,
-    borderTopColor: '#00ff88',
-    borderTopWidth: 1,
-    paddingBottom: 30,
-  },
-  bulle: {
-    backgroundColor: '#00c896',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    marginHorizontal: 4,
-    alignItems: 'center',
-  },
-  bulleText: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 10,
-  },
-  bullePoste: {
-    color: '#111',
-    fontSize: 6,
-    opacity: 0.7,
-    marginTop: 1,
-  },
+  wrapper: { flex: 1, backgroundColor: '#000' },
+  titre: { color: '#00ff88', fontSize: 20, fontWeight: 'bold', textAlign: 'center', paddingTop: 20 },
+  haut: { flex: 1, alignItems: 'flex-start', position: 'relative' },
+  terrain: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.5, alignSelf: 'flex-start', marginTop: 20 },
+  joueurOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  maillot: { width: 40, height: 40 },
+  joueurNom: { color: '#fff', fontWeight: '600', fontSize: 10, marginTop: 2 },
   bouton: {
-    marginTop: 12,
+    marginBottom: 15,
     alignSelf: 'center',
     backgroundColor: '#00ff88',
     paddingVertical: 10,
@@ -197,9 +248,10 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     elevation: 6,
   },
-  boutonText: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
+  boutonText: { color: '#000', fontWeight: 'bold', fontSize: 14 },
+  listeStatut: { marginTop: 15, backgroundColor: '#161b20', borderRadius: 12, padding: 10, width: '92%', alignSelf: 'center' },
+  absentTitle: { color: '#fc2b3a', fontWeight: '700', fontSize: 14, marginBottom: 6 },
+  absentItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  maillotAbs: { width: 28, height: 28, marginRight: 8 },
+  absentNom: { color: '#fff', fontSize: 13 },
 });

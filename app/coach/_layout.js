@@ -1,23 +1,48 @@
 import { useEffect, useState } from 'react';
-import { Slot, useRouter } from 'expo-router';
+import { Slot, useRouter, usePathname } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
+import { supabase } from '../../lib/supabase';
+import Header from '../../components/Header';
 
 export default function CoachLayout() {
   const router = useRouter();
+  const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    // MOCK : ici on simule le rôle (à remplacer plus tard par Supabase)
-    const mockRole = 'coach'; // 'coach' | 'president' | 'joueur' | null
+    const checkRole = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
 
-    if (mockRole === 'coach') {
-      setAuthorized(true);
-    } else {
-      router.replace('/auth/login-club'); // redirection vers login si pas coach
-    }
+      if (!session) {
+        router.replace('/auth/login-club');
+        return;
+      }
 
-    setChecking(false);
+      const userId = session.user.id;
+      const { data: user, error } = await supabase
+        .from('utilisateurs')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      if (error || !user) {
+        router.replace('/auth/login-club');
+        return;
+      }
+
+      const role = user.role;
+
+      if (role === 'coach' || role === 'admin') {
+        setAuthorized(true);
+      } else {
+        router.replace('/auth/login-club');
+      }
+
+      setChecking(false);
+    };
+
+    checkRole();
   }, []);
 
   if (checking) {
@@ -28,5 +53,23 @@ export default function CoachLayout() {
     );
   }
 
-  return authorized ? <Slot /> : null;
+  const getPageTitle = () => {
+    const path = pathname.split('/').pop();
+    switch (path) {
+      case 'dashboard': return 'Dashboard Coach';
+      case 'convocation': return 'Convocations';
+      case 'composition': return 'Composition';
+      case 'creation-evenement': return 'Créer un événement';
+      case 'evaluation-mentale': return 'Évaluation mentale';
+      case 'evaluation-technique': return 'Évaluation technique';
+      default: return 'Espace Coach';
+    }
+  };
+
+  return authorized ? (
+    <>
+      <Header title={getPageTitle()} />
+      <Slot />
+    </>
+  ) : null;
 }

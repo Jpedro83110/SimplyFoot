@@ -1,20 +1,26 @@
+// JoueurCard enrichie - Avec badge licence et présence
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 
-export default function JoueurCard({ nom, poste, stats, avatar, onPress }) {
+export default function JoueurCard({ nom, poste, stats, avatar, licenceOK, presence, onPress }) {
   const router = useRouter();
 
+  const presenceColor = presence >= 75 ? '#00ff88' : presence >= 50 ? '#ffa500' : '#ff4d4d';
+  const licenceColor = licenceOK ? '#00ff88' : '#ff4d4d';
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       <Image
-        source={avatar ? { uri: avatar } : require('../assets/avatar.png')}
+        source={avatar && avatar.startsWith('http') ? { uri: avatar } : require('../assets/avatar.png')}
         style={styles.avatar}
       />
       <View style={styles.infoContainer}>
         <Text style={styles.nom}>{nom}</Text>
         <Text style={styles.detail}>🎯 Poste : {poste}</Text>
         <Text style={styles.detail}>📊 Stats : {stats}</Text>
+        <Text style={[styles.detail, { color: licenceColor }]}>🎫 Licence : {licenceOK ? 'Validée' : 'Non validée'}</Text>
+        <Text style={[styles.detail, { color: presenceColor }]}>📈 Présence : {presence}%</Text>
       </View>
     </TouchableOpacity>
   );
@@ -51,5 +57,6 @@ const styles = StyleSheet.create({
   detail: {
     fontSize: 14,
     color: '#aaa',
+    marginBottom: 2,
   },
 });

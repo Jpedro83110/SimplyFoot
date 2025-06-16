@@ -2,15 +2,15 @@ export default {
   name: 'SimplyFoot',
   slug: 'simplyfoot',
   version: '1.0.0',
-  scheme: 'simplyfoot', // Profondeur pour les liens internes
+  scheme: 'simplyfoot',
   orientation: 'portrait',
   icon: './assets/logo.png',
-  userInterfaceStyle: 'automatic', // Basculer entre clair/sombre automatiquement
+  userInterfaceStyle: 'automatic',
 
   splash: {
     image: './assets/logo.png',
     resizeMode: 'contain',
-    backgroundColor: '#121212', // cohérent avec ton thème dark pro
+    backgroundColor: '#121212',
   },
 
   updates: {
@@ -27,6 +27,7 @@ export default {
 
   android: {
     package: 'com.simplyfoot.app',
+    googleServicesFile: './android/app/google-services.json',
     adaptiveIcon: {
       foregroundImage: './assets/logo.png',
       backgroundColor: '#121212',
@@ -41,11 +42,9 @@ export default {
 
   extra: {
     eas: {
-      projectId: 'your-eas-project-id' // à ajouter si tu build avec EAS
+      projectId: 'c9c1a41e-d1ef-4769-9d5e-f531af72bd3b'
     }
   },
 
-  plugins: [
-    'expo-router'
-  ]
+  plugins: ['expo-router']
 };

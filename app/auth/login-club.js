@@ -1,93 +1,149 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  StatusBar
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert,
+  KeyboardAvoidingView, Platform, StatusBar, ScrollView, ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { supabase } from '../../lib/supabase';
 
 export default function LoginClub() {
   const router = useRouter();
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  // GESTION OUBLI MOT DE PASSE
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Erreur', 'Entrez d’abord votre email pour recevoir un lien de réinitialisation.');
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+    if (error) {
+      Alert.alert('Erreur', error.message);
+    } else {
+      Alert.alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
+    }
+  };
+
+  const handleLogin = async () => {
+    if (loading) return;
+    setLoading(true);
+
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedPassword = password.trim();
 
-    if (trimmedEmail === 'president@club.com' && trimmedPassword === 'secret') {
-      Alert.alert("Connexion réussie !", "Bienvenue Président.");
-      router.replace('/president/dashboard');
-    } else if (trimmedEmail === 'coach@club.com' && trimmedPassword === 'secret') {
-      Alert.alert("Connexion réussie !", "Bienvenue Coach.");
-      router.replace('/coach/dashboard');
-    } else {
-      Alert.alert("Erreur", "Identifiants incorrects. Veuillez réessayer.");
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: trimmedEmail,
+      password: trimmedPassword,
+    });
+
+    if (authError || !authData?.user) {
+      setLoading(false);
+      Alert.alert('Erreur', authError?.message === 'Invalid login credentials' ? 'Email ou mot de passe incorrect.' : `Erreur : ${authError?.message || 'Connexion impossible.'}`);
+      return;
     }
+
+    const { data: userData, error: userError } = await supabase
+      .from('utilisateurs')
+      .select('role')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (userError || !userData?.role) {
+      setLoading(false);
+      Alert.alert('Erreur', 'Impossible de récupérer le rôle utilisateur.');
+      return;
+    }
+
+    const role = userData.role;
+
+    switch (role) {
+      case 'admin':
+        router.replace('/admin/dashboard');
+        break;
+      case 'president':
+        router.replace('/president/dashboard');
+        break;
+      case 'coach':
+      case 'staff':
+        router.replace('/coach/dashboard');
+        break;
+      case 'joueur':
+      case 'parent':
+        router.replace('/joueur/dashboard');
+        break;
+      default:
+        setLoading(false);
+        Alert.alert('Erreur', `Rôle non reconnu : ${role}`);
+        return;
+    }
+    setLoading(false);
   };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.container}
+      style={{ flex: 1 }}
     >
-      <StatusBar barStyle="light-content" />
-      <Text style={styles.title}>Connexion Club</Text>
-      <Text style={styles.subtitle}>(Président / Coach)</Text>
+      <ScrollView contentContainerStyle={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <Text style={styles.title}>Connexion Club</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#aaa"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor="#aaa"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Mot de passe"
+          placeholderTextColor="#aaa"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Mot de passe"
-        placeholderTextColor="#aaa"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+          {loading
+            ? <ActivityIndicator color="#000" />
+            : <Text style={styles.buttonText}>Se connecter</Text>
+          }
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Se connecter</Text>
-      </TouchableOpacity>
+        <TouchableOpacity onPress={handleForgotPassword}>
+          <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push('/auth/login-joueur')}>
-        <Text style={styles.switchText}>Vous êtes un joueur ? Connectez-vous ici</Text>
-      </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/auth/inscription-coach')}>
+          <Text style={styles.switchText}>Créer un compte Coach</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push('/auth/inscription-president')}>
+          <Text style={styles.switchText}>Créer un nouveau club (Président)</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#121212',
+    flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    padding: 24,
   },
   title: {
     fontSize: 24,
     color: '#00ff88',
     fontWeight: '700',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#aaaaaa',
     marginBottom: 30,
+    textAlign: 'center',
   },
   input: {
     width: '100%',
@@ -104,9 +160,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: '#00ff88',
     paddingVertical: 14,
-    paddingHorizontal: 30,
     borderRadius: 10,
-    width: '100%',
     alignItems: 'center',
     marginTop: 10,
   },
@@ -115,10 +169,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 16,
   },
+  forgotText: {
+    color: '#00bfff',
+    marginTop: 22,
+    fontSize: 15,
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+  },
   switchText: {
     color: '#00ff88',
-    marginTop: 20,
+    marginTop: 30,
     textDecorationLine: 'underline',
     fontSize: 14,
+    textAlign: 'center',
   },
 });

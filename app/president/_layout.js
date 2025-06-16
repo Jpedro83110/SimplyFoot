@@ -1,24 +1,60 @@
 import { useEffect, useState } from 'react';
-import { Slot, useRouter } from 'expo-router';
-import { View, ActivityIndicator } from 'react-native';
+import { Slot, useRouter, usePathname } from 'expo-router';
+import { View, ActivityIndicator, Alert } from 'react-native';
+import { supabase } from '../../lib/supabase';
+import Header from '../../components/Header';
 
 export default function PresidentLayout() {
   const router = useRouter();
+  const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    // MOCK : change ici le rôle pour tester
-    const mockRole = 'president'; // 'president' | 'coach' | 'joueur' | null
+    const checkRole = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
 
-    if (mockRole === 'president') {
-      setAuthorized(true);
-    } else {
-      router.replace('/auth/login-club'); // redirige vers login club si pas autorisé
-    }
+      if (!session) {
+        router.replace('/auth/login-club');
+        return;
+      }
 
-    setChecking(false);
+      const { data: user, error } = await supabase
+        .from('utilisateurs')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error || !user) {
+        router.replace('/auth/login-club');
+        return;
+      }
+
+      const role = user.role;
+
+      if (role === 'president' || role === 'admin') {
+        setAuthorized(true);
+      } else {
+        router.replace('/auth/login-club');
+      }
+
+      setChecking(false);
+    };
+
+    checkRole();
   }, []);
+
+  const getPageTitle = () => {
+    const path = pathname.split('/').pop();
+    switch (path) {
+      case 'dashboard': return 'Mon Club';
+      case 'membres': return 'Liste des membres';
+      case 'budget': return 'Budget du club';
+      case 'stages': return 'Programme de stage';
+      case 'infos-publiques-club': return 'Infos publiques';
+      default: return 'Espace Président';
+    }
+  };
 
   if (checking) {
     return (
@@ -28,5 +64,10 @@ export default function PresidentLayout() {
     );
   }
 
-  return authorized ? <Slot /> : null;
+  return authorized ? (
+    <>
+      <Header title={getPageTitle()} />
+      <Slot />
+    </>
+  ) : null;
 }

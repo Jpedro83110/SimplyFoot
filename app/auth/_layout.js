@@ -1,27 +1,78 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Image } from 'react-native';
-import { Slot, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
+import { Slot, useRouter, useSegments } from 'expo-router';
+import { supabase } from '../../lib/supabase';
+import { isAdmin } from '../../lib/authGuard';
+import { useSessionReady } from '../../lib/useSessionReady';
 
 export default function AuthLayout() {
   const router = useRouter();
-  const [checking, setChecking] = useState(true);
+  const { session, checking } = useSessionReady();
+  const [redirecting, setRedirecting] = useState(false);
+  const segments = useSegments();
 
   useEffect(() => {
-    // VERSION MOCKÉE : change ce rôle pour tester les redirections
-    const mockRole = null; // 'coach' | 'president' | 'joueur' | null
+    const shouldRedirect = () => {
+      const currentRoute = segments.join('/');
+      return (
+        currentRoute === 'auth' ||
+        currentRoute === 'auth/index' ||
+        currentRoute === 'auth/_layout'
+      );
+    };
 
-    if (mockRole === 'president') {
-      router.replace('/president/dashboard');
-    } else if (mockRole === 'coach') {
-      router.replace('/coach/dashboard');
-    } else if (mockRole === 'joueur') {
-      router.replace('/joueur/dashboard');
-    } else {
-      setChecking(false); // Pas connecté, on reste sur login
+    const redirectUser = async () => {
+      if (!session?.user || redirecting || !shouldRedirect()) return;
+
+      const userEmail = session.user.email;
+      console.log('[AUTH] Email détecté :', userEmail);
+      setRedirecting(true);
+
+      if (isAdmin(userEmail)) {
+        router.replace('/admin/dashboard');
+        return;
+      }
+
+      const { data: user, error } = await supabase
+        .from('utilisateurs')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error || !user?.role) {
+        console.warn('[AUTH] Erreur récupération rôle :', error);
+        setRedirecting(false);
+        return;
+      }
+
+      const role = user.role;
+      console.log('[AUTH] Rôle récupéré :', role);
+
+      switch (role) {
+        case 'president':
+          router.replace('/president/dashboard');
+          break;
+        case 'coach':
+        case 'staff':
+          router.replace('/coach/dashboard');
+          break;
+        case 'joueur':
+        case 'parent':
+          router.replace('/joueur/dashboard');
+          break;
+        default:
+          console.warn('[AUTH] Rôle inconnu :', role);
+          setRedirecting(false);
+          break;
+      }
+    };
+
+    if (!checking) {
+      redirectUser();
     }
-  }, []);
+  }, [checking, session, redirecting, segments]);
 
-  if (checking) {
+  if (checking || redirecting) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#00ff88" />
@@ -33,6 +84,19 @@ export default function AuthLayout() {
     <View style={styles.container}>
       <Image source={require('../../assets/logo.png')} style={styles.logo} />
       <Text style={styles.title}>Bienvenue sur SimplyFoot</Text>
+
+      {session?.user && (
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={async () => {
+            await supabase.auth.signOut();
+            router.replace('/auth/login-club');
+          }}
+        >
+          <Text style={styles.logoutText}>🔓 Se déconnecter</Text>
+        </TouchableOpacity>
+      )}
+
       <Slot />
     </View>
   );
@@ -62,5 +126,18 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     marginBottom: 20,
+  },
+  logoutButton: {
+    backgroundColor: '#1e1e1e',
+    borderColor: '#00ff88',
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  logoutText: {
+    color: '#00ff88',
+    fontWeight: '600',
   },
 });

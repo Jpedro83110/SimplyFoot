@@ -1,16 +1,56 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { supabase } from '../lib/supabase';
 
-export default function Header({ title }) {
+export default function Header({ title, showBack = true }) {
   const router = useRouter();
+
+  const goToAccueil = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+
+    if (!userId) {
+      router.replace('/auth/login-club');
+      return;
+    }
+
+    const { data: utilisateur, error } = await supabase
+      .from('utilisateurs')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (error || !utilisateur?.role) {
+      Alert.alert('Erreur', 'Rôle utilisateur introuvable.');
+      router.replace('/auth/login-club');
+      return;
+    }
+
+    const role = utilisateur.role;
+
+    if (role === 'president') router.replace('/president/dashboard');
+    else if (role === 'coach') router.replace('/coach/dashboard');
+    else if (role === 'joueur') router.replace('/joueur/dashboard');
+    else router.replace('/auth/login-club');
+  };
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backText}>←</Text>
-      </TouchableOpacity>
+      {showBack && (
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={24} color="#00ff88" />
+        </TouchableOpacity>
+      )}
+
       <Text style={styles.title}>{title}</Text>
+
+      <TouchableOpacity onPress={goToAccueil} style={styles.homeButton}>
+        <FontAwesome5 name="futbol" size={22} color="#00ff88" />
+      </TouchableOpacity>
+
+      <View style={styles.bottomGlow} />
     </View>
   );
 }
@@ -18,7 +58,8 @@ export default function Header({ title }) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#121212',
-    paddingVertical: 15,
+    paddingTop: Platform.OS === 'ios' ? 60 : 30,
+    paddingBottom: 20,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#00ff88',
@@ -29,16 +70,30 @@ const styles = StyleSheet.create({
   backButton: {
     position: 'absolute',
     left: 20,
-    top: 15,
-  },
-  backText: {
-    fontSize: 22,
-    color: '#00ff88',
-    fontWeight: 'bold',
+    top: Platform.OS === 'ios' ? 60 : 30,
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
+    textAlign: 'center',
+  },
+  homeButton: {
+    position: 'absolute',
+    right: 20,
+    top: Platform.OS === 'ios' ? 60 : 30,
+  },
+  bottomGlow: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    height: 4,
+    backgroundColor: '#00ff88',
+    shadowColor: '#00ff88',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
   },
 });

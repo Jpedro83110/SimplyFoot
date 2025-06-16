@@ -1,13 +1,34 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { supabase } from '../lib/supabase';
 
 export default function Accueil() {
   const router = useRouter();
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      setLoggedIn(!!data.session?.user);
+    })();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setLoggedIn(false);
+    router.replace('/');
+  };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
+
+      {loggedIn && (
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>🔓 Se déconnecter</Text>
+        </TouchableOpacity>
+      )}
 
       <Image source={require('../assets/logo.png')} style={styles.logoImage} />
 
@@ -83,5 +104,21 @@ const styles = StyleSheet.create({
     color: '#00ff88',
     fontWeight: '700',
     fontSize: 16,
+  },
+  logoutButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    backgroundColor: '#1e1e1e',
+    borderColor: '#00ff88',
+    borderWidth: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  logoutText: {
+    color: '#00ff88',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

@@ -1,232 +1,345 @@
-// CoachDashboard.js - version complète immersive avec effets 3D et accès total aux pages
-import React from 'react';
-import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Linking,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTheme } from '../../lib/theme';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
-import { LineChart } from 'react-native-chart-kit';
-import Animated, { FadeIn, FadeInUp, FadeInDown } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MotiView } from 'moti';
+import { supabase } from '../../lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
+import TeamCard from '../../components/TeamCard';
+import useCacheData from '../../lib/cache'; // <-- AJOUT IMPORT CACHE
 
 export default function CoachDashboard() {
+  const [userId, setUserId] = useState(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+  const [error, setError] = useState(null);
   const router = useRouter();
-  const { colors } = useTheme();
 
-  const handleViewTeam = () => router.push('/coach/equipe');
-  const handleViewConvocations = () => router.push('/coach/convocation');
-  const handleCreateEvent = () => router.push('/coach/creation-evenement');
-  const handleComposition = () => router.push('/coach/composition');
+  // Au tout début, on récupère l'id utilisateur connecté
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: sessionData }) => {
+      setUserId(sessionData?.session?.user?.id ?? null);
+      setLoadingAuth(false);
+    });
+  }, []);
 
-  const data = {
-    labels: ['Fév', 'Mar', 'Avr', 'Mai', 'Juin'],
-    datasets: [
-      {
-        data: [2, 4, 5, 9, 7],
-        color: (opacity = 1) => `rgba(0, 255, 120, ${opacity})`,
-        strokeWidth: 2,
-      },
-    ],
+  // Fonctions fetch utilisées par les hooks cache
+  async function fetchCoach(userId) {
+    const { data, error } = await supabase.from('utilisateurs').select('*').eq('id', userId).single();
+    if (error) throw error;
+    return data;
+  }
+  async function fetchEquipes(userId) {
+    const { data, error } = await supabase.from('equipes').select('*').eq('coach_id', userId);
+    if (error) throw error;
+    // Pour chaque équipe, on récupère le nombre de joueurs (toujours)
+    const equipesAvecJoueurs = await Promise.all(
+      (data || []).map(async (equipe) => {
+        const { data: joueurs } = await supabase
+          .from('joueurs')
+          .select('id')
+          .eq('equipe_id', equipe.id);
+        return {
+          ...equipe,
+          joueurs: joueurs?.length || 0,
+        };
+      })
+    );
+    return equipesAvecJoueurs;
+  }
+  async function fetchStages(clubId) {
+    const { data } = await supabase.from('stages').select('id').eq('club_id', clubId).maybeSingle();
+    return data;
+  }
+  async function fetchEvenements(userId) {
+    const { data, error } = await supabase.from('evenements')
+      .select('*')
+      .eq('coach_id', userId)
+      .gte('date', new Date().toISOString())
+      .order('date', { ascending: true });
+    if (error) throw error;
+    return data;
+  }
+  async function fetchParticipations(evenementId) {
+    const { data } = await supabase.from('participations_evenement')
+      .select('*')
+      .eq('evenement_id', evenementId);
+    return data;
+  }
+
+  // Utilisation du cache pour chaque type de donnée
+  const [coach, refreshCoach, loadingCoach] = useCacheData(
+    userId ? `coach_${userId}` : null,
+    () => fetchCoach(userId),
+    12 * 3600 // 12h
+  );
+  const [equipes, refreshEquipes, loadingEquipes] = useCacheData(
+    userId ? `equipes_${userId}` : null,
+    () => fetchEquipes(userId),
+    3 * 3600 // 3h
+  );
+  // ClubId du coach dès qu'on a le coach
+  const clubId = coach?.club_id;
+  const [stage, refreshStage, loadingStage] = useCacheData(
+    clubId ? `stage_${clubId}` : null,
+    () => fetchStages(clubId),
+    12 * 3600 // 12h
+  );
+  const [evenements, refreshEvenements, loadingEvenements] = useCacheData(
+    userId ? `evenements_${userId}` : null,
+    () => fetchEvenements(userId),
+    1 * 3600 // 1h
+  );
+
+  // Prochain événement
+  const evenement = evenements?.[0] || null;
+  const [participations, refreshParticipations, loadingParticipations] = useCacheData(
+    evenement?.id ? `participations_${evenement.id}` : null,
+    () => fetchParticipations(evenement.id),
+    300 // 5min
+  );
+
+  // Calcul des présences
+  const presences = {
+    present: participations?.filter(p => p.reponse === 'present').length ?? 0,
+    absent: participations?.filter(p => p.reponse === 'absent').length ?? 0,
+    transport: participations?.filter(p => p.besoin_transport === true).length ?? 0,
   };
 
-  const actions = [
-    { icon: 'calendar', text: 'Convocations', action: handleViewConvocations },
-    { icon: 'add-circle', text: 'Créer Événement', action: handleCreateEvent },
-    { icon: 'grid', text: 'Composition', action: handleComposition },
-  ];
+  // Gestion du loading global
+  const loading =
+    loadingAuth || loadingCoach || loadingEquipes || loadingEvenements || loadingStage || loadingParticipations;
+
+  // Gestion des erreurs liées à l'auth
+  useEffect(() => {
+    if (!loadingAuth && !userId) {
+      setError('Session invalide, veuillez vous reconnecter.');
+    }
+  }, [loadingAuth, userId]);
+
+  // CONSIGNE pour dev :
+  // Pour que le cache reste à jour SANS bouton refresh :
+  // > Après chaque modification (ajout/edition d'équipe, événement, participations, etc)
+  // > il FAUT appeler manuellement dans le code concerné :
+  //   - refreshEquipes()
+  //   - refreshEvenements()
+  //   - refreshParticipations()
+  //   - refreshCoach()
+  // etc.
+  // (Tu peux aussi documenter ça dans ton README ou cache_instructions.md !)
+
+  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+  if (error) return (
+    <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <Text style={{ color: '#ff4444', marginBottom: 20 }}>{error}</Text>
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: '#00ff88', width: 180 }]}
+        onPress={() => router.replace('/auth/login-club')}
+      >
+        <Text style={styles.buttonText}>Reconnexion</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
-    <LinearGradient colors={["#0a0a0a", "#0f0f0f"]} style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
-        <Animated.View entering={FadeIn.duration(800)} style={styles.header}>
-          <Image
-            source={{ uri: 'https://via.placeholder.com/100x100.png?text=Coach' }}
-            style={styles.avatar}
-          />
-          <Text style={styles.title}>COACH JEAN</Text>
-          <Text style={styles.subtitle}>Bienvenue dans ton espace</Text>
-        </Animated.View>
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>
+        {coach
+          ? <>Bienvenue {coach.prenom} {coach.nom} – <Text style={{ color: '#aaa', fontWeight: '400' }}>Coach</Text></>
+          : "Bienvenue Coach"}
+      </Text>
 
-        <Animated.View entering={FadeInDown.delay(200)} style={styles.card}>
-          <Text style={styles.cardTitle}>Statistiques de participation</Text>
-          <LineChart
-            data={data}
-            width={Dimensions.get('window').width - 40}
-            height={200}
-            chartConfig={{
-              backgroundGradientFrom: '#121212',
-              backgroundGradientTo: '#121212',
-              color: () => `#00ff88`,
-              labelColor: () => '#fff',
-              propsForDots: {
-                r: '4',
-                strokeWidth: '2',
-                stroke: '#00ff88',
-              },
-            }}
-            bezier
-            style={styles.chart}
-          />
-        </Animated.View>
+      <Text style={styles.subtitle}>📌 Vos équipes</Text>
+      {equipes && equipes.length > 0 ? (
+        equipes.map((eq) => (
+          <TouchableOpacity key={eq.id} onPress={() => router.push(`/coach/equipe/${eq.id}`)}>
+            <TeamCard equipe={eq} />
+          </TouchableOpacity>
+        ))
+      ) : (
+        <Text style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10 }}>Aucune équipe pour le moment.</Text>
+      )}
 
-        <Text style={styles.sectionTitle}>MES ÉQUIPES</Text>
-        <View style={styles.teamList}>
-          {['U17', 'U15', 'Seniors A'].map((team, i) => (
-            <MotiView
-              key={i}
-              from={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 200 + i * 150 }}
-              style={styles.teamCard}
+      <TouchableOpacity
+        style={{ backgroundColor: '#00ff88', padding: 12, borderRadius: 10, marginTop: 20 }}
+        onPress={() => router.push('/coach/evenements-club')}
+      >
+        <Text style={{ color: '#000', textAlign: 'center', fontWeight: 'bold' }}>
+          📆 Événements du Club
+        </Text>
+      </TouchableOpacity>
+
+      <Text style={styles.subtitle}>📋 Prochain événement</Text>
+      {evenement ? (
+        <TouchableOpacity
+          style={styles.cardGreen}
+          onPress={() => router.push(`/coach/convocation/${evenement.id}`)}
+        >
+          <Text style={styles.eventTitle}>{evenement.titre}</Text>
+          <Text style={styles.eventInfo}>📅 {evenement.date} à {evenement.heure}</Text>
+          <Text style={styles.eventInfo}>📍 {evenement.lieu}</Text>
+          {evenement.lieu_complement && (
+            <Text style={[styles.eventInfo, { fontStyle: 'italic', color: '#8fd6ff' }]}>
+              🏟️ {evenement.lieu_complement}
+            </Text>
+          )}
+          {evenement.meteo && (
+            <Text style={[styles.eventInfo, { color: '#00ff88' }]}>
+              🌦️ {evenement.meteo}
+            </Text>
+          )}
+          {evenement.latitude && evenement.longitude && (
+            <TouchableOpacity
+              onPress={() =>
+                Linking.openURL(
+                  `https://www.google.com/maps/search/?api=1&query=${evenement.latitude},${evenement.longitude}`
+                )
+              }
+              style={{ marginTop: 4, alignSelf: 'flex-start' }}
             >
-              <Pressable onPress={handleViewTeam}>
-                <FontAwesome5 name="users" size={24} color="#00ff88" />
-                <Text style={styles.teamText}>{team}</Text>
-              </Pressable>
-            </MotiView>
-          ))}
-        </View>
+              <Text style={styles.mapLink}>🗺️ Voir sur Google Maps</Text>
+            </TouchableOpacity>
+          )}
+          <Text style={styles.eventInfo}>✅ Présents : {presences.present}</Text>
+          <Text style={styles.eventInfo}>❌ Absents : {presences.absent}</Text>
+          <Text style={styles.eventInfo}>🚗 À prendre en charge : {presences.transport}</Text>
+        </TouchableOpacity>
+      ) : (
+        <Text style={styles.eventInfo}>Aucun événement à venir.</Text>
+      )}
 
-        <Animated.View entering={FadeInDown.delay(600)} style={styles.card}>
-          <Text style={styles.cardTitle}>Prochain match</Text>
-          <Text style={styles.eventText}>Samedi 15 juin vs Toulon</Text>
-          <Text style={styles.eventSubText}>Stade de Toulon · 🌤️ 21°C</Text>
-          <Text style={styles.eventPresence}>✅ 15 Présents · ❌ 4 Absents</Text>
-        </Animated.View>
+      {/* --------------- AJOUT BOUTON LISTE CONVOCATIONS --------------- */}
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#171e20',
+          borderColor: '#00ff88',
+          borderWidth: 1,
+          borderRadius: 10,
+          marginBottom: 14,
+          paddingVertical: 13,
+          alignItems: 'center'
+        }}
+        onPress={() => router.push('/coach/convocation')}
+      >
+        <Text style={{ color: '#00ff88', fontWeight: 'bold', fontSize: 15 }}>
+          📑 Voir toutes les convocations / événements
+        </Text>
+      </TouchableOpacity>
+      {/* -------------------------------------------------------------- */}
 
-        <Text style={styles.sectionTitle}>ACTIONS RAPIDES</Text>
-        <View style={styles.actions}>
-          {actions.map((btn, i) => (
-            <Pressable
-              key={i}
-              onPress={btn.action}
-              style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
-            >
-              <Ionicons name={btn.icon} size={20} color="#00ff88" />
-              <Text style={styles.actionText}>{btn.text}</Text>
-            </Pressable>
-          ))}
+      <Text style={styles.subtitle}>⚙️ Actions rapides</Text>
+      <View style={styles.buttonRow}>
+        <ActionButton label="Créer équipe" icon="people" onPress={() => router.push('/coach/creation-equipe')} />
+        <ActionButton label="Créer événement" icon="calendar" onPress={() => router.push('/coach/creation-evenement')} />
+      </View>
+      <View style={styles.buttonRow}>
+        <ActionButton label="Feuille de match" icon="document-text" onPress={() => {
+          if (evenement?.id) {
+            router.push(`/coach/feuille-match/${evenement.id}`);
+          } else {
+            Alert.alert("Aucun événement", "Crée un événement pour accéder à la feuille de match.");
+          }
+        }} />
+        <ActionButton label="Composition" icon="grid" onPress={() => router.push('/coach/composition')} />
+      </View>
+      <View style={styles.buttonRow}>
+        <ActionButton label="Messagerie" icon="chatbox" onPress={() => router.push('/coach/messages')} />
+        <ActionButton label="Statistiques" icon="bar-chart" onPress={() => router.push('/coach/statistiques')} />
+      </View>
+      {stage?.id && (
+        <View style={styles.buttonRow}>
+          <ActionButton label="Programme de stage" icon="book" onPress={() => router.push('/coach/programme-stage')} />
         </View>
-      </ScrollView>
-    </LinearGradient>
+      )}
+
+      {/* Bouton déconnexion */}
+      <TouchableOpacity
+        style={{
+          marginTop: 40,
+          borderColor: '#00ff88',
+          borderWidth: 2,
+          paddingVertical: 14,
+          borderRadius: 10,
+          alignItems: 'center',
+        }}
+        onPress={async () => {
+          await supabase.auth.signOut();
+          router.replace('/');
+        }}
+      >
+        <Text style={{ color: '#00ff88', fontSize: 16, fontWeight: '700' }}>🚪 Se déconnecter</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+function ActionButton({ label, icon, onPress }) {
+  return (
+    <TouchableOpacity style={styles.actionButton} onPress={onPress}>
+      <Ionicons name={icon} size={22} color="#00ff88" style={{ marginBottom: 6 }} />
+      <Text style={styles.buttonText}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    alignItems: 'center',
-    marginVertical: 30,
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: '#00ff88',
+  container: { flex: 1, backgroundColor: '#121212', padding: 20 },
+  title: { fontSize: 26, color: '#00ff88', fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  subtitle: { color: '#aaa', fontSize: 16, marginTop: 20, marginBottom: 10 },
+  cardGreen: {
+    backgroundColor: '#1e1e1e',
+    borderRadius: 12,
+    padding: 16,
+    borderLeftColor: '#00ff88',
+    borderLeftWidth: 4,
     marginBottom: 10,
   },
-  title: {
-    fontSize: 24,
-    color: '#00ff88',
-    fontWeight: 'bold',
+  eventTitle: { color: '#00ff88', fontSize: 18, fontWeight: '700', marginBottom: 4 },
+  eventInfo: { color: '#ccc', fontSize: 15, marginBottom: 4 },
+  mapLink: { color: '#00ff88', textDecorationLine: 'underline', marginTop: 4 },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  subtitle: {
-    color: '#ccc',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  card: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 15,
-    padding: 20,
-    marginBottom: 25,
+  actionButton: {
+    backgroundColor: 'transparent',
+    borderColor: '#00ff88',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    marginHorizontal: 6,
+    minWidth: 120,
     shadowColor: '#00ff88',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  cardTitle: {
+  buttonText: {
     color: '#00ff88',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  chart: {
-    marginTop: 10,
-    borderRadius: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    color: '#00ff88',
-    fontWeight: 'bold',
-    marginBottom: 12,
-    marginLeft: 10,
-  },
-  teamList: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 30,
-  },
-  teamCard: {
-    backgroundColor: '#222',
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-    width: 100,
-    borderWidth: 1,
-    borderColor: '#00ff88',
-  },
-  teamText: {
-    color: '#fff',
-    marginTop: 6,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  eventText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  eventSubText: {
-    color: '#ccc',
-    marginTop: 4,
-  },
-  eventPresence: {
-    color: '#00ff88',
-    marginTop: 10,
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginHorizontal: 10,
-    gap: 10,
-  },
-  actionButton: {
-    backgroundColor: '#111',
-    borderColor: '#00ff88',
-    borderWidth: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flexGrow: 1,
-    justifyContent: 'center',
-    minWidth: '30%',
-  },
-  actionButtonPressed: {
-    backgroundColor: '#00ff8844',
-    transform: [{ scale: 0.98 }],
-  },
-  actionText: {
-    color: '#00ff88',
+    fontSize: 12,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  button: {
+    backgroundColor: '#00ff88',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    marginTop: 12,
   },
 });
