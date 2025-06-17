@@ -12,7 +12,6 @@ export default function ListeCompositions() {
 
   const CACHE_KEY = 'compo_evenements';
 
-  // Fonction pour charger depuis cache OU Supabase
   async function fetchEvenements(forceRefresh = false) {
     setLoading(true);
     let data = null;
@@ -20,12 +19,14 @@ export default function ListeCompositions() {
     // 1. Essaie cache sauf si refresh forcé
     if (!forceRefresh) {
       data = await getFromCache(CACHE_KEY);
+      console.log("DATA FROM CACHE:", data);
     }
 
     // 2. Si rien en cache (ou refresh), charge Supabase
     if (!data) {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData?.session?.user?.id;
+      console.log("userId utilisé pour les events:", userId);
 
       const { data: freshData, error } = await supabase
         .from('evenements')
@@ -41,7 +42,18 @@ export default function ListeCompositions() {
       }
     }
 
-    setEvenements(data || []);
+    // LOG de debug pour vérifier le contenu exact
+    console.log("Valeur brute du cache ou de Supabase :", data, "Type:", typeof data, "isArray:", Array.isArray(data));
+
+    // Patch : accepte cache {value: [...]} ou tableau simple
+    if (data && Array.isArray(data.value)) {
+      setEvenements(data.value);
+    } else if (Array.isArray(data)) {
+      setEvenements(data);
+    } else {
+      setEvenements([]);
+    }
+
     setLoading(false);
     setRefreshing(false);
   }
@@ -50,7 +62,6 @@ export default function ListeCompositions() {
     fetchEvenements();
   }, []);
 
-  // Pull to refresh (pour forcer MAJ si besoin)
   const onRefresh = () => {
     setRefreshing(true);
     fetchEvenements(true);
@@ -62,17 +73,23 @@ export default function ListeCompositions() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <Text style={styles.title}>📋 Sélectionne un événement</Text>
-      {evenements.map(evt => (
-        <TouchableOpacity
-          key={evt.id}
-          style={styles.card}
-          onPress={() => router.push(`/coach/composition/${evt.id}`)}
-        >
-          <Text style={styles.titre}>{evt.titre}</Text>
-          <Text style={styles.info}>📅 {evt.date} à {evt.heure}</Text>
-          <Text style={styles.info}>📍 {evt.lieu}</Text>
-        </TouchableOpacity>
-      ))}
+
+      {Array.isArray(evenements) && evenements.length > 0 ? (
+        evenements.map(evt => (
+          <TouchableOpacity
+            key={evt.id}
+            style={styles.card}
+            onPress={() => router.push(`/coach/composition/${evt.id}`)}
+          >
+            <Text style={styles.titre}>{evt.titre}</Text>
+            <Text style={styles.info}>📅 {evt.date} à {evt.heure}</Text>
+            <Text style={styles.info}>📍 {evt.lieu}</Text>
+          </TouchableOpacity>
+        ))
+      ) : !loading ? (
+        <Text style={{ color: "#888", textAlign: "center", marginTop: 30 }}>Aucun événement à afficher</Text>
+      ) : null}
+
       {loading && <Text style={{ color: '#00ff88', textAlign: 'center', marginTop: 30 }}>Chargement…</Text>}
     </ScrollView>
   );

@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -17,25 +16,45 @@ import useCacheData from '../../../lib/cache';
 export default function FeuilleMatch() {
   const { id } = useLocalSearchParams();
 
-  // Fonction pour fetch la feuille complète (infos + joueurs)
+  // Nouvelle version : message UX si pas de compo
   const fetchFeuilleAll = async () => {
-    // Composition
+    // 1. Composition
     const { data: compo, error: errCompo } = await supabase
       .from('compositions')
       .select('*')
       .eq('evenement_id', id)
       .single();
 
-    if (errCompo || !compo) throw new Error("Aucune composition trouvée pour cet événement.");
+    if (errCompo || !compo) return { error: "Aucune composition validée pour cet événement." };
 
-    // Infos event (club/catégorie/coach)
+    // 2. Parse joueurs
+    let joueursRaw = compo.joueurs;
+    if (typeof joueursRaw === "string") {
+      try {
+        joueursRaw = JSON.parse(joueursRaw);
+      } catch { joueursRaw = {}; }
+    }
+    const joueursIds = joueursRaw ? Object.keys(joueursRaw) : [];
+
+    // 3. Infos event
     const { data: evt, error: errEvt } = await supabase
       .from('evenements')
-      .select('*, clubs(nom), equipes(nom, categorie), utilisateurs(nom, prenom)')
+      .select('*, clubs(nom), equipes(nom, categorie)')
       .eq('id', id)
       .single();
 
-    if (errEvt || !evt) throw new Error("Événement introuvable.");
+    if (errEvt || !evt) return { error: "Événement introuvable." };
+
+    // 4. Coach
+    let coachName = "NC";
+    if (evt.coach_id) {
+      const { data: coach } = await supabase
+        .from('utilisateurs')
+        .select('nom, prenom')
+        .eq('id', evt.coach_id)
+        .single();
+      if (coach) coachName = `${coach.prenom} ${coach.nom}`;
+    }
 
     const infoMatch = {
       titre: evt.titre,
@@ -43,12 +62,11 @@ export default function FeuilleMatch() {
       club: evt.clubs?.nom || 'NC',
       categorie: evt.equipes?.categorie || 'NC',
       equipe: evt.equipes?.nom || 'NC',
-      coach: evt.utilisateurs ? `${evt.utilisateurs.prenom} ${evt.utilisateurs.nom}` : 'NC',
+      coach: coachName,
       meteo: evt.meteo || null,
     };
 
-    // Joueurs dans la compo
-    const joueursIds = compo.joueurs ? Object.keys(compo.joueurs) : [];
+    // 5. Joueurs de la compo
     const joueursInfos = await Promise.all(
       joueursIds.map(async (jid) => {
         const { data: j } = await supabase
@@ -79,57 +97,12 @@ export default function FeuilleMatch() {
   const [data, refresh, loading] = useCacheData(`feuille-match-${id}`, fetchFeuilleAll, 1800); // TTL 30min
   const joueurs = data?.joueurs || [];
   const infoMatch = data?.infoMatch || {};
-
-  // Gestion erreur (via cache/hook)
-  const [err, setErr] = useState(null);
-  useEffect(() => {
-    if (!loading && !data && !err) setErr("Erreur de chargement ou aucune donnée trouvée.");
-  }, [loading, data]);
-
-  const generateHtml = () => {
-    if (!joueurs || joueurs.length === 0) {
-      return `<p>Aucun joueur dans la composition.</p>`;
-    }
-    const rows = joueurs.map(
-      (j) =>
-        `<tr><td>${j.prenom} ${j.nom}</td><td>${j.categorie}</td><td>${j.licence}</td><td>${j.autorise ? '✅' : '❌'}</td></tr>`
-    ).join('');
-
-    return `
-      <html>
-        <body style="font-family: Arial;">
-          <h2>Feuille de match - ${infoMatch?.titre}</h2>
-          <p><strong>Date :</strong> ${infoMatch?.date}</p>
-          <p><strong>Club :</strong> ${infoMatch?.club}</p>
-          <p><strong>Catégorie :</strong> ${infoMatch?.categorie}</p>
-          <p><strong>Équipe :</strong> ${infoMatch?.equipe}</p>
-          <p><strong>Coach :</strong> ${infoMatch?.coach}</p>
-          ${infoMatch?.meteo ? `<p><strong>Météo :</strong> ${infoMatch?.meteo}</p>` : ''}
-          <br />
-          <table border="1" cellspacing="0" cellpadding="5" style="width: 100%;">
-            <thead>
-              <tr><th>Joueur</th><th>Catégorie</th><th>Licence</th><th>Décharge</th></tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </body>
-      </html>
-    `;
-  };
-
-  const imprimerFeuille = async () => {
-    const html = generateHtml();
-    const { uri } = await Print.printToFileAsync({
-      html,
-      orientation: 'landscape',
-    });
-    await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-  };
+  const error = data?.error || null;
 
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
-  if (err) return (
+  if (error) return (
     <View style={styles.container}>
-      <Text style={styles.empty}>{err}</Text>
+      <Text style={styles.empty}>{error}</Text>
       <TouchableOpacity style={styles.button} onPress={refresh}>
         <Text style={styles.buttonText}>🔄 Réessayer</Text>
       </TouchableOpacity>
@@ -164,63 +137,24 @@ export default function FeuilleMatch() {
         <Text style={styles.empty}>Aucun joueur dans la composition.</Text>
       )}
 
-      <TouchableOpacity style={styles.button} onPress={imprimerFeuille}>
+      <TouchableOpacity style={styles.button} onPress={refresh}>
         <Text style={styles.buttonText}>📄 Imprimer / Télécharger en PDF</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={[styles.button, { marginTop: 10, backgroundColor: '#222' }]} onPress={refresh}>
-        <Text style={[styles.buttonText, { color: '#00ff88' }]}>🔄 Actualiser les données</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#121212',
-    flex: 1,
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    color: '#00ff88',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  subtitle: {
-    color: '#fff',
-    textAlign: 'center',
-    fontSize: 18,
-    marginBottom: 4,
-  },
-  date: {
-    color: '#ccc',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
+  container: { backgroundColor: '#121212', flex: 1, padding: 20 },
+  title: { fontSize: 24, color: '#00ff88', fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
+  subtitle: { color: '#fff', textAlign: 'center', fontSize: 18, marginBottom: 4 },
+  date: { color: '#ccc', textAlign: 'center', marginBottom: 10 },
   card: {
-    backgroundColor: '#1e1e1e',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-    borderLeftWidth: 4,
-    borderLeftColor: '#00ff88',
+    backgroundColor: '#1e1e1e', padding: 15, borderRadius: 10, marginBottom: 15, borderLeftWidth: 4, borderLeftColor: '#00ff88',
   },
-  label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  detail: {
-    color: '#ccc',
-    fontSize: 14,
-  },
-  empty: {
-    color: '#888',
-    textAlign: 'center',
-    marginTop: 40,
-    fontStyle: 'italic',
-  },
+  label: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
+  detail: { color: '#ccc', fontSize: 14 },
+  empty: { color: '#888', textAlign: 'center', marginTop: 40, fontStyle: 'italic' },
   button: {
     backgroundColor: '#00ff88',
     paddingVertical: 15,
@@ -228,9 +162,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 30,
   },
-  buttonText: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
+  buttonText: { color: '#000', fontWeight: 'bold', fontSize: 16 },
 });

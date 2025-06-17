@@ -19,7 +19,7 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 export default function CompositionDragDrop({ evenementId }) {
   const [presents, setPresents] = useState([]);
   const [absents, setAbsents] = useState([]);
-  const [indecis, setIndecis] = useState([]); // non répondu
+  const [indecis, setIndecis] = useState([]);
   const [positions, setPositions] = useState({});
   const [equipeId, setEquipeId] = useState(null);
   const [coachId, setCoachId] = useState(null);
@@ -47,14 +47,15 @@ export default function CompositionDragDrop({ evenementId }) {
         .eq('evenement_id', evenementId);
 
       if (partError || !participations) {
-        setPresents([]); setAbsents([]); setIndecis([]);
+        setPresents([]);
+        setAbsents([]);
+        setIndecis([]);
         return;
       }
 
       // 3. Trie les joueurs
       const presentsIds = participations.filter(p => p.reponse === 'present').map(p => ({ id: p.joueur_id, besoin_transport: p.besoin_transport }));
       const absentsIds  = participations.filter(p => p.reponse === 'absent').map(p => ({ id: p.joueur_id, besoin_transport: p.besoin_transport }));
-      const allIds = participations.map(p => p.joueur_id);
 
       // Récupère tous les joueurs de l’équipe liés à cet événement
       const { data: allJoueurs } = await supabase
@@ -67,7 +68,6 @@ export default function CompositionDragDrop({ evenementId }) {
       const indecisIds = allJoueurs.filter(j => !reponduIds.has(j.id)).map(j => j.id);
 
       // 5. Récupère infos complètes pour chaque catégorie
-      // PRESENTS
       const presentsInfos = allJoueurs
         .filter(j => presentsIds.map(p => p.id).includes(j.id))
         .map(j => ({
@@ -75,7 +75,6 @@ export default function CompositionDragDrop({ evenementId }) {
           besoin_transport: presentsIds.find(p => p.id === j.id)?.besoin_transport,
         }));
 
-      // ABSENTS
       const absentsInfos = allJoueurs
         .filter(j => absentsIds.map(p => p.id).includes(j.id))
         .map(j => ({
@@ -83,7 +82,6 @@ export default function CompositionDragDrop({ evenementId }) {
           besoin_transport: absentsIds.find(p => p.id === j.id)?.besoin_transport,
         }));
 
-      // INDECIS
       const indecisInfos = allJoueurs
         .filter(j => indecisIds.includes(j.id))
         .map(j => ({
@@ -91,9 +89,31 @@ export default function CompositionDragDrop({ evenementId }) {
           besoin_transport: false,
         }));
 
-      // 6. Init positions drag&drop pour présents
+      // 6. (NEW) Récupère la composition sauvegardée si elle existe
+      const { data: compo } = await supabase
+        .from('compositions')
+        .select('joueurs')
+        .eq('evenement_id', evenementId)
+        .single();
+
+      // 7. Init positions drag&drop pour présents, avec priorité à la compo sauvegardée
       const initPositions = {};
       presentsInfos.forEach((j, i) => {
+        if (compo && compo.joueurs) {
+          let joueursSaved;
+          try {
+            joueursSaved = typeof compo.joueurs === "string"
+              ? JSON.parse(compo.joueurs)
+              : compo.joueurs;
+          } catch (e) {
+            joueursSaved = null;
+          }
+          if (joueursSaved && joueursSaved[j.id]) {
+            initPositions[j.id] = new Animated.ValueXY(joueursSaved[j.id]);
+            return;
+          }
+        }
+        // Position par défaut si pas de sauvegarde
         initPositions[j.id] = new Animated.ValueXY({
           x: 30 + (i % 3) * 100,
           y: 60 + Math.floor(i / 3) * 80,
@@ -129,25 +149,39 @@ export default function CompositionDragDrop({ evenementId }) {
     });
 
   const handleValider = async () => {
+    console.log('→ [handleValider] Appel de la fonction');
+    console.log({ evenementId, coachId, equipeId, positions, presents });
+
+    // Construction du payload (positions joueurs)
     const payload = {};
     presents.forEach(j => {
       payload[j.id] = {
-        x: positions[j.id].x._value,
-        y: positions[j.id].y._value,
+        x: positions[j.id]?.x._value,
+        y: positions[j.id]?.y._value,
       };
     });
 
-    const { data: existing } = await supabase
+    console.log('Payload à sauvegarder :', payload);
+
+    if (!evenementId || !coachId || !equipeId) {
+      Alert.alert('Erreur', 'Impossible de sauvegarder : infos manquantes !');
+      console.error('Données manquantes', { evenementId, coachId, equipeId });
+      return;
+    }
+
+    const { data: existing, error: selectError } = await supabase
       .from('compositions')
       .select('id')
       .eq('evenement_id', evenementId)
       .single();
 
+    if (selectError) console.error('Erreur select composition:', selectError);
+
     let result;
     if (existing) {
       result = await supabase
         .from('compositions')
-        .update({ joueurs: payload })
+        .update({ joueurs: JSON.stringify(payload) })
         .eq('id', existing.id);
     } else {
       result = await supabase
@@ -156,14 +190,16 @@ export default function CompositionDragDrop({ evenementId }) {
           evenement_id: evenementId,
           coach_id: coachId,
           equipe_id: equipeId,
-          joueurs: payload,
+          joueurs: JSON.stringify(payload),
         });
     }
 
     if (result.error) {
-      Alert.alert('Erreur', 'Échec de la sauvegarde de la composition.');
+      Alert.alert('Erreur', result.error.message ?? 'Échec de la sauvegarde de la composition.');
+      console.error('Erreur sauvegarde composition :', result.error);
     } else {
       Alert.alert('✅ Composition enregistrée');
+      console.log('Composition sauvegardée !', result);
     }
   };
 
