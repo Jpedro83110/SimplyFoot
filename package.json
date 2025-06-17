@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "web": "expo start --web",
-    "build": "expo export:web"
+    "build": "expo export:web",
+    "eas-build-pre-install": "node eas-build-pre-install.js"
   },
   "dependencies": {
     "@expo/config-plugins": "~10.0.0",
@@ -30,6 +31,7 @@
     "expo-print": "~14.1.4",
     "expo-router": "~5.0.6",
     "expo-sharing": "~13.1.5",
+    "expo-sqlite": "~15.2.12",
     "metro": "^0.82.0",
     "moti": "^0.30.0",
     "nativewind": "^4.1.23",
@@ -44,8 +46,7 @@
     "react-native-svg": "15.11.2",
     "react-native-web": "^0.20.0",
     "victory": "^37.3.6",
-    "victory-native": "^41.17.1",
-    "expo-sqlite": "~15.2.12"
+    "victory-native": "^41.17.1"
   },
   "devDependencies": {
     "babel-plugin-module-resolver": "^5.0.2"
