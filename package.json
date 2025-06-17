@@ -7,7 +7,7 @@
     "android": "expo run:android",
     "web": "expo start --web",
     "build": "expo export:web",
-    "eas-build-pre-install": "node eas-build-pre-install.js"
+    "preinstall": "echo '📦 Préparation du build EAS...'"
   },
   "dependencies": {
     "@expo/config-plugins": "~10.0.0",
