@@ -21,7 +21,6 @@ export default function CoachDashboard() {
   const [error, setError] = useState(null);
   const router = useRouter();
 
-  // Au tout début, on récupère l'id utilisateur connecté
   useEffect(() => {
     supabase.auth.getSession().then(({ data: sessionData }) => {
       setUserId(sessionData?.session?.user?.id ?? null);
@@ -29,7 +28,6 @@ export default function CoachDashboard() {
     });
   }, []);
 
-  // Fonctions fetch utilisées par les hooks cache
   async function fetchCoach(userId) {
     const { data, error } = await supabase.from('utilisateurs').select('*').eq('id', userId).single();
     if (error) throw error;
@@ -38,7 +36,6 @@ export default function CoachDashboard() {
   async function fetchEquipes(userId) {
     const { data, error } = await supabase.from('equipes').select('*').eq('coach_id', userId);
     if (error) throw error;
-    // Pour chaque équipe, on récupère le nombre de joueurs (toujours)
     const equipesAvecJoueurs = await Promise.all(
       (data || []).map(async (equipe) => {
         const { data: joueurs } = await supabase
@@ -73,66 +70,56 @@ export default function CoachDashboard() {
     return data;
   }
 
-  // Utilisation du cache pour chaque type de donnée
   const [coach, refreshCoach, loadingCoach] = useCacheData(
     userId ? `coach_${userId}` : null,
     () => fetchCoach(userId),
-    12 * 3600 // 12h
+    12 * 3600
   );
   const [equipes, refreshEquipes, loadingEquipes] = useCacheData(
     userId ? `equipes_${userId}` : null,
     () => fetchEquipes(userId),
-    3 * 3600 // 3h
+    3 * 3600
   );
-  // ClubId du coach dès qu'on a le coach
   const clubId = coach?.club_id;
   const [stage, refreshStage, loadingStage] = useCacheData(
     clubId ? `stage_${clubId}` : null,
     () => fetchStages(clubId),
-    12 * 3600 // 12h
+    12 * 3600
   );
   const [evenements, refreshEvenements, loadingEvenements] = useCacheData(
     userId ? `evenements_${userId}` : null,
     () => fetchEvenements(userId),
-    1 * 3600 // 1h
+    1 * 3600
   );
 
-  // Prochain événement
   const evenement = evenements?.[0] || null;
   const [participations, refreshParticipations, loadingParticipations] = useCacheData(
     evenement?.id ? `participations_${evenement.id}` : null,
     () => fetchParticipations(evenement.id),
-    300 // 5min
+    300
   );
 
-  // Calcul des présences
+  // PATCH CORRECTION : on utilise bien "reponse" partout
   const presences = {
     present: participations?.filter(p => p.reponse === 'present').length ?? 0,
     absent: participations?.filter(p => p.reponse === 'absent').length ?? 0,
-    transport: participations?.filter(p => p.besoin_transport === true).length ?? 0,
+    transport: participations?.filter(
+      p =>
+        p.besoin_transport === true ||
+        p.besoin_transport === "true" ||
+        p.besoin_transport === 1 ||
+        p.besoin_transport === "1"
+    ).length ?? 0,
   };
 
-  // Gestion du loading global
   const loading =
     loadingAuth || loadingCoach || loadingEquipes || loadingEvenements || loadingStage || loadingParticipations;
 
-  // Gestion des erreurs liées à l'auth
   useEffect(() => {
     if (!loadingAuth && !userId) {
       setError('Session invalide, veuillez vous reconnecter.');
     }
   }, [loadingAuth, userId]);
-
-  // CONSIGNE pour dev :
-  // Pour que le cache reste à jour SANS bouton refresh :
-  // > Après chaque modification (ajout/edition d'équipe, événement, participations, etc)
-  // > il FAUT appeler manuellement dans le code concerné :
-  //   - refreshEquipes()
-  //   - refreshEvenements()
-  //   - refreshParticipations()
-  //   - refreshCoach()
-  // etc.
-  // (Tu peux aussi documenter ça dans ton README ou cache_instructions.md !)
 
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
   if (error) return (
@@ -214,7 +201,6 @@ export default function CoachDashboard() {
         <Text style={styles.eventInfo}>Aucun événement à venir.</Text>
       )}
 
-      {/* --------------- AJOUT BOUTON LISTE CONVOCATIONS --------------- */}
       <TouchableOpacity
         style={{
           backgroundColor: '#171e20',
@@ -231,7 +217,6 @@ export default function CoachDashboard() {
           📑 Voir toutes les convocations / événements
         </Text>
       </TouchableOpacity>
-      {/* -------------------------------------------------------------- */}
 
       <Text style={styles.subtitle}>⚙️ Actions rapides</Text>
       <View style={styles.buttonRow}>
@@ -241,7 +226,7 @@ export default function CoachDashboard() {
       <View style={styles.buttonRow}>
         <ActionButton label="Feuille de match" icon="document-text" onPress={() => {
           if (evenement?.id) {
-            router.push(`/coach/feuille-match/${evenement.id}`);
+            router.push(`/coach/feuille-match`);
           } else {
             Alert.alert("Aucun événement", "Crée un événement pour accéder à la feuille de match.");
           }
@@ -258,7 +243,6 @@ export default function CoachDashboard() {
         </View>
       )}
 
-      {/* Bouton déconnexion */}
       <TouchableOpacity
         style={{
           marginTop: 40,

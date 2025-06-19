@@ -1,5 +1,0 @@
-{
-  "build": {
-    "pre-install": "node eas-build-pre-install.js"
-  }
-}

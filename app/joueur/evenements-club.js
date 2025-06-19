@@ -7,28 +7,34 @@ export default function EvenementsClub() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Récupère tous les événements du club du joueur connecté
   const fetchClubEvents = async () => {
     setLoading(true);
 
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData?.session?.user?.id;
 
-    // Chercher le club_id du coach ou joueur connecté
+    // Récupère le club_id depuis la table utilisateurs
     const { data: userData } = await supabase
-      .from('utilisateurs') // ou 'joueurs', 'coachs' selon ta structure
+      .from('utilisateurs')
       .select('club_id')
       .eq('id', userId)
       .single();
 
-    if (!userData) return;
+    if (!userData) {
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
 
+    // Récupère tous les événements du club (président, coach, club, etc)
     const { data, error } = await supabase
-      .from('evenements_club')
+      .from('evenements')
       .select('*')
       .eq('club_id', userData.club_id)
       .order('date', { ascending: true });
 
-    if (error) console.log(error.message);
+    if (error) setEvents([]);
     else setEvents(data);
 
     setLoading(false);
@@ -53,18 +59,25 @@ export default function EvenementsClub() {
     <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>📅 Événements du Club</Text>
-
         {loading ? (
           <ActivityIndicator color="#00ff88" />
         ) : (
-          events.map((event) => (
-            <View key={event.id} style={styles.card}>
-              <Text style={styles.cardTitle}>{getEmoji(event.type)} {event.title}</Text>
-              <Text style={styles.detailText}>📍 {event.location}</Text>
-              <Text style={styles.detailText}>🕒 {event.date} à {event.time}</Text>
-              <Text style={styles.detailText}>📝 {event.description}</Text>
-            </View>
-          ))
+          events.length === 0 ? (
+            <Text style={styles.noEvent}>Aucun événement prévu.</Text>
+          ) : (
+            events.map((event) => (
+              <View key={event.id} style={styles.card}>
+                <Text style={styles.cardTitle}>{getEmoji(event.type)} {event.titre}</Text>
+                <Text style={styles.detailText}>📍 {event.lieu}</Text>
+                <Text style={styles.detailText}>
+                  🕒 {event.date}{event.heure ? ` à ${event.heure}` : ''}
+                </Text>
+                {event.description && (
+                  <Text style={styles.detailText}>📝 {event.description}</Text>
+                )}
+              </View>
+            ))
+          )
         )}
       </ScrollView>
     </LinearGradient>
@@ -83,9 +96,9 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#1e1e1e',
-    padding: 16,
+    padding: 18,
     borderRadius: 12,
-    marginBottom: 15,
+    marginBottom: 20,
     borderLeftWidth: 4,
     borderLeftColor: '#00ff88',
   },
@@ -99,5 +112,12 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 14,
     marginBottom: 4,
+  },
+  noEvent: {
+    color: '#aaa',
+    fontSize: 16,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 36,
   },
 });

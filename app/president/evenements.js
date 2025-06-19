@@ -26,24 +26,44 @@ export default function Evenements() {
   const [heureStr, setHeureStr] = useState('');
   const [clubId, setClubId] = useState(null);
 
+  const fetchClubId = async (userId) => {
+    // 1. Tente par created_by
+    const { data: clubByCreator } = await supabase
+      .from('clubs')
+      .select('id')
+      .eq('created_by', userId)
+      .single();
+    if (clubByCreator) return clubByCreator.id;
+
+    // 2. Sinon tente via table utilisateurs (si le président est lié à un club par club_id)
+    const { data: user } = await supabase
+      .from('utilisateurs')
+      .select('club_id')
+      .eq('id', userId)
+      .single();
+    if (user?.club_id) return user.club_id;
+
+    // Rien trouvé
+    return null;
+  };
+
   const fetchEvents = async () => {
     setLoading(true);
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData?.session?.user?.id;
 
-    const { data: club } = await supabase
-      .from('clubs')
-      .select('id')
-      .eq('created_by', userId)
-      .single();
-
-    if (!club) return Alert.alert("Erreur", "Club introuvable.");
-    setClubId(club.id);
+    const foundClubId = await fetchClubId(userId);
+    if (!foundClubId) {
+      setClubId(null);
+      setLoading(false);
+      return Alert.alert("Erreur", "Impossible de trouver le club associé à ce compte.");
+    }
+    setClubId(foundClubId);
 
     const { data, error } = await supabase
       .from('evenements')
       .select('*')
-      .eq('club_id', club.id)
+      .eq('club_id', foundClubId)
       .order('date', { ascending: true });
 
     if (error) Alert.alert('Erreur', error.message);
@@ -87,6 +107,12 @@ export default function Evenements() {
       return Alert.alert("Erreur", "Tous les champs sont requis.");
     }
 
+    // Securité : clubId
+    if (!clubId) {
+      return Alert.alert("Erreur", "Impossible de créer l'événement : club introuvable.");
+    }
+
+    // Correction date/heure
     const [jour, mois, annee] = dateStr.split('/');
     const date = `${annee}-${mois}-${jour}`;
     const heure = heureStr;

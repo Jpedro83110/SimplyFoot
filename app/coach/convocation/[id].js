@@ -35,7 +35,8 @@ export default function ConvocationDetail() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-      // 1. Récupère l’événement
+
+      // 1. Récupérer l’événement
       const { data: evt, error: errEvt } = await supabase
         .from('evenements')
         .select('*')
@@ -47,13 +48,13 @@ export default function ConvocationDetail() {
         return;
       }
 
-      // 2. Récupère tous les joueurs de l'équipe
-      const { data: joueursEquipe } = await supabase
+      // 2. Récupérer les joueurs de l'équipe concernée
+      const { data: joueursEquipe, error: errJoueurs } = await supabase
         .from('joueurs')
         .select('id, utilisateur_id, poste')
         .eq('equipe_id', evt.equipe_id);
 
-      // 3. Récupère les infos utilisateurs pour les joueurs
+      // 3. Récupérer les infos utilisateurs pour ces joueurs
       const utilisateurIds = joueursEquipe?.map(j => j.utilisateur_id) || [];
       let utilisateursInfos = [];
       if (utilisateurIds.length > 0) {
@@ -64,13 +65,13 @@ export default function ConvocationDetail() {
         utilisateursInfos = usersInfos || [];
       }
 
-      // 4. Récupère toutes les participations à cet événement
-      const { data: participation } = await supabase
+      // 4. Récupérer toutes les participations à cet événement
+      const { data: participations } = await supabase
         .from('participations_evenement')
         .select('*')
         .eq('evenement_id', id);
 
-      // 5. Prépare la liste de joueurs par réponse
+      // 5. Préparer la liste de joueurs par réponse
       const joueursParReponse = {
         present: [],
         absent: [],
@@ -79,7 +80,7 @@ export default function ConvocationDetail() {
 
       for (const joueur of (joueursEquipe || [])) {
         const user = utilisateursInfos.find(u => u.id === joueur.utilisateur_id);
-        const p = (participation || []).find(item => item.joueur_id === joueur.id);
+        const p = (participations || []).find(item => item.joueur_id === joueur.id);
 
         const base = {
           id: joueur.id,
@@ -89,16 +90,16 @@ export default function ConvocationDetail() {
 
         if (!p) {
           joueursParReponse.sansReponse.push(base);
-        } else if (p.reponse === 'present' || p.reponse === true) {
+        } else if (p.reponse === 'present') {
           joueursParReponse.present.push({ ...base, ...p });
-        } else if (p.reponse === 'absent' || p.reponse === false) {
+        } else if (p.reponse === 'absent') {
           joueursParReponse.absent.push({ ...base, ...p });
         }
       }
 
       // Stats transport
-      const nbBesoinTransport = joueursParReponse.present.filter(j => j.besoin_transport).length;
-      const nbTransportPris = joueursParReponse.present.filter(j => j.besoin_transport && j.conducteur_id).length;
+      const nbBesoinTransport = joueursParReponse.present.filter(j => j.besoin_transport === true).length;
+      const nbTransportPris = joueursParReponse.present.filter(j => j.besoin_transport === true && j.conducteur_id).length;
 
       setEvent(evt);
       setPresent(joueursParReponse.present);

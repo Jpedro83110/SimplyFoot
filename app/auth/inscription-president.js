@@ -12,7 +12,6 @@ export default function InscriptionPresident() {
   const [loading, setLoading] = useState(false);
   const [clubCode, setClubCode] = useState('');
 
-  // Fonction pour générer un code club unique type "SF-XXXXX"
   function genererCodeClub() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
@@ -20,12 +19,10 @@ export default function InscriptionPresident() {
     return `SF-${code}`;
   }
 
-  // Fonction principale d'inscription président+club
   async function creerPresidentEtClub() {
     setLoading(true);
     setClubCode('');
-    // 1. Vérif email déjà existant (optionnel, sinon error message Supabase)
-    // 2. Création Auth
+    // 1. Création Auth
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -37,7 +34,7 @@ export default function InscriptionPresident() {
     }
     const userId = signUpData.user.id;
 
-    // 3. Création club
+    // 2. Création club
     const generatedCode = genererCodeClub();
     const { data: clubData, error: clubError } = await supabase
       .from('clubs')
@@ -46,19 +43,18 @@ export default function InscriptionPresident() {
         adresse,
         code_acces: generatedCode,
         created_by: userId,
-        email, // email président (optionnel)
+        email,
       }])
       .select()
       .single();
 
     if (clubError || !clubData) {
-      // (option) await supabase.auth.admin.deleteUser(userId); // nécessite l'API admin
       setLoading(false);
       Alert.alert('Erreur', clubError?.message || 'Création du club échouée.');
       return;
     }
 
-    // 4. Création utilisateur dans table utilisateurs
+    // 3. Création utilisateur dans table utilisateurs
     const { error: userError } = await supabase
       .from('utilisateurs')
       .insert([{
@@ -71,9 +67,23 @@ export default function InscriptionPresident() {
         date_creation: new Date().toISOString(),
       }]);
     if (userError) {
-      // (option) await supabase.auth.admin.deleteUser(userId);
       setLoading(false);
       Alert.alert('Erreur', userError?.message || 'Utilisateur créé mais lien club échoué.');
+      return;
+    }
+
+    // 4. Lien club_admins (LA PARTIE MANQUANTE AVANT !)
+    const { error: adminError } = await supabase
+      .from('club_admins') // ou clubs_admins selon ton nom de table
+      .insert([{
+        club_id: clubData.id,
+        user_id: userId,
+        role: 'president',
+        date_ajout: new Date().toISOString(),
+      }]);
+    if (adminError) {
+      setLoading(false);
+      Alert.alert('Erreur', adminError?.message || 'Utilisateur et club créés, mais pas de lien admin.');
       return;
     }
 
@@ -83,12 +93,8 @@ export default function InscriptionPresident() {
     Alert.alert(
       'Félicitations !',
       `Votre club est créé.\nVoici votre code club :\n\n${generatedCode}\n\nGardez-le bien précieusement.`,
-      [
-        // Redirige ici vers la page de login si tu veux
-        { text: 'OK' }
-      ]
+      [{ text: 'OK' }]
     );
-    // Vide les champs
     setEmail(''); setPassword(''); setNom(''); setPrenom(''); setClubNom(''); setAdresse('');
   }
 
