@@ -5,10 +5,10 @@
     "version": "1.0.0",
     "scheme": "simplyfoot",
     "orientation": "portrait",
-    "icon": "./assets/chat.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/chat.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#121212"
     },
@@ -24,13 +24,13 @@
     "android": {
       "package": "com.simplyfoot.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/chat.png",
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
         "backgroundColor": "#121212"
       },
       "permissions": ["NOTIFICATIONS"]
     },
     "web": {
-      "favicon": "./assets/chat.png",
+      "favicon": "./assets/icon.png",
       "bundler": "metro"
     },
     "plugins": [

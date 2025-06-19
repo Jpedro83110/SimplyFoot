@@ -4,10 +4,10 @@ export default {
   version: '1.0.0',
   scheme: 'simplyfoot',
   orientation: 'portrait',
-  icon: './assets/chat.png',
+  icon: './assets/icon.png', // ✅ image 1024x1024
   userInterfaceStyle: 'automatic',
   splash: {
-    image: './assets/chat.png',
+    image: './assets/icon.png',
     resizeMode: 'contain',
     backgroundColor: '#121212',
   },
@@ -23,16 +23,16 @@ export default {
   android: {
     package: 'com.simplyfoot.app',
     adaptiveIcon: {
-      foregroundImage: './assets/chat.png',
+      foregroundImage: './assets/adaptive-icon-foreground.png', // ✅ image 432x432, fond transparent
       backgroundColor: '#121212',
     },
     permissions: ['NOTIFICATIONS'],
   },
   web: {
-    favicon: './assets/chat.png',
+    favicon: './assets/icon.png',
     bundler: 'metro',
   },
-  plugins: ['expo-router', 'expo-sqlite'], // <--- ICI !
+  plugins: ['expo-router', 'expo-sqlite'],
   extra: {
     eas: {
       projectId: 'c9c1a41e-d1ef-4769-9d5e-f531af72bd3b',
