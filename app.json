@@ -34,8 +34,7 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router",
-      "expo-sqlite"
+      "expo-router"
     ],
     "extra": {
       "eas": {

@@ -32,7 +32,7 @@ export default {
     favicon: './assets/icon.png',
     bundler: 'metro',
   },
-  plugins: ['expo-router', 'expo-sqlite'],
+  plugins: ['expo-router'], // ❌ expo-sqlite supprimé
   extra: {
     eas: {
       projectId: 'c9c1a41e-d1ef-4769-9d5e-f531af72bd3b',
