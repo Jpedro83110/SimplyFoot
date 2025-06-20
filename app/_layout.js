@@ -11,12 +11,10 @@ import { Slot } from 'expo-router';
 import WebSocketManager from '../components/WebSocketManager';
 import { supabase } from '../lib/supabase';
 
-// Ajouts pour les notifications
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 
-// Affichage local de notif
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -73,8 +71,14 @@ export default function GlobalLayout() {
 
       if (finalStatus !== 'granted') return;
 
+      // Pour éviter une erreur si expoConfig est undefined en build prod
+      const projectId =
+        Constants?.expoConfig?.extra?.eas?.projectId ||
+        Constants?.manifest?.extra?.eas?.projectId ||
+        'TON_PROJECT_ID_MANUEL'; // fallback
+
       const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: Constants.expoConfig.extra.eas.projectId,
+        projectId,
       });
 
       const expoToken = tokenData.data;

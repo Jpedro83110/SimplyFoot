@@ -7,23 +7,31 @@ export default function Accueil() {
   const router = useRouter();
   const [loggedIn, setLoggedIn] = useState(false);
 
+  // Sync session en live
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession();
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      setLoggedIn(!!session?.user);
+    });
+
+    // Initial fetch
+    supabase.auth.getSession().then(({ data }) => {
       setLoggedIn(!!data.session?.user);
-    })();
+    });
+
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setLoggedIn(false);
-    router.replace('/');
+    router.replace('/auth/login-club');
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-
       {loggedIn && (
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutText}>🔓 Se déconnecter</Text>
@@ -31,16 +39,23 @@ export default function Accueil() {
       )}
 
       <Image source={require('../assets/logo.png')} style={styles.logoImage} />
-
       <Text style={styles.title}>Bienvenue sur</Text>
       <Text style={styles.logo}>⚽ SimplyFoot</Text>
       <Text style={styles.subtitle}>L'application des clubs de foot amateur</Text>
 
-      <TouchableOpacity style={styles.button} onPress={() => router.push('/auth/login-club')}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => router.push('/auth/login-club')}
+        accessible accessibilityLabel="Connexion Club"
+      >
         <Text style={styles.buttonText}>Connexion Club (Président / Coach)</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.buttonOutline} onPress={() => router.push('/auth/login-joueur')}>
+      <TouchableOpacity
+        style={styles.buttonOutline}
+        onPress={() => router.push('/auth/login-joueur')}
+        accessible accessibilityLabel="Connexion Parent ou Joueur"
+      >
         <Text style={styles.buttonTextOutline}>Connexion Parent / Joueur</Text>
       </TouchableOpacity>
     </View>
