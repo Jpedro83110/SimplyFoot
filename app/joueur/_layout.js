@@ -1,22 +1,27 @@
 import { useEffect, useState } from 'react';
-import { Slot, useRouter, useSegments } from 'expo-router';
-import { View, ActivityIndicator, Alert } from 'react-native';
+import { Slot, useRouter, useSegments, usePathname } from 'expo-router';
+import { View, ActivityIndicator, Alert, Platform } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Header from '../../components/Header';
 
 export default function JoueurLayout() {
   const router = useRouter();
   const segments = useSegments();
+  const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+    let timeoutId;
+
     const checkRoleAndRegisterToken = async () => {
       let session = null;
       let tries = 0;
 
-      while (!session && tries < 5) {
+      while (!session && tries < 5 && isMounted) {
         const { data } = await supabase.auth.getSession();
         session = data?.session;
         if (!session) {
@@ -24,6 +29,8 @@ export default function JoueurLayout() {
           tries++;
         }
       }
+
+      if (!isMounted) return;
 
       if (!session) {
         Alert.alert('Erreur', 'Session introuvable');
@@ -37,6 +44,8 @@ export default function JoueurLayout() {
         .select('role')
         .eq('id', session.user.id)
         .single();
+
+      if (!isMounted) return;
 
       if (error || !user) {
         Alert.alert('Erreur', `Utilisateur introuvable\nErreur: ${error?.message}\nuser: ${JSON.stringify(user)}`);
@@ -56,8 +65,8 @@ export default function JoueurLayout() {
           router.replace('/joueur/dashboard');
         }
 
-        // --- Bloc notifications sécurisé ---
-        if (Device.isDevice && role === 'joueur') {
+        // Notifications push uniquement sur mobile natif
+        if (Platform.OS !== 'web' && Device.isDevice && role === 'joueur') {
           try {
             const { status: existingStatus } = await Notifications.getPermissionsAsync();
             let finalStatus = existingStatus;
@@ -93,11 +102,10 @@ export default function JoueurLayout() {
               }
             }
           } catch (e) {
+            // Ici, pas d'alerte bloquante : juste log en console
             console.error('[PUSH] Erreur lors de l’enregistrement du token', e);
-            Alert.alert('Erreur notifications', 'La génération du token de notification a échoué (aucune incidence sur la connexion).');
           }
         }
-        // --- Fin bloc sécurisé notifications ---
 
       } else {
         Alert.alert('Erreur', `Rôle non autorisé : ${role}`);
@@ -106,11 +114,19 @@ export default function JoueurLayout() {
         return;
       }
 
-      // Important : setChecking à la fin pour débloquer l'affichage !
       setChecking(false);
     };
 
     checkRoleAndRegisterToken();
+
+    timeoutId = setTimeout(() => {
+      if (checking && isMounted) setChecking(false);
+    }, 7000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   if (checking) {
@@ -121,5 +137,23 @@ export default function JoueurLayout() {
     );
   }
 
-  return authorized ? <Slot /> : null;
+  // Titre dynamique facultatif
+  const getPageTitle = () => {
+    const pathSegments = pathname.split('/');
+    const joueurIndex = pathSegments.indexOf('joueur');
+    const page = pathSegments[joueurIndex + 1];
+    switch (page) {
+      case 'dashboard': return 'Dashboard Joueur';
+      case 'convocation': return 'Convocations';
+      case 'evenements': return 'Événements';
+      default: return 'Espace Joueur';
+    }
+  };
+
+  return authorized ? (
+    <>
+      <Header title={getPageTitle()} showBack={pathname !== '/joueur/dashboard'} />
+      <Slot />
+    </>
+  ) : null;
 }

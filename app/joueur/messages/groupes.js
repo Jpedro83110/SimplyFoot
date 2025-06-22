@@ -1,17 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, ActivityIndicator,
-  TextInput, Pressable, Alert, ImageBackground,
+  ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
 
 export default function MessagesGroupesJoueur() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [reponses, setReponses] = useState({});
-  const [reponseText, setReponseText] = useState({});
   const [joueurId, setJoueurId] = useState(null);
   const [equipeId, setEquipeId] = useState(null);
 
@@ -69,27 +67,6 @@ export default function MessagesGroupesJoueur() {
     }
   };
 
-  const envoyerReponse = async (msgId) => {
-    const contenu = reponseText[msgId];
-    if (!contenu || !contenu.trim()) return;
-    const session = await supabase.auth.getSession();
-    const joueurId = session.data.session.user.id;
-
-    const { error } = await supabase.from('reponses_messages_joueur').insert({
-      message_id: msgId,
-      joueur_id: joueurId,
-      texte: contenu,
-      auteur: 'joueur',
-    });
-
-    if (!error) {
-      setReponseText((prev) => ({ ...prev, [msgId]: '' }));
-      fetchMessages(equipeId);
-    } else {
-      Alert.alert("Erreur", error.message);
-    }
-  };
-
   if (loading) {
     return (
       <View style={styles.loading}>
@@ -107,6 +84,9 @@ export default function MessagesGroupesJoueur() {
       <LinearGradient colors={["#0a0a0acc", "#0f0f0fcc"]} style={styles.container}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.title}>💬 Messages de groupe</Text>
+          <Text style={styles.info}>
+            La messagerie de groupe permet au coach de communiquer des informations à toute l’équipe. Les joueurs ne peuvent pas répondre ici.
+          </Text>
           {messages.length === 0 && (
             <Text style={styles.noMessages}>Aucun message de groupe pour ton équipe.</Text>
           )}
@@ -117,24 +97,6 @@ export default function MessagesGroupesJoueur() {
               <Text style={styles.messageMeta}>
                 📅 {new Date(msg.created_at).toLocaleString()}
               </Text>
-              {reponses[msg.id]?.map((rep, i) => (
-                <Text key={i} style={styles.reponse}>
-                  {rep.auteur === 'joueur' ? '🧑‍🎓' : '🧑‍🏫'} {rep.texte}
-                </Text>
-              ))}
-              <TextInput
-                placeholder="Répondre à tous..."
-                placeholderTextColor="#777"
-                value={reponseText[msg.id] || ''}
-                onChangeText={(txt) =>
-                  setReponseText((prev) => ({ ...prev, [msg.id]: txt }))
-                }
-                style={styles.input}
-              />
-              <Pressable onPress={() => envoyerReponse(msg.id)} style={styles.bouton}>
-                <Ionicons name="send" size={18} color="#111" />
-                <Text style={styles.boutonText}>Répondre</Text>
-              </Pressable>
             </View>
           ))}
         </ScrollView>
@@ -153,6 +115,13 @@ const styles = StyleSheet.create({
     color: '#00ff88',
     textAlign: 'center',
     marginBottom: 20,
+  },
+  info: {
+    color: '#bbb',
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 18,
+    marginHorizontal: 8,
   },
   noMessages: {
     color: '#aaa',
@@ -181,27 +150,6 @@ const styles = StyleSheet.create({
   messageMeta: {
     color: '#888',
     fontSize: 12,
-    marginBottom: 12,
+    marginBottom: 2,
   },
-  reponse: { color: '#00ff88', fontSize: 13, marginBottom: 4 },
-  input: {
-    backgroundColor: '#1e1e1e',
-    borderColor: '#00ff88',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    color: '#fff',
-    marginBottom: 10,
-  },
-  bouton: {
-    backgroundColor: '#00ff88',
-    borderRadius: 8,
-    paddingVertical: 8,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 20,
-  },
-  boutonText: { color: '#111', fontWeight: 'bold' },
 });

@@ -7,10 +7,11 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import { parseDateInputToISO } from '../../lib/formatDate';
 
 // Helper pour savoir si mineur
 function isMineur(dateNaissance) {
-  const birth = new Date(dateNaissance);
+  const birth = new Date(parseDateInputToISO(dateNaissance));
   const now = new Date();
   let age = now.getFullYear() - birth.getFullYear();
   const m = now.getMonth() - birth.getMonth();
@@ -27,7 +28,7 @@ export default function InscriptionJoueur() {
   const [prenom, setPrenom] = useState('');
   const [telephone, setTelephone] = useState('');
   const [dateNaissance, setDateNaissance] = useState('');
-  const [accepteDecharge, setAccepteDecharge] = useState(null); // null = non choisi, true = signé, false = pas signé
+  const [accepteDecharge, setAccepteDecharge] = useState(null);
   const [loading, setLoading] = useState(false);
   const [expoToken, setExpoToken] = useState(null);
   const [isMinor, setIsMinor] = useState(false);
@@ -51,7 +52,7 @@ export default function InscriptionJoueur() {
 
   // Calcul auto mineur/majeur
   useEffect(() => {
-    if (dateNaissance && /^\d{4}-\d{2}-\d{2}$/.test(dateNaissance)) {
+    if (dateNaissance && (/^\d{4}-\d{2}-\d{2}$/.test(dateNaissance) || /^\d{2}\/\d{2}\/\d{4}$/.test(dateNaissance))) {
       setIsMinor(isMineur(dateNaissance));
       setAccepteDecharge(null); // reset le choix si changement de date
     } else {
@@ -113,17 +114,21 @@ export default function InscriptionJoueur() {
     }
 
     // 4. Insertion dans joueurs
-    const { error: insertJoueurError } = await supabase.from('joueurs').insert({
+    const joueurInsert = {
       utilisateur_id: userId,
       club_id: clubData.id,
       nom: nom.trim(),
       prenom: prenom.trim(),
       telephone: telephone.trim(),
-      date_naissance: dateNaissance.trim(),
-    });
+      date_naissance: parseDateInputToISO(dateNaissance.trim()),
+    };
+    const { error: insertJoueurError } = await supabase.from('joueurs').insert(joueurInsert);
     if (insertJoueurError) {
       setLoading(false);
-      Alert.alert('Erreur', 'Utilisateur enregistré, mais joueur non ajouté.');
+      Alert.alert(
+        'Erreur',
+        'Utilisateur enregistré, mais joueur non ajouté.\n\nMerci de signaler ce bug au support !'
+      );
       return;
     }
 
@@ -158,7 +163,13 @@ export default function InscriptionJoueur() {
         <TextInput style={styles.input} placeholder="Nom" placeholderTextColor="#aaa" value={nom} onChangeText={setNom} />
         <TextInput style={styles.input} placeholder="Prénom" placeholderTextColor="#aaa" value={prenom} onChangeText={setPrenom} />
         <TextInput style={styles.input} placeholder="Téléphone" placeholderTextColor="#aaa" value={telephone} onChangeText={setTelephone} keyboardType="phone-pad" />
-        <TextInput style={styles.input} placeholder="Date de naissance (YYYY-MM-DD)" placeholderTextColor="#aaa" value={dateNaissance} onChangeText={setDateNaissance} />
+        <TextInput
+          style={styles.input}
+          placeholder="Date de naissance (JJ/MM/AAAA ou YYYY-MM-DD)"
+          placeholderTextColor="#aaa"
+          value={dateNaissance}
+          onChangeText={setDateNaissance}
+        />
         {isMinor && (
           <View style={styles.dechargeBlock}>
             <Text style={styles.switchLabel}>
@@ -286,4 +297,3 @@ const styles = StyleSheet.create({
     color: '#121212',
   },
 });
-

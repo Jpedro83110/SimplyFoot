@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import { parseDateInputToISO } from '../../lib/formatDate';
 
 export default function InscriptionCoach() {
   const router = useRouter();
@@ -94,7 +95,7 @@ export default function InscriptionCoach() {
       prenom: prenom.trim(),
       email: email.trim().toLowerCase(),
       telephone: telephone.trim(),
-      date_naissance: dateNaissance.trim(),
+      date_naissance: parseDateInputToISO(dateNaissance.trim()),
       diplome: diplome,
     });
     setLoading(false);
@@ -118,7 +119,12 @@ export default function InscriptionCoach() {
         <TextInput style={styles.input} placeholder="Nom" placeholderTextColor="#aaa" value={nom} onChangeText={setNom} />
         <TextInput style={styles.input} placeholder="Prénom" placeholderTextColor="#aaa" value={prenom} onChangeText={setPrenom} />
         <TextInput style={styles.input} placeholder="Téléphone" placeholderTextColor="#aaa" value={telephone} onChangeText={setTelephone} keyboardType="phone-pad" />
-        <TextInput style={styles.input} placeholder="Date de naissance (YYYY-MM-DD)" placeholderTextColor="#aaa" value={dateNaissance} onChangeText={setDateNaissance} />
+        <TextInput style={styles.input}
+          placeholder="Date de naissance (JJ/MM/AAAA ou YYYY-MM-DD)"
+          placeholderTextColor="#aaa"
+          value={dateNaissance}
+          onChangeText={setDateNaissance}
+        />
         <View style={styles.switchContainer}>
           <Text style={styles.switchLabel}>Diplômé(e)</Text>
           <Switch value={diplome} onValueChange={setDiplome} thumbColor={diplome ? "#00ff88" : "#555"} />

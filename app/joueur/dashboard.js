@@ -1,192 +1,153 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator,
-  TouchableOpacity, Image, Dimensions, Alert
+  TouchableOpacity, Image, Alert
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import useCacheData from '../../lib/cache'; // <-- AJOUTE ICI
 
-const { width: windowWidth } = Dimensions.get('window');
 const GREEN = '#00ff88';
 const DARK = '#101415';
 const LAST_MESSAGES_VIEWED = 'last_messages_viewed';
 
 export default function JoueurDashboard() {
-  const [userId, setUserId] = useState(null);
-  const [joueurId, setJoueurId] = useState(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [logoClub, setLogoClub] = useState(null);
+
+  // State principal
+  const [user, setUser] = useState(null);
+  const [joueur, setJoueur] = useState(null);
+  const [equipe, setEquipe] = useState(null);
+  const [club, setClub] = useState(null);
+  const [evenement, setEvenement] = useState(null);
+  const [participations, setParticipations] = useState([]);
   const [nouveauMessage, setNouveauMessage] = useState(false);
-  const [role, setRole] = useState('Joueur');
+
   const router = useRouter();
 
-  // 1. Auth/session, récup userId
+  // Chargement principal
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: sessionData }) => {
-      if (!sessionData?.session) {
-        setError('Session expirée, reconnectez-vous.');
-        setLoadingAuth(false);
-        return;
+    let mounted = true;
+
+    async function fetchAll() {
+      try {
+        // 1. Auth/session
+        const { data: sessionData } = await supabase.auth.getSession();
+        const session = sessionData?.session;
+        if (!session) throw new Error('Session expirée, reconnectez-vous.');
+
+        // 2. User (utilisateur)
+        const { data: userData, error: errUser } = await supabase
+          .from('utilisateurs')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        if (errUser || !userData) throw new Error("Utilisateur introuvable.");
+        if (!userData.joueur_id) throw new Error("Utilisateur non lié à un joueur.");
+        if (mounted) setUser(userData);
+
+        // 3. Joueur
+        const { data: joueurData, error: errJoueur } = await supabase
+          .from('joueurs')
+          .select('*')
+          .eq('id', userData.joueur_id)
+          .single();
+        if (errJoueur || !joueurData) throw new Error("Joueur introuvable ou non affecté.");
+        if (mounted) setJoueur(joueurData);
+
+        // 4. Équipe (récupère club_id dedans)
+        if (!joueurData.equipe_id) throw new Error("Joueur non affecté à une équipe.");
+        const { data: equipeData, error: errEquipe } = await supabase
+          .from('equipes')
+          .select('*')
+          .eq('id', joueurData.equipe_id)
+          .single();
+        if (errEquipe || !equipeData) throw new Error("Équipe introuvable.");
+        if (mounted) setEquipe(equipeData);
+
+        // 5. Club
+        if (!equipeData.club_id) throw new Error("Équipe non liée à un club.");
+        const { data: clubData, error: errClub } = await supabase
+          .from('clubs')
+          .select('id, nom, logo_url, facebook_url, instagram_url, boutique_url')
+          .eq('id', equipeData.club_id)
+          .single();
+        if (errClub || !clubData) throw new Error("Club introuvable.");
+        if (mounted) setClub(clubData);
+
+        // 6. Prochain événement
+        const { data: eventData } = await supabase
+          .from('evenements')
+          .select('*')
+          .eq('equipe_id', equipeData.id)
+          .gte('date', new Date().toISOString())
+          .order('date', { ascending: true })
+          .limit(1)
+          .single();
+        if (mounted) setEvenement(eventData || null);
+
+        // 7. Participations (présence)
+        const { data: participData } = await supabase
+          .from('participations_evenement')
+          .select('*')
+          .eq('joueur_id', joueurData.id);
+        if (mounted) setParticipations(participData || []);
+
+        // 8. Messages (badge)
+        const lastViewed = await AsyncStorage.getItem(LAST_MESSAGES_VIEWED);
+        const lastDate = lastViewed ? new Date(lastViewed) : new Date(0);
+        let nouveau = false;
+        // Messages privés
+        const { data: messagesPrives } = await supabase
+          .from('messages_prives')
+          .select('created_at')
+          .eq('recepteur_id', session.user.id);
+        // Groupe coach
+        const { data: messagesGroupes } = await supabase
+          .from('messages_groupe_coach')
+          .select('created_at')
+          .eq('equipe_id', equipeData.id);
+        // Check dates
+        const allDates = [
+          ...(messagesPrives?.map(m => new Date(m.created_at)) || []),
+          ...(messagesGroupes?.map(m => new Date(m.created_at)) || []),
+        ];
+        nouveau = allDates.some(date => date > lastDate);
+        if (mounted) setNouveauMessage(nouveau);
+
+        // End loading
+        if (mounted) setLoading(false);
+      } catch (e) {
+        if (mounted) {
+          setError(e.message);
+          setLoading(false);
+        }
       }
-      setUserId(sessionData.session.user.id);
-      setLoadingAuth(false);
-    });
+    }
+
+    fetchAll();
+    return () => { mounted = false; };
   }, []);
 
-  // 2. Fetch user (pour avoir joueur_id et role)
-  async function fetchUser(userId) {
-    const { data, error } = await supabase
-      .from('utilisateurs')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    if (error || !data?.joueur_id) throw new Error('Utilisateur non lié à un joueur.');
-    setJoueurId(data.joueur_id); // on stocke pour fetch joueur
-    setRole(data?.role === 'parent' ? 'Parent' : 'Joueur');
-    return data;
-  }
+  // Taux de présence
+  const present = participations.filter(p => p.reponse === 'present').length;
+  const total = participations.length;
+  const tauxPresence = total > 0 ? Math.round((present / total) * 100) : 0;
 
-  // 3. Fetch joueur (pour les infos et équipe)
-  async function fetchJoueur(joueurId) {
-    const { data, error } = await supabase
-      .from('joueurs')
-      .select('*')
-      .eq('id', joueurId)
-      .single();
-    if (error || !data) throw new Error("Pas encore affecté à une équipe.");
-    return data;
-  }
+  // Calcul âge
+  const calculAge = (date) => {
+    if (!date) return 'Non renseigné';
+    const birth = new Date(date);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age + ' ans';
+  };
 
-  // 4. Fetch équipe pour le nom et club_id
-  async function fetchEquipe(equipeId) {
-    if (!equipeId) return { nom: 'Non affecté', club_id: null };
-    const { data } = await supabase.from('equipes').select('nom, club_id').eq('id', equipeId).single();
-    return data || { nom: 'Non affecté', club_id: null };
-  }
-
-  // 5. Fetch club/logo
-  async function fetchClub(clubId) {
-    if (!clubId) return { logo_url: null };
-    const { data } = await supabase.from('clubs').select('logo_url').eq('id', clubId).single();
-    return data || { logo_url: null };
-  }
-
-  // 6. Prochain évènement
-  async function fetchNextEvent(equipeId) {
-    if (!equipeId) return null;
-    const { data } = await supabase
-      .from('evenements')
-      .select('*')
-      .eq('equipe_id', equipeId)
-      .gte('date', new Date().toISOString())
-      .order('date', { ascending: true })
-      .limit(1)
-      .single();
-    return data;
-  }
-
-  // 7. Participations (présence)
-  async function fetchParticipations(joueurId) {
-    const { data } = await supabase
-      .from('participations_evenement')
-      .select('*')
-      .eq('joueur_id', joueurId);
-    return data || [];
-  }
-
-  // 8. Messages (prives/groupes)
-  async function fetchNouveauMessage(userId, equipeId) {
-    const lastViewed = await AsyncStorage.getItem(LAST_MESSAGES_VIEWED);
-    const lastDate = lastViewed ? new Date(lastViewed) : new Date(0);
-
-    // Messages privés
-    const { data: messagesPrives } = await supabase
-      .from('messages_prives')
-      .select('created_at')
-      .eq('recepteur_id', userId);
-
-    // Messages groupes
-    let messagesGroupes = [];
-    if (equipeId) {
-      const { data } = await supabase
-        .from('messages_groupe_coach')
-        .select('created_at')
-        .eq('equipe_id', equipeId);
-      messagesGroupes = data || [];
-    }
-    // Combine dates
-    const allDates = [
-      ...(messagesPrives?.map(m => new Date(m.created_at)) || []),
-      ...(messagesGroupes?.map(m => new Date(m.created_at)) || [])
-    ];
-    return allDates.some(date => date > lastDate);
-  }
-
-  // HOOKS cache
-  const [user, , loadingUser] = useCacheData(
-    userId ? `user_${userId}` : null,
-    () => fetchUser(userId),
-    12 * 3600
-  );
-
-  const [joueur, , loadingJoueur] = useCacheData(
-    joueurId ? `joueur_${joueurId}` : null,
-    () => fetchJoueur(joueurId),
-    12 * 3600
-  );
-
-  // Dès qu'on a le joueur, on récup l'équipe et le club/logo
-  const equipeId = joueur?.equipe_id;
-  const [equipe, , loadingEquipe] = useCacheData(
-    equipeId ? `equipe_${equipeId}` : null,
-    () => fetchEquipe(equipeId),
-    12 * 3600
-  );
-  const clubId = equipe?.club_id;
-  const [club, , loadingClub] = useCacheData(
-    clubId ? `club_${clubId}` : null,
-    () => fetchClub(clubId),
-    24 * 3600
-  );
-
-  // Logo club (géré via useEffect si dispo)
-  useEffect(() => {
-    if (club?.logo_url) setLogoClub(club.logo_url);
-  }, [club?.logo_url]);
-
-  // Prochain événement
-  const [evenement, , loadingEvent] = useCacheData(
-    equipeId ? `evenement_joueur_${equipeId}` : null,
-    () => fetchNextEvent(equipeId),
-    600 // 10 min
-  );
-
-  // Présence (participations)
-  const [participations, , loadingParticipations] = useCacheData(
-    joueurId ? `participations_joueur_${joueurId}` : null,
-    () => fetchParticipations(joueurId),
-    600 // 10 min
-  );
-  const total = participations?.length || 0;
-  const present = participations?.filter(p => p.reponse === 'present').length || 0;
-  const presence = { total, present };
-
-  // Badge nouveaux messages
-  useEffect(() => {
-    async function checkMessages() {
-      if (userId && equipeId) {
-        const nouveau = await fetchNouveauMessage(userId, equipeId);
-        setNouveauMessage(nouveau);
-      }
-    }
-    checkMessages();
-  }, [userId, equipeId, evenement]);
-
-  // Navigation messagerie pour marquer comme vu
+  // Navigation messagerie
   const handleOpenMessages = async () => {
     await AsyncStorage.setItem(LAST_MESSAGES_VIEWED, new Date().toISOString());
     setNouveauMessage(false);
@@ -222,34 +183,20 @@ export default function JoueurDashboard() {
     { icon: <Ionicons name="people" size={28} color={GREEN} />, label: 'Mon équipe', go: () => router.push('/joueur/equipe') },
   ];
 
-  // Age
-  const calculAge = (date) => {
-    if (!date) return 'Non renseigné';
-    const birth = new Date(date);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-    return age + ' ans';
-  };
-
-  // Taux de présence (%)
-  let tauxPresence = 0;
-  if (presence.total > 0) {
-    tauxPresence = Math.round((presence.present / presence.total) * 100);
-  }
-
-  // Loading global
-  const loading = loadingAuth || loadingUser || loadingJoueur || loadingEquipe || loadingClub || loadingEvent || loadingParticipations;
-
-  if (loading || !joueur) {
+  // LOADING / ERROR
+  if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: DARK }}>
         <ActivityIndicator size="large" color={GREEN} />
+        <TouchableOpacity
+          style={{ marginTop: 22, backgroundColor: GREEN, padding: 9, borderRadius: 7 }}
+          onPress={() => router.replace('/')}
+        >
+          <Text style={{ color: '#111', fontWeight: '700' }}>Retour accueil</Text>
+        </TouchableOpacity>
       </View>
     );
   }
-
   if (error) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: DARK }}>
@@ -264,26 +211,26 @@ export default function JoueurDashboard() {
     );
   }
 
-  // Fusion joueur + user + équipe (pour l'affichage)
+  // Fusion affichage
   const joueurFusionne = joueur && user
     ? { ...joueur, ...user, equipe: equipe?.nom || 'Non affecté' }
     : joueur || {};
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: DARK }} contentContainerStyle={{ alignItems: 'center', paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
-      {/* Header Bienvenue */}
       <Text style={{ color: GREEN, fontSize: 22, fontWeight: 'bold', marginTop: 20, marginBottom: 0 }}>
-        Bienvenue {joueurFusionne?.prenom} {joueurFusionne?.nom} – <Text style={{ color: '#aaa', fontWeight: '400' }}>{role}</Text>
+        Bienvenue {joueurFusionne?.prenom} {joueurFusionne?.nom} – <Text style={{ color: '#aaa', fontWeight: '400' }}>{user?.role === 'parent' ? 'Parent' : 'Joueur'}</Text>
       </Text>
 
+      {/* Header */}
       <View style={styles.headerCard}>
         <View style={styles.rowBetween}>
           <View style={styles.avatarCircle}>
-            {logoClub ? <Image source={{ uri: logoClub }} style={styles.avatarImg} /> : <Ionicons name="football" size={30} color={GREEN} />}
+            {club?.logo_url ? <Image source={{ uri: club.logo_url }} style={styles.avatarImg} /> : <Ionicons name="football" size={30} color={GREEN} />}
           </View>
           <View style={{ flex: 1, marginLeft: 16 }}>
             <Text style={styles.headerName}>{joueurFusionne?.prenom} {joueurFusionne?.nom}</Text>
-            <Text style={styles.headerCat}>{role} · {joueurFusionne?.equipe} · {calculAge(joueurFusionne?.date_naissance)}</Text>
+            <Text style={styles.headerCat}>{user?.role === 'parent' ? 'Parent' : 'Joueur'} · {joueurFusionne?.equipe} · {calculAge(joueurFusionne?.date_naissance)}</Text>
             <View style={styles.rowWrap}>
               <Ionicons name="card-outline" size={14} color={GREEN} style={{ marginRight: 5 }} />
               <Text style={styles.headerInfo}>Licence {joueurFusionne?.licence || 'Non renseignée'}</Text>
@@ -302,7 +249,7 @@ export default function JoueurDashboard() {
       <View style={{ width: '92%', alignSelf: 'center', marginBottom: 12 }}>
         <Text style={{ color: '#aaa', fontSize: 13, marginBottom: 4 }}>
           Taux de présence : <Text style={{ color: GREEN, fontWeight: 'bold' }}>{tauxPresence}%</Text>
-          {presence.total > 0 ? ` (${presence.present} / ${presence.total})` : ''}
+          {total > 0 ? ` (${present} / ${total})` : ''}
         </Text>
         <View style={{ height: 9, backgroundColor: '#232b28', borderRadius: 8, overflow: 'hidden' }}>
           <View style={{
@@ -314,6 +261,7 @@ export default function JoueurDashboard() {
         </View>
       </View>
 
+      {/* Prochain événement */}
       <View style={styles.eventCard}>
         <Text style={styles.eventTitle}>
           {evenement ? <Ionicons name="calendar" size={17} color={GREEN} /> : <Ionicons name="close-circle" size={17} color="#fc2b3a" />}  {evenement ? 'Événement à venir' : 'Aucun événement à venir'}
@@ -333,11 +281,12 @@ export default function JoueurDashboard() {
         )}
       </View>
 
-      {/* Ajout du message d'aide */}
+      {/* Aide */}
       <Text style={{ color: GREEN, marginBottom: 10, textAlign: 'center', fontSize: 13 }}>
         👉 Clique sur "Convocations" pour voir et répondre à tous tes prochains événements !
       </Text>
 
+      {/* Raccourcis */}
       <View style={styles.gridRow}>
         {shortcuts.map((el, i) => (
           <TouchableOpacity key={i} onPress={el.go} style={styles.btnMini}>
@@ -358,10 +307,40 @@ export default function JoueurDashboard() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.imageRow}>
-        <Image source={require('../../assets/JoueurDashboard1.png')} style={styles.imageHalf} />
-        <Image source={require('../../assets/JoueurDashboard2.png')} style={styles.imageHalf} />
-      </View>
+      {/* Réseaux sociaux club */}
+      {club && (
+        <View style={styles.socialLinks}>
+          {club.facebook_url ? (
+            <TouchableOpacity
+              onPress={async () => {
+                const url = club.facebook_url;
+                const app = `fb://facewebmodal/f?href=${url}`;
+                const supported = await Linking.canOpenURL(app);
+                Linking.openURL(supported ? app : url);
+              }}
+            >
+              <Image source={require('../../assets/minilogo/facebook.png')} style={styles.iconSocial} />
+            </TouchableOpacity>
+          ) : null}
+          {club.instagram_url ? (
+            <TouchableOpacity
+              onPress={async () => {
+                const username = club.instagram_url.split('/').pop();
+                const app = `instagram://user?username=${username}`;
+                const supported = await Linking.canOpenURL(app);
+                Linking.openURL(supported ? app : club.instagram_url);
+              }}
+            >
+              <Image source={require('../../assets/minilogo/instagram.png')} style={styles.iconSocial} />
+            </TouchableOpacity>
+          ) : null}
+          {club.boutique_url ? (
+            <TouchableOpacity onPress={() => Linking.openURL(club.boutique_url)}>
+              <Image source={require('../../assets/minilogo/boutique.png')} style={styles.iconSocial} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      )}
 
       {/* Déconnexion */}
       <TouchableOpacity
@@ -377,7 +356,7 @@ export default function JoueurDashboard() {
         }}
         onPress={async () => {
           await supabase.auth.signOut();
-          router.replace('/');
+          router.replace('/auth/login-joueur');
         }}
       >
         <Text style={{ color: GREEN, fontSize: 16, fontWeight: '700' }}>🚪 Se déconnecter</Text>
@@ -386,7 +365,7 @@ export default function JoueurDashboard() {
   );
 }
 
-// Styles : inchangés, tu reprends les tiens
+// Styles : inchangés (reprends ceux de tes autres dashboards)
 const styles = StyleSheet.create({
   headerCard: { marginTop: 28, marginBottom: 16, backgroundColor: '#161b20', borderRadius: 22, padding: 20, borderWidth: 2, borderColor: GREEN, shadowColor: GREEN, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4, width: '92%', alignSelf: 'center' },
   rowBetween: { flexDirection: 'row', alignItems: 'center' },
@@ -406,6 +385,6 @@ const styles = StyleSheet.create({
   evalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 26, marginBottom: 24, width: '92%', alignSelf: 'center', gap: 10 },
   evalBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#171e20', borderRadius: 16, borderWidth: 2, borderColor: GREEN, paddingVertical: 14 },
   evalLabel: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  imageRow: { flexDirection: 'row', justifyContent: 'space-between', width: '92%', alignSelf: 'center', marginTop: 30, marginBottom: 40 },
-  imageHalf: { width: '48%', height: undefined, aspectRatio: 1, resizeMode: 'contain' }
+  socialLinks: { flexDirection: 'row', justifyContent: 'center', gap: 18, marginTop: 30 },
+  iconSocial: { width: 72, height: 72 },
 });

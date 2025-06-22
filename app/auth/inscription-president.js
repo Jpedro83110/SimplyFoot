@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { supabase } from '../../lib/supabase';
+import * as Clipboard from 'expo-clipboard';
 
 export default function InscriptionPresident() {
   const [email, setEmail] = useState('');
@@ -72,14 +73,15 @@ export default function InscriptionPresident() {
       return;
     }
 
-    // 4. Lien club_admins (LA PARTIE MANQUANTE AVANT !)
+    // 4. Lien dans clubs_admins
     const { error: adminError } = await supabase
-      .from('club_admins') // ou clubs_admins selon ton nom de table
+      .from('clubs_admins')
       .insert([{
         club_id: clubData.id,
         user_id: userId,
-        role: 'president',
-        date_ajout: new Date().toISOString(),
+        role_club: 'president',
+        is_active: true,
+        date_added: new Date().toISOString(),
       }]);
     if (adminError) {
       setLoading(false);
@@ -98,6 +100,14 @@ export default function InscriptionPresident() {
     setEmail(''); setPassword(''); setNom(''); setPrenom(''); setClubNom(''); setAdresse('');
   }
 
+  // Fonction de copie du code club
+  const copierCodeClub = async () => {
+    if (clubCode) {
+      await Clipboard.setStringAsync(clubCode);
+      Alert.alert('Copié', 'Le code club a été copié dans le presse-papier.');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Inscription Président</Text>
@@ -114,6 +124,9 @@ export default function InscriptionPresident() {
         <View style={styles.clubCodeBox}>
           <Text style={styles.clubCodeTitle}>Votre code club :</Text>
           <Text selectable style={styles.clubCode}>{clubCode}</Text>
+          <TouchableOpacity style={styles.copierBtn} onPress={copierCodeClub}>
+            <Text style={styles.copierBtnText}>Copier le code</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -129,4 +142,6 @@ const styles = StyleSheet.create({
   clubCodeBox: { marginTop: 30, backgroundColor: '#1e1e1e', borderRadius: 10, padding: 18, alignItems: 'center', borderWidth: 1, borderColor: '#00ff88' },
   clubCodeTitle: { color: '#fff', marginBottom: 5 },
   clubCode: { color: '#00ff88', fontSize: 20, letterSpacing: 2, fontWeight: 'bold' },
+  copierBtn: { marginTop: 12, backgroundColor: '#00ff88', borderRadius: 8, paddingVertical: 7, paddingHorizontal: 24 },
+  copierBtnText: { color: '#111', fontWeight: '700', fontSize: 16 },
 });

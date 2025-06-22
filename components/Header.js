@@ -1,11 +1,15 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useSegments } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
 export default function Header({ title, showBack = true }) {
   const router = useRouter();
+  const segments = useSegments();
+
+  // Pour savoir si on peut revenir en arrière
+  const canGoBack = segments.length > 2; // segments: ['', 'coach', 'convocation'] etc.
 
   const goToAccueil = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -36,10 +40,20 @@ export default function Header({ title, showBack = true }) {
     else router.replace('/auth/login-club');
   };
 
+  const handleBack = async () => {
+    // Si on peut revenir en arrière, on y va
+    if (canGoBack) {
+      router.back();
+    } else {
+      // Sinon, on va à l'accueil comme pour Home
+      await goToAccueil();
+    }
+  };
+
   return (
     <View style={styles.container}>
       {showBack && (
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color="#00ff88" />
         </TouchableOpacity>
       )}

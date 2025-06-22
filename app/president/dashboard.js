@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Alert, Image, ActivityIndicator
+  Alert, Image, ActivityIndicator, Linking
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,7 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { supabase } from '../../lib/supabase';
-import useCacheData from '../../lib/cache'; // <-- AJOUT ICI
+import useCacheData from '../../lib/cache';
+import ReseauxSociaux from '../../components/ReseauxSociaux';
 
 export default function PresidentDashboard() {
   const router = useRouter();
@@ -18,7 +19,6 @@ export default function PresidentDashboard() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Auth + récup userId
   useEffect(() => {
     supabase.auth.getSession().then(({ data: sessionData, error: sessionError }) => {
       if (sessionError || !sessionData.session) {
@@ -31,7 +31,6 @@ export default function PresidentDashboard() {
     });
   }, []);
 
-  // Fetch user
   async function fetchPresident(userId) {
     const { data, error } = await supabase
       .from('utilisateurs')
@@ -44,11 +43,10 @@ export default function PresidentDashboard() {
     return data;
   }
 
-  // Fetch club (via clubs_admins)
   async function fetchClub(userId) {
     const { data: clubRows, error: clubError } = await supabase
       .from('clubs_admins')
-      .select('club:club_id (id, nom, abonnement_actif, logo_url)')
+      .select('club:club_id (id, nom, abonnement_actif, logo_url, facebook_url, instagram_url, boutique_url)')
       .eq('user_id', userId)
       .eq('role_club', 'president')
       .eq('is_active', true);
@@ -60,19 +58,17 @@ export default function PresidentDashboard() {
     }
   }
 
-  // HOOKS cache
   const [president, , loadingPresident] = useCacheData(
     userId ? `president_${userId}` : null,
     () => fetchPresident(userId),
-    12 * 3600 // 12h
+    12 * 3600
   );
   const [club, setClubState, loadingClub] = useCacheData(
     userId ? `club_president_${userId}` : null,
     () => fetchClub(userId),
-    6 * 3600 // 6h
+    6 * 3600
   );
 
-  // Upload logo club
   const deleteOldLogo = async (logoUrl) => {
     try {
       if (!logoUrl || logoUrl.includes('logo.png')) return;
@@ -103,7 +99,6 @@ export default function PresidentDashboard() {
 
       setUploading(true);
 
-      // Supprime l’ancien logo (si existant)
       await deleteOldLogo(club?.logo_url);
 
       const base64 = await FileSystem.readAsStringAsync(uri, {
@@ -132,7 +127,6 @@ export default function PresidentDashboard() {
 
       if (updateError) Alert.alert('Erreur', "Impossible de mettre à jour le logo.");
       else {
-        // Ici, on rafraîchit juste le cache club (ça update tout le dashboard sans reload !)
         setClubState((prev) => ({ ...prev, logo_url: publicUrl }));
         Alert.alert("Succès", "Logo mis à jour !");
       }
@@ -144,14 +138,10 @@ export default function PresidentDashboard() {
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) {
-      Alert.alert("Erreur", "Déconnexion impossible");
-    } else {
-      router.replace('/');
-    }
+    if (error) Alert.alert("Erreur", "Déconnexion impossible");
+    else router.replace('/');
   };
 
-  // Gestion erreurs
   useEffect(() => {
     if (president && president.role !== 'president') {
       Alert.alert('Accès refusé', 'Seul le président du club a accès à cet espace.');
@@ -210,6 +200,46 @@ export default function PresidentDashboard() {
           <FullFilledButton title="Gestion Budget" icon="cash" onPress={() => router.push('/president/gestion-budget')} />
         </Section>
 
+        {/* Logos Réseaux Sociaux */}
+<View style={styles.socialLinks}>
+  {club?.facebook_url && (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={async () => {
+        const appUrl = `fb://facewebmodal/f?href=${club.facebook_url}`;
+        const supported = await Linking.canOpenURL(appUrl);
+        Linking.openURL(supported ? appUrl : club.facebook_url);
+      }}
+    >
+      <Image source={require('../../assets/minilogo/facebook.png')} style={styles.iconSocial} />
+    </TouchableOpacity>
+  )}
+
+  {club?.instagram_url && (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={async () => {
+        const username = club.instagram_url.split('/').filter(Boolean).pop();
+        const appUrl = `instagram://user?username=${username}`;
+        const supported = await Linking.canOpenURL(appUrl);
+        Linking.openURL(supported ? appUrl : club.instagram_url);
+      }}
+    >
+      <Image source={require('../../assets/minilogo/instagram.png')} style={styles.iconSocial} />
+    </TouchableOpacity>
+  )}
+
+  {club?.boutique_url && (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => Linking.openURL(club.boutique_url)}
+    >
+      <Image source={require('../../assets/minilogo/boutique.png')} style={styles.iconSocial} />
+    </TouchableOpacity>
+  )}
+</View>
+
+
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutText}>🚪 Se déconnecter</Text>
         </TouchableOpacity>
@@ -218,7 +248,7 @@ export default function PresidentDashboard() {
   );
 }
 
-// Composants UI identiques à avant
+// UI Buttons + Styles
 function FullButton({ title, icon, onPress }) {
   return (
     <TouchableOpacity style={styles.fullBtnOutline} onPress={onPress}>
@@ -313,4 +343,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutText: { color: '#00ff88', fontSize: 16, fontWeight: '700' },
+  socialLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 18,
+    marginTop: 30,
+  },
+iconSocial: {
+  width: 72,
+  height: 72,
+  borderRadius: 22, // arrondi joli si tu veux un cercle
+  marginHorizontal: 5,
+  backgroundColor: '#222', // optionnel pour le contraste
+},
 });

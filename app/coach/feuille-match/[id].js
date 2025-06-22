@@ -7,6 +7,8 @@ import { supabase } from '../../../lib/supabase';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import useCacheData from '../../../lib/cache';
+// Ajout import formatDate
+import { formatDateFR } from '../../../lib/formatDate';
 
 export default function FeuilleMatch() {
   const { id } = useLocalSearchParams();
@@ -106,14 +108,21 @@ export default function FeuilleMatch() {
   const joueurs = data?.joueurs || [];
   const infoMatch = data?.infoMatch || {};
   const error = data?.error || null;
-  const displayDate = customDate || infoMatch?.date || '';
-  const displayLieu = customLieu || infoMatch?.lieu || '';
-  const displayAdversaire = customAdversaire || infoMatch?.adversaire || '';
+
   const columns = ['Nom', 'Prénom', 'Âge', 'Licence'];
   const MAX_J = 12;
   const isMobile = width < 700;
 
-  // Impression
+  // Pour l'affichage du format date correct
+  const displayDate = customDate
+    ? formatDateFR(customDate)
+    : infoMatch?.date
+    ? formatDateFR(infoMatch.date)
+    : '';
+  const displayLieu = customLieu || infoMatch?.lieu || '';
+  const displayAdversaire = customAdversaire || infoMatch?.adversaire || '';
+
+  // Impression PDF (identique web/mobile)
   const handlePrint = async () => {
     const myRows = [];
     for (let i = 0; i < MAX_J; i++) {
@@ -210,83 +219,197 @@ export default function FeuilleMatch() {
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>📝 Feuille de match</Text>
-      <View style={[styles.headerWrap, isMobile && { flexDirection: 'column', alignItems: 'flex-start' }]}>
-        <View style={styles.infosCol}>
-          <View style={styles.row}>
-            <Text style={styles.detail}>Date :</Text>
-            <TextInput value={customDate} onChangeText={setCustomDate}
-              placeholder={infoMatch?.date ? infoMatch.date.split('T')[0] : "JJ/MM/AAAA"}
-              style={[styles.input, { width: 110, color: '#fff', backgroundColor: isMobile ? "#333" : "#161616" }]}
-              placeholderTextColor="#fff" />
-            <Text style={styles.detail}>Lieu :</Text>
-            <TextInput value={customLieu} onChangeText={setCustomLieu}
-              placeholder={infoMatch?.lieu || "Lieu"}
-              style={[styles.input, { width: 210, color: '#fff', backgroundColor: isMobile ? "#333" : "#161616" }]}
-              placeholderTextColor="#fff" />
+
+      {/* EN-TÊTE */}
+      <View style={[styles.headerWrap, isMobile ? styles.mobileHeaderWrap : null]}>
+        <View style={isMobile ? styles.mobileInfosCol : styles.infosCol}>
+          {/* Date */}
+          <View style={isMobile ? styles.mobileField : styles.row}>
+            <Text style={isMobile ? styles.mobileDetail : styles.detail}>Date :</Text>
+            <TextInput
+              value={customDate}
+              onChangeText={txt => setCustomDate(txt)}
+              placeholder={infoMatch?.date ? formatDateFR(infoMatch.date) : "JJ/MM/AAAA"}
+              style={[
+                isMobile ? styles.mobileInput : styles.input,
+                { color: '#fff', backgroundColor: isMobile ? "#333" : "#161616" }
+              ]}
+              placeholderTextColor="#fff"
+              keyboardType="default"
+              maxLength={10}
+            />
           </View>
-          <Text style={styles.detail}>Équipe : {infoMatch?.equipe}</Text>
-          <Text style={styles.detail}>Catégorie : {infoMatch?.categorie}</Text>
-          <Text style={styles.detail}>Coach : {infoMatch?.coach}</Text>
-          <View style={styles.row}>
-            <Text style={styles.detail}>Adversaire :</Text>
-            <TextInput value={customAdversaire} onChangeText={setCustomAdversaire}
+          {/* Lieu */}
+          <View style={isMobile ? styles.mobileField : styles.row}>
+            <Text style={isMobile ? styles.mobileDetail : styles.detail}>Lieu :</Text>
+            <TextInput
+              value={customLieu}
+              onChangeText={setCustomLieu}
+              placeholder={infoMatch?.lieu || "Lieu"}
+              style={[
+                isMobile ? styles.mobileInput : styles.input,
+                { color: '#fff', backgroundColor: isMobile ? "#333" : "#161616" }
+              ]}
+              placeholderTextColor="#fff"
+            />
+          </View>
+          <Text style={isMobile ? styles.mobileDetail : styles.detail}>Équipe : {infoMatch?.equipe}</Text>
+          <Text style={isMobile ? styles.mobileDetail : styles.detail}>Catégorie : {infoMatch?.categorie}</Text>
+          <Text style={isMobile ? styles.mobileDetail : styles.detail}>Coach : {infoMatch?.coach}</Text>
+          {/* Adversaire */}
+          <View style={isMobile ? styles.mobileField : styles.row}>
+            <Text style={isMobile ? styles.mobileDetail : styles.detail}>Adversaire :</Text>
+            <TextInput
+              value={customAdversaire}
+              onChangeText={setCustomAdversaire}
               placeholder={infoMatch?.adversaire || "Adversaire"}
-              style={[styles.input, { width: 210, color: '#fff', backgroundColor: isMobile ? "#333" : "#161616" }]}
-              placeholderTextColor="#fff" />
+              style={[
+                isMobile ? styles.mobileInput : styles.input,
+                { color: '#fff', backgroundColor: isMobile ? "#333" : "#161616" }
+              ]}
+              placeholderTextColor="#fff"
+            />
           </View>
         </View>
-        <View style={styles.signaturesCol}>
-          <View style={styles.signatureRow}>
-            <Text style={styles.signatureLabel}>Coach :</Text>
-            <TextInput value={signCoach} onChangeText={setSignCoach} style={[styles.signatureBox, isMobile && { color: '#fff', backgroundColor: "#333" }]} placeholderTextColor="#fff" />
+        {/* Signatures : version mobile = label au-dessus, input dessous */}
+        <View style={isMobile ? styles.mobileSignaturesCol : styles.signaturesCol}>
+          <View style={isMobile ? styles.mobileSignatureField : styles.signatureRow}>
+            <Text style={isMobile ? styles.mobileSignatureLabel : styles.signatureLabel}>Coach :</Text>
+            <TextInput
+              value={signCoach}
+              onChangeText={setSignCoach}
+              style={[isMobile ? styles.mobileSignatureInput : styles.signatureBox]}
+              placeholderTextColor="#fff"
+            />
           </View>
-          <View style={styles.signatureRow}>
-            <Text style={styles.signatureLabel}>Arbitre :</Text>
-            <TextInput value={signArbitre} onChangeText={setSignArbitre} style={[styles.signatureBox, isMobile && { color: '#fff', backgroundColor: "#333" }]} placeholderTextColor="#fff" />
+          <View style={isMobile ? styles.mobileSignatureField : styles.signatureRow}>
+            <Text style={isMobile ? styles.mobileSignatureLabel : styles.signatureLabel}>Arbitre :</Text>
+            <TextInput
+              value={signArbitre}
+              onChangeText={setSignArbitre}
+              style={[isMobile ? styles.mobileSignatureInput : styles.signatureBox]}
+              placeholderTextColor="#fff"
+            />
           </View>
-          <View style={styles.signatureRow}>
-            <Text style={styles.signatureLabel}>Représentant club adverse :</Text>
-            <TextInput value={signClubAdv} onChangeText={setSignClubAdv} style={[styles.signatureBox, isMobile && { color: '#fff', backgroundColor: "#333" }]} placeholderTextColor="#fff" />
+          {/* Champ représentant club adverse : input en dessous sur mobile */}
+          <View style={isMobile ? styles.mobileSignatureField : styles.signatureRow}>
+            <Text style={isMobile ? styles.mobileSignatureLabel : styles.signatureLabel}>Représentant club adverse :</Text>
+            <TextInput
+              value={signClubAdv}
+              onChangeText={setSignClubAdv}
+              style={[isMobile ? styles.mobileSignatureInput : styles.signatureBox]}
+              placeholderTextColor="#fff"
+            />
           </View>
-          <View style={styles.signatureRow}>
-            <Text style={styles.signatureLabel}>Date :</Text>
-            <TextInput value={signDate} onChangeText={setSignDate} style={[styles.signatureBox, isMobile && { color: '#fff', backgroundColor: "#333" }]} placeholderTextColor="#fff" />
+          <View style={isMobile ? styles.mobileSignatureField : styles.signatureRow}>
+            <Text style={isMobile ? styles.mobileSignatureLabel : styles.signatureLabel}>Date :</Text>
+            <TextInput
+              value={signDate}
+              onChangeText={setSignDate}
+              style={[isMobile ? styles.mobileSignatureInput : styles.signatureBox]}
+              placeholderTextColor="#fff"
+            />
           </View>
         </View>
       </View>
+
+      {/* BOUTON */}
       <TouchableOpacity style={styles.button} onPress={handlePrint}>
         <Text style={styles.buttonText}>📄 Imprimer / Télécharger en PDF</Text>
       </TouchableOpacity>
-      <View style={[styles.tablesWrap, isMobile && { flexDirection: 'column' }]}>
-        <View style={styles.tableBlock}>
-          <View style={styles.headerRow}><Text style={styles.headerCell}>{infoMatch.equipe}</Text></View>
+
+      {/* TABLEAUX */}
+      <View style={[
+        styles.tablesWrap,
+        isMobile ? styles.mobileTablesWrap : null
+      ]}>
+        {/* Bloc équipe à domicile */}
+        <View style={[
+          styles.tableBlock,
+          isMobile ? styles.mobileTableBlock : null
+        ]}>
+          <View style={styles.headerRow}>
+            <Text style={[
+              styles.headerCell,
+              isMobile ? styles.mobileHeaderCell : null
+            ]}>
+              {infoMatch.equipe}
+            </Text>
+          </View>
           <View style={styles.subHeaderRow}>
             {columns.map((col, i) => (
-              <Text key={'colA-'+i} style={styles.cellHeader}>{col}</Text>
+              <Text key={'colA-' + i} style={[
+                styles.cellHeader,
+                isMobile ? styles.mobileCellHeader : null
+              ]}>{col}</Text>
             ))}
           </View>
           {Array.from({ length: MAX_J }).map((_, idx) => (
-            <View key={'team-'+idx} style={styles.dataRow}>
-              <Text style={styles.cell}>{joueurs[idx]?.nom || ""}</Text>
-              <Text style={styles.cell}>{joueurs[idx]?.prenom || ""}</Text>
-              <Text style={styles.cell}>{joueurs[idx]?.age || ""}</Text>
-              <Text style={styles.cell}>{joueurs[idx]?.licence || ""}</Text>
+            <View key={'team-' + idx} style={[
+              styles.dataRow,
+              isMobile ? styles.mobileDataRow : null
+            ]}>
+              <Text style={[
+                styles.cell,
+                isMobile ? styles.mobileCell : null
+              ]}>{joueurs[idx]?.nom || ""}</Text>
+              <Text style={[
+                styles.cell,
+                isMobile ? styles.mobileCell : null
+              ]}>{joueurs[idx]?.prenom || ""}</Text>
+              <Text style={[
+                styles.cell,
+                isMobile ? styles.mobileCell : null
+              ]}>{joueurs[idx]?.age || ""}</Text>
+              <Text style={[
+                styles.cell,
+                isMobile ? styles.mobileCell : null
+              ]}>{joueurs[idx]?.licence || ""}</Text>
             </View>
           ))}
         </View>
-        <View style={styles.tableBlock}>
-          <View style={styles.headerRow}><Text style={styles.headerCell}>Adversaire : {displayAdversaire || "_________"}</Text></View>
+        {/* Bloc équipe adverse */}
+        <View style={[
+          styles.tableBlock,
+          isMobile ? styles.mobileTableBlock : null
+        ]}>
+          <View style={styles.headerRow}>
+            <Text style={[
+              styles.headerCell,
+              isMobile ? styles.mobileHeaderCell : null
+            ]}>
+              Adversaire : {displayAdversaire || "_________"}
+            </Text>
+          </View>
           <View style={styles.subHeaderRow}>
             {columns.map((col, i) => (
-              <Text key={'colAdv-'+i} style={styles.cellHeader}>{col}</Text>
+              <Text key={'colAdv-' + i} style={[
+                styles.cellHeader,
+                isMobile ? styles.mobileCellHeader : null
+              ]}>{col}</Text>
             ))}
           </View>
           {Array.from({ length: MAX_J }).map((_, idx) => (
-            <View key={'adv-'+idx} style={styles.dataRow}>
-              <Text style={styles.cell}></Text>
-              <Text style={styles.cell}></Text>
-              <Text style={styles.cell}></Text>
-              <Text style={styles.cell}></Text>
+            <View key={'adv-' + idx} style={[
+              styles.dataRow,
+              isMobile ? styles.mobileDataRow : null
+            ]}>
+              <Text style={[
+                styles.cell,
+                isMobile ? styles.mobileCell : null
+              ]}></Text>
+              <Text style={[
+                styles.cell,
+                isMobile ? styles.mobileCell : null
+              ]}></Text>
+              <Text style={[
+                styles.cell,
+                isMobile ? styles.mobileCell : null
+              ]}></Text>
+              <Text style={[
+                styles.cell,
+                isMobile ? styles.mobileCell : null
+              ]}></Text>
             </View>
           ))}
         </View>
@@ -298,12 +421,20 @@ export default function FeuilleMatch() {
 const styles = StyleSheet.create({
   container: { backgroundColor: '#121212', flex: 1, padding: 20 },
   title: { fontSize: 24, color: '#00ff88', fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
+
+  // En-tête responsive
   headerWrap: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   infosCol: { flex: 1, minWidth: 240 },
   signaturesCol: { minWidth: 240, marginLeft: 32 },
-  row: { flexDirection: 'row', alignItems: 'center', marginVertical: 6, flexWrap:'wrap' },
-  detail: { color: '#ccc', fontSize: 16, marginRight: 8, marginVertical:2 },
+  row: { flexDirection: 'row', alignItems: 'center', marginVertical: 6, flexWrap: 'wrap' },
+  detail: { color: '#ccc', fontSize: 16, marginRight: 8, marginVertical: 2 },
   input: { borderBottomWidth: 1, borderBottomColor: '#aaa', color: '#fff', marginHorizontal: 8, textAlign: 'center', fontSize: 16, backgroundColor: '#161616', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
+
+  // Signatures
+  signatureRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 6 },
+  signatureLabel: { color: '#ccc', minWidth: 100, fontWeight: 'bold', fontSize: 15, marginRight: 8 },
+  signatureBox: { borderBottomWidth: 1, borderBottomColor: '#fff', flex: 1, height: 32, color: '#fff', paddingHorizontal: 8, marginLeft: 8, fontSize: 16 },
+
   button: {
     backgroundColor: '#00ff88',
     paddingVertical: 15,
@@ -313,16 +444,108 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   buttonText: { color: '#000', fontWeight: 'bold', fontSize: 16 },
+
+  // Tableaux
   tablesWrap: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, gap: 12 },
-  tableBlock: { flex: 1, borderWidth: 1.5, borderColor: '#00ff88', borderRadius: 8, marginBottom: 24, overflow:'hidden', backgroundColor: '#181818' },
+  tableBlock: { flex: 1, borderWidth: 1.5, borderColor: '#00ff88', borderRadius: 8, marginBottom: 24, overflow: 'hidden', backgroundColor: '#181818' },
   headerRow: { flexDirection: 'row', backgroundColor: '#222' },
-  headerCell: { color: '#fff', fontWeight: 'bold', fontSize: 18, textAlign: 'center', flex:1, paddingVertical: 10 },
+  headerCell: { color: '#fff', fontWeight: 'bold', fontSize: 18, textAlign: 'center', flex: 1, paddingVertical: 10 },
   subHeaderRow: { flexDirection: 'row', backgroundColor: '#444' },
   cellHeader: { color: '#fff', fontWeight: 'bold', fontSize: 16, textAlign: 'center', flex: 1, paddingVertical: 8 },
   dataRow: { flexDirection: 'row', borderBottomWidth: 0.5, borderColor: '#222', minHeight: 36 },
   cell: { color: '#fff', paddingVertical: 10, paddingHorizontal: 8, fontSize: 16, textAlign: 'center', flex: 1, borderRightWidth: 0.5, borderColor: '#222' },
-  signatureRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 6 },
-  signatureLabel: { color: '#ccc', minWidth: 100, fontWeight: 'bold', fontSize: 15, marginRight: 8 },
-  signatureBox: { borderBottomWidth: 1, borderBottomColor: '#fff', flex: 1, height: 32, color: '#fff', paddingHorizontal: 8, marginLeft: 8, fontSize: 16 },
   empty: { color: '#888', textAlign: 'center', marginTop: 40, fontStyle: 'italic', fontSize: 15 },
+
+  // --- MOBILE STYLES ---
+  mobileHeaderWrap: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    marginBottom: 16,
+    gap: 0,
+  },
+  mobileInfosCol: {
+    width: '100%',
+    marginBottom: 12,
+  },
+  mobileField: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  mobileDetail: {
+    color: '#ccc',
+    fontSize: 17,
+    marginBottom: 3,
+    fontWeight: 'bold',
+  },
+  mobileInput: {
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#00ff88',
+    backgroundColor: '#222',
+    borderRadius: 7,
+    fontSize: 17,
+    color: '#fff',
+    width: '100%',
+    minHeight: 38,
+    marginTop: 1,
+    marginBottom: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  mobileSignaturesCol: {
+    minWidth: undefined,
+    marginLeft: 0,
+    width: '100%',
+    marginTop: 10,
+  },
+  mobileSignatureField: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  mobileSignatureLabel: {
+    color: '#ccc',
+    fontSize: 16,
+    marginBottom: 5,
+    fontWeight: 'bold',
+  },
+  mobileSignatureInput: {
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#00ff88',
+    backgroundColor: '#222',
+    borderRadius: 7,
+    fontSize: 17,
+    color: '#fff',
+    width: '100%',
+    minHeight: 38,
+    marginTop: 1,
+    marginBottom: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  mobileTablesWrap: {
+    flexDirection: 'column',
+    gap: 18,
+  },
+  mobileTableBlock: {
+    width: '100%',
+    minWidth: undefined,
+    marginBottom: 18,
+  },
+  mobileHeaderCell: {
+    fontSize: 17,
+    paddingVertical: 9,
+  },
+  mobileCellHeader: {
+    fontSize: 15,
+    paddingVertical: 7,
+  },
+  mobileDataRow: {
+    minHeight: 42,
+  },
+  mobileCell: {
+    fontSize: 15,
+    paddingVertical: 13,
+    minHeight: 42,
+  },
 });

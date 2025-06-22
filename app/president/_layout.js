@@ -45,8 +45,10 @@ export default function PresidentLayout() {
   }, []);
 
   const getPageTitle = () => {
-    const path = pathname.split('/').pop();
-    switch (path) {
+    const pathSegments = pathname.split('/');
+    const presidentIndex = pathSegments.indexOf('president');
+    const page = pathSegments[presidentIndex + 1];
+    switch (page) {
       case 'dashboard': return 'Mon Club';
       case 'membres': return 'Liste des membres';
       case 'budget': return 'Budget du club';
@@ -66,7 +68,7 @@ export default function PresidentLayout() {
 
   return authorized ? (
     <>
-      <Header title={getPageTitle()} />
+      <Header title={getPageTitle()} showBack={pathname !== '/president/dashboard'} />
       <Slot />
     </>
   ) : null;

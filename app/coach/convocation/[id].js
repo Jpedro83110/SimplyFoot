@@ -1,15 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  TouchableOpacity,
-  Alert,
-  Modal,
-  TextInput,
-  Platform,
+  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Modal, TextInput, Platform
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
@@ -18,120 +9,86 @@ export default function ConvocationDetail() {
   const { id } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState(null);
-  const [present, setPresent] = useState([]);
-  const [absent, setAbsent] = useState([]);
+  const [presents, setPresents] = useState([]);
+  const [absents, setAbsents] = useState([]);
   const [sansReponse, setSansReponse] = useState([]);
-  // Modal transport
+  const [stats, setStats] = useState({ nbBesoinTransport: 0, nbPrisEnCharge: 0 });
+
+  // Modal transport (pour prise en charge)
   const [showModal, setShowModal] = useState(false);
-  const [modalJoueurId, setModalJoueurId] = useState(null);
+  const [modalJoueur, setModalJoueur] = useState(null);
   const [lieuRdv, setLieuRdv] = useState('');
   const [heureRdv, setHeureRdv] = useState('');
-  // Stats
-  const [stats, setStats] = useState({
-    nbBesoinTransport: 0,
-    nbTransportPris: 0,
-  });
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-
-      // 1. Récupérer l’événement
-      const { data: evt, error: errEvt } = await supabase
+      // 1. Récup événement (équipe etc)
+      const { data: evt } = await supabase
         .from('evenements')
         .select('*')
         .eq('id', id)
         .single();
-      if (errEvt || !evt) {
-        Alert.alert('Erreur', errEvt?.message || "Événement introuvable");
-        setLoading(false);
-        return;
-      }
+      if (!evt) return setLoading(false);
+      setEvent(evt);
 
-      // 2. Récupérer les joueurs de l'équipe concernée
-      const { data: joueursEquipe, error: errJoueurs } = await supabase
+      // 2. Récup tous les joueurs de l'équipe
+      const { data: joueursEquipe } = await supabase
         .from('joueurs')
-        .select('id, utilisateur_id, poste')
+        .select('id, utilisateur_id, nom, prenom, poste')
         .eq('equipe_id', evt.equipe_id);
 
-      // 3. Récupérer les infos utilisateurs pour ces joueurs
-      const utilisateurIds = joueursEquipe?.map(j => j.utilisateur_id) || [];
-      let utilisateursInfos = [];
-      if (utilisateurIds.length > 0) {
-        const { data: usersInfos } = await supabase
-          .from('utilisateurs')
-          .select('id, nom, prenom')
-          .in('id', utilisateurIds);
-        utilisateursInfos = usersInfos || [];
-      }
-
-      // 4. Récupérer toutes les participations à cet événement
+      // 3. Participations à cet événement
       const { data: participations } = await supabase
         .from('participations_evenement')
         .select('*')
         .eq('evenement_id', id);
 
-      // 5. Préparer la liste de joueurs par réponse
-      const joueursParReponse = {
-        present: [],
-        absent: [],
-        sansReponse: [],
-      };
+      // 4. Classement
+      const presents = [];
+      const absents = [];
+      const sansReponse = [];
 
-      for (const joueur of (joueursEquipe || [])) {
-        const user = utilisateursInfos.find(u => u.id === joueur.utilisateur_id);
-        const p = (participations || []).find(item => item.joueur_id === joueur.id);
-
-        const base = {
-          id: joueur.id,
-          nom: user ? `${user.prenom} ${user.nom}` : '???',
-          poste: joueur.poste,
-        };
-
-        if (!p) {
-          joueursParReponse.sansReponse.push(base);
-        } else if (p.reponse === 'present') {
-          joueursParReponse.present.push({ ...base, ...p });
-        } else if (p.reponse === 'absent') {
-          joueursParReponse.absent.push({ ...base, ...p });
+      for (const joueur of joueursEquipe || []) {
+        const part = (participations || []).find(p => String(p.joueur_id) === String(joueur.id));
+        if (!part) {
+          sansReponse.push(joueur);
+        } else if (part.reponse === 'present') {
+          presents.push({ ...joueur, ...part });
+        } else if (part.reponse === 'absent') {
+          absents.push({ ...joueur, ...part });
         }
       }
 
-      // Stats transport
-      const nbBesoinTransport = joueursParReponse.present.filter(j => j.besoin_transport === true).length;
-      const nbTransportPris = joueursParReponse.present.filter(j => j.besoin_transport === true && j.conducteur_id).length;
+      // Stats transport (combien besoin/pris en charge)
+      const nbBesoinTransport = presents.filter(j => j.besoin_transport).length;
+      const nbPrisEnCharge = presents.filter(j => j.besoin_transport && j.conducteur_id).length;
 
-      setEvent(evt);
-      setPresent(joueursParReponse.present);
-      setAbsent(joueursParReponse.absent);
-      setSansReponse(joueursParReponse.sansReponse);
-      setStats({
-        nbBesoinTransport,
-        nbTransportPris,
-      });
+      setPresents(presents);
+      setAbsents(absents);
+      setSansReponse(sansReponse);
+      setStats({ nbBesoinTransport, nbPrisEnCharge });
       setLoading(false);
     }
 
     fetchData();
   }, [id, showModal]);
 
-  // Ouvre la modale transport
-  const openModal = (joueurId) => {
-    setModalJoueurId(joueurId);
+  // Modal Transport (prise en charge d'un joueur)
+  const openModal = (joueur) => {
+    setModalJoueur(joueur);
     setLieuRdv('');
     setHeureRdv('');
     setShowModal(true);
   };
 
-  // Valide le transport (modale)
   const validerTransport = async () => {
     if (!lieuRdv || !heureRdv) {
-      Alert.alert('Erreur', 'Merci de renseigner le lieu et l\'heure de RDV');
+      alert('Merci de renseigner le lieu et l\'heure de RDV');
       return;
     }
     const session = await supabase.auth.getSession();
     const coachId = session.data.session.user.id;
-
     const { error } = await supabase
       .from('participations_evenement')
       .update({
@@ -139,69 +96,50 @@ export default function ConvocationDetail() {
         lieu_rdv: lieuRdv,
         heure_rdv: heureRdv,
       })
-      .eq('joueur_id', modalJoueurId)
+      .eq('joueur_id', modalJoueur.id)
       .eq('evenement_id', id);
-
-    if (error) Alert.alert('Erreur', error.message);
-    else {
-      Alert.alert('✅ Transport pris en charge');
-      setShowModal(false);
-    }
+    if (error) alert(error.message);
+    setShowModal(false);
   };
 
-  if (loading) return <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />;
+  if (loading)
+    return <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
       <ScrollView style={styles.container}>
-        <Text style={styles.title}>📋 Convocation {event?.titre ? `(${event.titre})` : ''}</Text>
+        <Text style={styles.title}>Convocation : {event?.titre || ''}</Text>
         {event && (
-          <>
-            <Text style={styles.info}>
-              📅 {event.date} {event.heure ? 'à ' + event.heure : ''} - 📍 {event.lieu}
-            </Text>
-            {event.lieu_complement && (
-              <Text style={{ color: '#8fd6ff', fontStyle: 'italic', textAlign: 'center' }}>
-                🏟️ {event.lieu_complement}
-              </Text>
-            )}
-            {event.meteo && (
-              <Text style={{ color: '#00ff88', fontWeight: '700', textAlign: 'center' }}>
-                🌦️ {event.meteo}
-              </Text>
-            )}
-            {event.latitude && event.longitude && (
-              <Text style={{ color: '#00ff88', fontWeight: '400', fontSize: 14, textAlign: 'center' }}>
-                GPS: {event.latitude}, {event.longitude}
-              </Text>
-            )}
-          </>
+          <Text style={styles.info}>
+            📅 {event.date} {event.heure ? 'à ' + event.heure : ''} - 📍 {event.lieu}
+          </Text>
         )}
 
-        {/* ---- RECAP STATS ---- */}
         <View style={styles.statsRecap}>
-          <Text style={styles.statsPresent}>✅ Présents : {present.length}</Text>
-          <Text style={styles.statsAbsent}>❌ Absents : {absent.length}</Text>
+          <Text style={styles.statsPresent}>✅ Présents : {presents.length}</Text>
+          <Text style={styles.statsAbsent}>❌ Absents : {absents.length}</Text>
           <Text style={styles.statsSansReponse}>❔ Sans réponse : {sansReponse.length}</Text>
         </View>
         <View style={styles.statsTransport}>
           <Text style={styles.statsTransportText}>
-            🚗 Besoins transport : {stats.nbBesoinTransport} | Pris en charge : {stats.nbTransportPris}
+            🚗 Besoin transport : {stats.nbBesoinTransport} | Pris en charge : {stats.nbPrisEnCharge}
           </Text>
         </View>
-        {/* ---- FIN RECAP ---- */}
 
+        {/* Présents */}
         <Section
           title="✅ Présents"
-          data={present}
+          data={presents}
           showTransport
           onTransport={openModal}
         />
-        <Section title="❌ Absents" data={absent} />
+        {/* Absents */}
+        <Section title="❌ Absents" data={absents} />
+        {/* Sans réponse */}
         <Section title="❔ Sans réponse" data={sansReponse} />
       </ScrollView>
 
-      {/* MODALE TRANSPORT */}
+      {/* MODAL TRANSPORT */}
       <Modal
         visible={showModal}
         animationType="slide"
@@ -253,16 +191,16 @@ function Section({ title, data, showTransport = false, onTransport }) {
       ) : (
         data.map((j) => (
           <View key={j.id} style={styles.card}>
-            <Text style={styles.cardName}>{j.nom}</Text>
-            <Text style={styles.cardPoste}>Poste : {j.poste}</Text>
+            <Text style={styles.cardName}>{j.prenom ? `${j.prenom} ` : ''}{j.nom}</Text>
+            <Text style={styles.cardPoste}>Poste : {j.poste || 'NC'}</Text>
             {showTransport && j.besoin_transport && !j.conducteur_id && (
-              <TouchableOpacity style={styles.transportBtn} onPress={() => onTransport(j.id)}>
+              <TouchableOpacity style={styles.transportBtn} onPress={() => onTransport(j)}>
                 <Text style={styles.transportText}>🚗 Proposer un transport</Text>
               </TouchableOpacity>
             )}
             {showTransport && j.besoin_transport && j.conducteur_id && (
               <Text style={styles.transportInfo}>
-                ✅ Pris en charge - {j.lieu_rdv} à {j.heure_rdv}
+                ✅ Pris en charge{j.lieu_rdv ? ` — ${j.lieu_rdv} à ${j.heure_rdv}` : ''}
               </Text>
             )}
           </View>
@@ -274,14 +212,14 @@ function Section({ title, data, showTransport = false, onTransport }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212', padding: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#00ff88', marginBottom: 10, textAlign: 'center' },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#00ff88', textAlign: 'center', marginBottom: 10 },
   info: { color: '#aaa', fontSize: 16, textAlign: 'center', marginBottom: 5 },
   section: { marginBottom: 30 },
-  sectionTitle: { color: '#00ff88', fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
+  sectionTitle: { color: '#00ff88', fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
   card: {
     backgroundColor: '#1e1e1e',
     borderRadius: 10,
-    padding: 16,
+    padding: 12,
     marginBottom: 12,
     borderLeftWidth: 4,
     borderLeftColor: '#00ff88',
@@ -311,10 +249,7 @@ const styles = StyleSheet.create({
   statsPresent: { color: '#00ff88', fontWeight: 'bold', fontSize: 15 },
   statsAbsent: { color: '#ff3e60', fontWeight: 'bold', fontSize: 15 },
   statsSansReponse: { color: '#ffe44d', fontWeight: 'bold', fontSize: 15 },
-  statsTransport: {
-    alignItems: 'center',
-    marginBottom: 14,
-  },
+  statsTransport: { alignItems: 'center', marginBottom: 14 },
   statsTransportText: { color: '#0ff', fontSize: 14, fontWeight: 'bold' },
   modalOverlay: {
     flex: 1,

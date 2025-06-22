@@ -8,8 +8,8 @@ import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { supabase } from '../../lib/supabase';
+import { normalizeHour } from '../../lib/formatDate';
 
-// Outils pour le CSV sur web
 function downloadCSVWeb(filename, csv) {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = window.URL.createObjectURL(blob);
@@ -67,7 +67,7 @@ export default function ProgrammeStage() {
       jours.forEach(jour => {
         programme[jour] = stage[`programme_${jour}`]
           ? JSON.parse(stage[`programme_${jour}`])
-          : { lieu: '', matin: '', apresMidi: '' };
+          : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' };
       });
       const html = `
         <html><head>
@@ -83,13 +83,16 @@ export default function ProgrammeStage() {
         <p><strong>Dates :</strong> du ${formatDateFR(stage.date_debut)} au ${formatDateFR(stage.date_fin)}</p>
         ${stage.age_min && stage.age_max ? `<p><strong>Âge :</strong> ${stage.age_min} à ${stage.age_max} ans</p>` : ''}
         <table>
-          <thead><tr><th>Jour</th><th>Lieu</th><th>Matin</th><th>Après-midi</th></tr></thead>
+          <thead><tr><th>Jour</th><th>Lieu</th><th>Horaires</th><th>Matin</th><th>Après-midi</th></tr></thead>
           <tbody>
             ${jours.map(jour => {
               const prog = programme[jour];
+              let heureDebut = prog.heureDebut || stage.heure_debut || '09:00';
+              let heureFin = prog.heureFin || stage.heure_fin || '17:00';
               return `<tr>
                 <td>${jour.charAt(0).toUpperCase() + jour.slice(1)}</td>
                 <td>${prog?.lieu || ''}</td>
+                <td>${normalizeHour(heureDebut)} - ${normalizeHour(heureFin)}</td>
                 <td>${prog?.matin || ''}</td>
                 <td>${prog?.apresMidi || ''}</td>
               </tr>`
@@ -108,12 +111,14 @@ export default function ProgrammeStage() {
 
   const exporterStageCSV = async (stage) => {
     try {
-      let csv = `Titre;Date début;Date fin;Âge min;Âge max;Jour;Lieu;Matin;Après-midi\n`;
+      let csv = `Titre;Date début;Date fin;Âge min;Âge max;Jour;Lieu;Horaires;Matin;Après-midi\n`;
       jours.forEach(jour => {
         const prog = stage[`programme_${jour}`]
           ? JSON.parse(stage[`programme_${jour}`])
           : {};
-        csv += `${stage.titre};${stage.date_debut};${stage.date_fin};${stage.age_min || ''};${stage.age_max || ''};${jour};${prog.lieu || ''};${prog.matin || ''};${prog.apresMidi || ''}\n`;
+        let heureDebut = prog.heureDebut || stage.heure_debut || '09:00';
+        let heureFin = prog.heureFin || stage.heure_fin || '17:00';
+        csv += `${stage.titre};${stage.date_debut};${stage.date_fin};${stage.age_min || ''};${stage.age_max || ''};${jour};${prog.lieu || ''};${normalizeHour(heureDebut)} - ${normalizeHour(heureFin)};${prog.matin || ''};${prog.apresMidi || ''}\n`;
       });
       if (Platform.OS === 'web') {
         downloadCSVWeb(`stage-${stage.titre}.csv`, csv);
@@ -164,12 +169,18 @@ export default function ProgrammeStage() {
                 {jours.map(day => {
                   const prog = stage[`programme_${day}`]
                     ? JSON.parse(stage[`programme_${day}`])
-                    : { lieu: '', matin: '', apresMidi: '' };
+                    : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' };
+                  let heureDebut = prog.heureDebut || stage.heure_debut || '09:00';
+                  let heureFin = prog.heureFin || stage.heure_fin || '17:00';
                   return (
                     <View key={day} style={styles.dayBlock}>
                       <Text style={styles.dayTitle}>{day.charAt(0).toUpperCase() + day.slice(1)}</Text>
                       <Text style={styles.labelField}>Lieu :</Text>
                       <Text style={styles.fieldValue}>{prog.lieu || '—'}</Text>
+                      <Text style={styles.labelField}>Horaires :</Text>
+                      <Text style={styles.fieldValue}>
+                        {normalizeHour(heureDebut)} - {normalizeHour(heureFin)}
+                      </Text>
                       <Text style={styles.labelField}>Matin :</Text>
                       <Text style={styles.fieldValue}>{prog.matin || '—'}</Text>
                       <Text style={styles.labelField}>Après-midi :</Text>

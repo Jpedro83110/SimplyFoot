@@ -8,31 +8,56 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import TeamCard from '../../components/TeamCard';
-import useCacheData from '../../lib/cache'; // <-- AJOUT IMPORT CACHE
+import useCacheData from '../../lib/cache';
 
 export default function CoachDashboard() {
   const [userId, setUserId] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [error, setError] = useState(null);
+  const [club, setClub] = useState(null);
   const router = useRouter();
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: sessionData }) => {
-      setUserId(sessionData?.session?.user?.id ?? null);
-      setLoadingAuth(false);
-    });
-  }, []);
+useEffect(() => {
+  supabase.auth.getSession().then(async ({ data: sessionData }) => {
+    const id = sessionData?.session?.user?.id ?? null;
+    setUserId(id);
+    setLoadingAuth(false);
+
+    if (id) {
+      // Récupérer les infos du coach pour obtenir le club_id
+      const { data: coachData } = await supabase
+        .from('utilisateurs')
+        .select('club_id')
+        .eq('id', id)
+        .single();
+
+      const clubId = coachData?.club_id;
+      if (clubId) {
+        const { data: clubData } = await supabase
+          .from('clubs')
+          .select('id, nom, facebook_url, instagram_url, boutique_url')
+          .eq('id', clubId)
+          .single();
+
+        console.log('clubData:', clubData);
+        setClub(clubData);
+      }
+    }
+  });
+}, []);
 
   async function fetchCoach(userId) {
     const { data, error } = await supabase.from('utilisateurs').select('*').eq('id', userId).single();
     if (error) throw error;
     return data;
   }
+
   async function fetchEquipes(userId) {
     const { data, error } = await supabase.from('equipes').select('*').eq('coach_id', userId);
     if (error) throw error;
@@ -50,10 +75,12 @@ export default function CoachDashboard() {
     );
     return equipesAvecJoueurs;
   }
+
   async function fetchStages(clubId) {
     const { data } = await supabase.from('stages').select('id').eq('club_id', clubId).maybeSingle();
     return data;
   }
+
   async function fetchEvenements(userId) {
     const { data, error } = await supabase.from('evenements')
       .select('*')
@@ -63,6 +90,7 @@ export default function CoachDashboard() {
     if (error) throw error;
     return data;
   }
+
   async function fetchParticipations(evenementId) {
     const { data } = await supabase.from('participations_evenement')
       .select('*')
@@ -70,56 +98,47 @@ export default function CoachDashboard() {
     return data;
   }
 
-  const [coach, refreshCoach, loadingCoach] = useCacheData(
+  const [coach, , loadingCoach] = useCacheData(
     userId ? `coach_${userId}` : null,
     () => fetchCoach(userId),
     12 * 3600
   );
-  const [equipes, refreshEquipes, loadingEquipes] = useCacheData(
+  const [equipes, , loadingEquipes] = useCacheData(
     userId ? `equipes_${userId}` : null,
     () => fetchEquipes(userId),
     3 * 3600
   );
   const clubId = coach?.club_id;
-  const [stage, refreshStage, loadingStage] = useCacheData(
+  const [stage] = useCacheData(
     clubId ? `stage_${clubId}` : null,
     () => fetchStages(clubId),
     12 * 3600
   );
-  const [evenements, refreshEvenements, loadingEvenements] = useCacheData(
+  const [evenements] = useCacheData(
     userId ? `evenements_${userId}` : null,
     () => fetchEvenements(userId),
     1 * 3600
   );
 
   const evenement = evenements?.[0] || null;
-  const [participations, refreshParticipations, loadingParticipations] = useCacheData(
+  const [participations] = useCacheData(
     evenement?.id ? `participations_${evenement.id}` : null,
     () => fetchParticipations(evenement.id),
     300
   );
 
-  // PATCH CORRECTION : on utilise bien "reponse" partout
   const presences = {
     present: participations?.filter(p => p.reponse === 'present').length ?? 0,
     absent: participations?.filter(p => p.reponse === 'absent').length ?? 0,
     transport: participations?.filter(
-      p =>
-        p.besoin_transport === true ||
-        p.besoin_transport === "true" ||
-        p.besoin_transport === 1 ||
-        p.besoin_transport === "1"
+      p => p.besoin_transport === true || p.besoin_transport === "true" || p.besoin_transport === 1 || p.besoin_transport === "1"
     ).length ?? 0,
   };
 
-  const loading =
-    loadingAuth || loadingCoach || loadingEquipes || loadingEvenements || loadingStage || loadingParticipations;
+  const loading = loadingAuth || loadingCoach || loadingEquipes;
 
-  useEffect(() => {
-    if (!loadingAuth && !userId) {
-      setError('Session invalide, veuillez vous reconnecter.');
-    }
-  }, [loadingAuth, userId]);
+  // DEBUG: voir ce que reçoit le dashboard
+  console.log('COACH club =', club);
 
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
   if (error) return (
@@ -162,31 +181,23 @@ export default function CoachDashboard() {
         </Text>
       </TouchableOpacity>
 
+      {/* EVENEMENT */}
       <Text style={styles.subtitle}>📋 Prochain événement</Text>
       {evenement ? (
-        <TouchableOpacity
-          style={styles.cardGreen}
-          onPress={() => router.push(`/coach/convocation/${evenement.id}`)}
-        >
+        <TouchableOpacity style={styles.cardGreen} onPress={() => router.push(`/coach/convocation/${evenement.id}`)}>
           <Text style={styles.eventTitle}>{evenement.titre}</Text>
           <Text style={styles.eventInfo}>📅 {evenement.date} à {evenement.heure}</Text>
           <Text style={styles.eventInfo}>📍 {evenement.lieu}</Text>
           {evenement.lieu_complement && (
-            <Text style={[styles.eventInfo, { fontStyle: 'italic', color: '#8fd6ff' }]}>
-              🏟️ {evenement.lieu_complement}
-            </Text>
+            <Text style={[styles.eventInfo, { fontStyle: 'italic', color: '#8fd6ff' }]}>🏟️ {evenement.lieu_complement}</Text>
           )}
           {evenement.meteo && (
-            <Text style={[styles.eventInfo, { color: '#00ff88' }]}>
-              🌦️ {evenement.meteo}
-            </Text>
+            <Text style={[styles.eventInfo, { color: '#00ff88' }]}>🌦️ {evenement.meteo}</Text>
           )}
           {evenement.latitude && evenement.longitude && (
             <TouchableOpacity
               onPress={() =>
-                Linking.openURL(
-                  `https://www.google.com/maps/search/?api=1&query=${evenement.latitude},${evenement.longitude}`
-                )
+                Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${evenement.latitude},${evenement.longitude}`)
               }
               style={{ marginTop: 4, alignSelf: 'flex-start' }}
             >
@@ -224,13 +235,7 @@ export default function CoachDashboard() {
         <ActionButton label="Créer événement" icon="calendar" onPress={() => router.push('/coach/creation-evenement')} />
       </View>
       <View style={styles.buttonRow}>
-        <ActionButton label="Feuille de match" icon="document-text" onPress={() => {
-          if (evenement?.id) {
-            router.push(`/coach/feuille-match`);
-          } else {
-            Alert.alert("Aucun événement", "Crée un événement pour accéder à la feuille de match.");
-          }
-        }} />
+        <ActionButton label="Feuille de match" icon="document-text" onPress={() => router.push('/coach/feuille-match')} />
         <ActionButton label="Composition" icon="grid" onPress={() => router.push('/coach/composition')} />
       </View>
       <View style={styles.buttonRow}>
@@ -240,6 +245,41 @@ export default function CoachDashboard() {
       {stage?.id && (
         <View style={styles.buttonRow}>
           <ActionButton label="Programme de stage" icon="book" onPress={() => router.push('/coach/programme-stage')} />
+        </View>
+      )}
+
+      {/* Réseaux sociaux */}
+      {club && (
+        <View style={styles.socialLinks}>
+          {club.facebook_url && (
+            <TouchableOpacity
+              onPress={async () => {
+                const url = club.facebook_url;
+                const app = `fb://facewebmodal/f?href=${url}`;
+                const supported = await Linking.canOpenURL(app);
+                Linking.openURL(supported ? app : url);
+              }}
+            >
+              <Image source={require('../../assets/minilogo/facebook.png')} style={styles.iconSocial} />
+            </TouchableOpacity>
+          )}
+          {club.instagram_url && (
+            <TouchableOpacity
+              onPress={async () => {
+                const username = club.instagram_url.split('/').pop();
+                const app = `instagram://user?username=${username}`;
+                const supported = await Linking.canOpenURL(app);
+                Linking.openURL(supported ? app : club.instagram_url);
+              }}
+            >
+              <Image source={require('../../assets/minilogo/instagram.png')} style={styles.iconSocial} />
+            </TouchableOpacity>
+          )}
+          {club.boutique_url && (
+            <TouchableOpacity onPress={() => Linking.openURL(club.boutique_url)}>
+              <Image source={require('../../assets/minilogo/boutique.png')} style={styles.iconSocial} />
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -304,11 +344,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 6,
     minWidth: 120,
-    shadowColor: '#00ff88',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 4,
   },
   buttonText: {
     color: '#00ff88',
@@ -325,5 +360,18 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 22,
     marginTop: 12,
+  },
+  socialLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 18,
+    marginTop: 30,
+  },
+  iconSocial: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    marginHorizontal: 5,
+    backgroundColor: '#222',
   },
 });

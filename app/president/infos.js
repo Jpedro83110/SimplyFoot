@@ -1,23 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TextInput, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import useCacheData from '../../lib/cache'; // <-- AJOUT
+import useCacheData from '../../lib/cache';
 
 const labels = {
   nom: 'Nom du club',
   adresse: 'Adresse',
   site: 'Site Web',
-  reseaux: 'Réseaux sociaux',
+  facebook_url: 'Lien Facebook',
+  instagram_url: 'Lien Instagram',
+  boutique_url: 'Boutique en ligne',
   telephone: 'Téléphone',
   email: 'Email',
 };
+
 const icons = {
   nom: 'shield',
   adresse: 'location',
   site: 'globe',
-  reseaux: 'logo-instagram',
+  facebook_url: 'logo-facebook',
+  instagram_url: 'logo-instagram',
+  boutique_url: 'cart',
   telephone: 'call',
   email: 'mail',
 };
@@ -27,7 +41,6 @@ export default function Infos() {
   const [form, setForm] = useState({});
   const [userId, setUserId] = useState(null);
 
-  // Récupère userId dès le début (session)
   useEffect(() => {
     async function getUser() {
       const session = await supabase.auth.getSession();
@@ -36,7 +49,6 @@ export default function Infos() {
     getUser();
   }, []);
 
-  // Fonction fetch club
   const fetchClubInfo = async () => {
     const { data, error } = await supabase
       .from('clubs')
@@ -45,25 +57,22 @@ export default function Infos() {
       .single();
 
     if (!error && data) {
-      setForm(data); // Pré-rempli le form pour l'édition
+      setForm(data);
       return data;
     }
     throw new Error(error?.message || "Impossible de charger le club");
   };
 
-  // Hook cache (clé = userId)
   const [infosClub, refreshClub, loading] = useCacheData(
     userId ? `infos_club_${userId}` : null,
     fetchClubInfo,
-    6 * 3600 // 6h
+    6 * 3600
   );
 
-  // Si on reçoit des données, on maj le form (utile au 1er chargement)
   useEffect(() => {
     if (infosClub) setForm(infosClub);
   }, [infosClub]);
 
-  // Save modif
   const handleSave = async () => {
     const { error } = await supabase
       .from('clubs')
@@ -71,7 +80,9 @@ export default function Infos() {
         nom: form.nom,
         adresse: form.adresse,
         site: form.site,
-        reseaux: form.reseaux,
+        facebook_url: form.facebook_url,
+        instagram_url: form.instagram_url,
+        boutique_url: form.boutique_url,
         telephone: form.telephone,
         email: form.email,
       })
@@ -81,7 +92,7 @@ export default function Infos() {
       Alert.alert("Erreur", error.message);
     } else {
       setEditing(false);
-      refreshClub(); // Refresh le cache dès modif !
+      refreshClub();
     }
   };
 
@@ -92,7 +103,16 @@ export default function Infos() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>🏟️ Informations du Club</Text>
 
-        {['nom', 'adresse', 'site', 'reseaux', 'telephone', 'email'].map((field, idx) => (
+        {[
+          'nom',
+          'adresse',
+          'site',
+          'facebook_url',
+          'instagram_url',
+          'boutique_url',
+          'telephone',
+          'email',
+        ].map((field) => (
           <View style={styles.block} key={field}>
             <Ionicons name={icons[field]} size={20} color="#00ff88" style={styles.icon} />
             <Text style={styles.label}>{labels[field]}</Text>
@@ -114,11 +134,16 @@ export default function Infos() {
           style={[styles.button, { backgroundColor: editing ? '#00c4aa' : '#00ff88' }]}
           onPress={() => (editing ? handleSave() : setEditing(true))}
         >
-          <Text style={styles.buttonText}>{editing ? '💾 Enregistrer' : '✏️ Modifier les infos'}</Text>
+          <Text style={styles.buttonText}>
+            {editing ? '💾 Enregistrer' : '✏️ Modifier les infos'}
+          </Text>
         </TouchableOpacity>
 
         {editing && (
-          <TouchableOpacity style={[styles.button, { backgroundColor: '#444' }]} onPress={() => setEditing(false)}>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: '#444' }]}
+            onPress={() => setEditing(false)}
+          >
             <Text style={styles.buttonText}>❌ Annuler</Text>
           </TouchableOpacity>
         )}

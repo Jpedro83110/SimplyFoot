@@ -5,11 +5,13 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginClub() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // GESTION OUBLI MOT DE PASSE
@@ -99,14 +101,32 @@ export default function LoginClub() {
           value={email}
           onChangeText={setEmail}
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Mot de passe"
-          placeholderTextColor="#aaa"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+
+        {/* Champ mot de passe + œil */}
+        <View style={{ width: '100%', position: 'relative', marginBottom: 15 }}>
+          <TextInput
+            style={[styles.input, { paddingRight: 44 }]}
+            placeholder="Mot de passe"
+            placeholderTextColor="#aaa"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+            autoCapitalize="none"
+          />
+          <TouchableOpacity
+            style={{
+              position: 'absolute',
+              right: 18,
+              top: 14,
+              padding: 2,
+              zIndex: 2,
+            }}
+            onPress={() => setShowPassword(prev => !prev)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color="#888" />
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
           {loading

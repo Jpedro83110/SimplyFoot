@@ -18,7 +18,8 @@ import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import * as SharingWeb from 'expo-sharing';
 import { PieChart } from 'react-native-chart-kit';
-import useCacheData from '../../lib/cache'; // <-- AJOUT
+import useCacheData from '../../lib/cache';
+import { formatDateFR } from '../../lib/formatDate'; // <-- AJOUT
 
 export default function GestionBudget() {
   const router = useRouter();
@@ -71,15 +72,18 @@ export default function GestionBudget() {
 
   // --- AJOUT / SUPPRIME / ARCHIVE = On refresh le cache
   const ajouterLigne = async () => {
-    const { date, type, intitule, montant, categorie, commentaire } = nouvelleLigne;
+    let { date, type, intitule, montant, categorie, commentaire } = nouvelleLigne;
     if (!clubId) {
       Alert.alert('Erreur', 'Le club n’a pas encore été chargé.');
       return;
     }
-    if (!date || !intitule || !montant || isNaN(parseFloat(montant))) {
+    if (!intitule || !montant || isNaN(parseFloat(montant))) {
       Alert.alert('Erreur', 'Tous les champs obligatoires doivent être remplis correctement.');
       return;
     }
+    // Si pas de date, on met maintenant (ISO avec heure min, utilisée pour le format FR ensuite)
+    if (!date) date = new Date().toISOString();
+
     const { error } = await supabase.from('budgets').insert([{
       date,
       type,
@@ -93,13 +97,15 @@ export default function GestionBudget() {
       Alert.alert('Erreur lors de l’ajout', error.message);
     } else {
       setNouvelleLigne({ date: '', type: 'Recette', intitule: '', montant: '', categorie: '', commentaire: '' });
-      refreshLignes(); // REFRESH ICI !
+      refreshLignes();
     }
   };
 
   const exporterCSV = async () => {
     const header = 'Date,Type,Intitulé,Montant,Catégorie,Commentaire\n';
-    const rows = (lignes || []).map(l => `${l.date},${l.type},${l.intitule},${l.montant},${l.categorie},${l.commentaire}`).join('\n');
+    const rows = (lignes || []).map(l =>
+      `${formatDateFR(l.date)},${l.type},${l.intitule},${l.montant} € ,${l.categorie},${l.commentaire}`
+    ).join('\n');
     const csv = header + rows;
 
     if (Platform.OS === 'web') {
@@ -122,7 +128,16 @@ export default function GestionBudget() {
     const html = `
       <html><body><h1>Budget Club</h1><table border='1' style='width:100%; border-collapse:collapse;'>
       <tr><th>Date</th><th>Type</th><th>Intitulé</th><th>Montant</th><th>Catégorie</th><th>Commentaire</th></tr>
-      ${(lignes || []).map(l => `<tr><td>${l.date}</td><td>${l.type}</td><td>${l.intitule}</td><td>${l.montant} €</td><td>${l.categorie}</td><td>${l.commentaire}</td></tr>`).join('')}
+      ${(lignes || []).map(l =>
+        `<tr>
+          <td>${formatDateFR(l.date)}</td>
+          <td>${l.type}</td>
+          <td>${l.intitule}</td>
+          <td style="color:${l.type === 'Recette' ? '#00b85b' : '#e30000'}; font-weight:bold">${l.montant} €</td>
+          <td>${l.categorie}</td>
+          <td>${l.commentaire}</td>
+        </tr>`
+      ).join('')}
       </table></body></html>`;
     const { uri } = await Print.printToFileAsync({ html });
     await SharingWeb.shareAsync(uri);
@@ -134,7 +149,7 @@ export default function GestionBudget() {
     if (error) Alert.alert('Erreur lors de la suppression', error.message);
     else {
       Alert.alert('Archivé', 'Les données ont été exportées et supprimées.');
-      refreshLignes(); // REFRESH ICI !
+      refreshLignes();
     }
   };
 
@@ -144,14 +159,14 @@ export default function GestionBudget() {
   // --- Data pour PieChart ---
   const pieData = [
     totalRecettes > 0 && {
-      name: 'Recettes',
+      name: 'Recettes 💶',
       population: totalRecettes,
       color: '#00ff88',
       legendFontColor: '#fff',
       legendFontSize: 15,
     },
     totalDepenses > 0 && {
-      name: 'Dépenses',
+      name: 'Dépenses 💶',
       population: totalDepenses,
       color: '#ff4444',
       legendFontColor: '#fff',
@@ -161,7 +176,26 @@ export default function GestionBudget() {
 
   const renderItem = ({ item }) => (
     <View style={styles.ligne}>
-      <Text style={styles.texte}>{item.date} • {item.type} • {item.intitule} • {item.montant} €</Text>
+      <Text style={styles.texteDate}>{formatDateFR(item.date)}</Text>
+      <Text style={styles.texte}>
+        <Text style={{
+          color: item.type === 'Recette' ? '#00ff88' : '#ff4444',
+          fontWeight: 'bold'
+        }}>
+          {item.type} •
+        </Text>{' '}
+        <Text style={{ color: '#fff' }}>{item.intitule}</Text>
+        {'  '}
+        <Text style={{
+          color: item.type === 'Recette' ? '#00ff88' : '#ff4444',
+          fontWeight: 'bold'
+        }}>
+          {item.type === 'Recette' ? '+' : '-'}
+          {parseFloat(item.montant).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+        </Text>
+      </Text>
+      {item.categorie ? <Text style={styles.categorie}>{item.categorie}</Text> : null}
+      {item.commentaire ? <Text style={styles.commentaire}>{item.commentaire}</Text> : null}
     </View>
   );
 
@@ -193,7 +227,9 @@ export default function GestionBudget() {
         )}
 
         <Text style={{ color: '#fff', fontWeight: 'bold', marginTop: 8 }}>
-          💶 Solde actuel : {totalRecettes - totalDepenses} €
+          💶 Solde actuel : <Text style={{
+            color: totalRecettes - totalDepenses >= 0 ? '#00ff88' : '#ff4444'
+          }}>{(totalRecettes - totalDepenses).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</Text>
         </Text>
       </View>
 
@@ -221,17 +257,42 @@ export default function GestionBudget() {
           </TouchableOpacity>
         </View>
 
-        {['date', 'intitule', 'montant', 'categorie', 'commentaire'].map((key, index) => (
-          <TextInput
-            key={index}
-            style={styles.input}
-            placeholder={key.charAt(0).toUpperCase() + key.slice(1)}
-            placeholderTextColor="#888"
-            keyboardType={key === 'montant' ? 'numeric' : 'default'}
-            value={nouvelleLigne[key]}
-            onChangeText={text => setNouvelleLigne({ ...nouvelleLigne, [key]: text })}
-          />
-        ))}
+        <TextInput
+          style={styles.input}
+          placeholder="Date (optionnel, sinon automatique)"
+          placeholderTextColor="#888"
+          value={nouvelleLigne.date}
+          onChangeText={text => setNouvelleLigne({ ...nouvelleLigne, date: text })}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Intitulé"
+          placeholderTextColor="#888"
+          value={nouvelleLigne.intitule}
+          onChangeText={text => setNouvelleLigne({ ...nouvelleLigne, intitule: text })}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Montant"
+          placeholderTextColor="#888"
+          keyboardType="numeric"
+          value={nouvelleLigne.montant}
+          onChangeText={text => setNouvelleLigne({ ...nouvelleLigne, montant: text })}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Catégorie"
+          placeholderTextColor="#888"
+          value={nouvelleLigne.categorie}
+          onChangeText={text => setNouvelleLigne({ ...nouvelleLigne, categorie: text })}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Commentaire"
+          placeholderTextColor="#888"
+          value={nouvelleLigne.commentaire}
+          onChangeText={text => setNouvelleLigne({ ...nouvelleLigne, commentaire: text })}
+        />
 
         <TouchableOpacity style={[styles.bouton, { backgroundColor: nouvelleLigne.type === 'Recette' ? '#00ff88' : '#ff4444' }]} onPress={ajouterLigne}>
           <Text style={[styles.boutonTexte, { color: '#111' }]}>Ajouter</Text>
@@ -271,8 +332,11 @@ const styles = StyleSheet.create({
   export: { backgroundColor: '#448aff', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
   danger: { backgroundColor: '#ff4444', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
   boutonTexte: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  ligne: { padding: 10, borderBottomColor: '#444', borderBottomWidth: 1 },
-  texte: { color: '#fff' },
+  ligne: { padding: 10, borderBottomColor: '#444', borderBottomWidth: 1, marginBottom: 2 },
+  texte: { color: '#fff', fontSize: 15 },
+  texteDate: { color: '#aaa', fontSize: 13, marginBottom: 2 },
+  categorie: { color: '#facc15', fontSize: 13 },
+  commentaire: { color: '#bbb', fontSize: 13, fontStyle: 'italic' },
   graphiqueContainer: {
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,30 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  FlatList,
-  Alert,
-  useWindowDimensions,
-  Platform,
-  KeyboardAvoidingView,
+  View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
+  FlatList, Alert, useWindowDimensions, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { supabase } from '../../lib/supabase';
-import useCacheData from '../../lib/cache'; // <- AJOUT ICI
+import useCacheData from '../../lib/cache';
+import { formatDateFR, normalizeHour } from '../../lib/formatDate'; // <-- AJOUT ICI
+import Header from '../../components/Header';
 
-function formatDateFR(dateStr) {
-  if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('-');
-  return `${d}/${m}/${y}`;
-}
-const jours = ['lundi','mardi','mercredi','jeudi','vendredi'];
+const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
 
 function downloadCSVWeb(filename, csv) {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -40,24 +28,42 @@ function downloadCSVWeb(filename, csv) {
 export default function Stages() {
   const { width } = useWindowDimensions();
 
+  // Formulaires + cache
   const [openedStageId, setOpenedStageId] = useState(null);
   const [editMode, setEditMode] = useState(false);
 
-  // Form fields
   const [titre, setTitre] = useState('');
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
   const [ageMin, setAgeMin] = useState('');
   const [ageMax, setAgeMax] = useState('');
+  const [heureDebut, setHeureDebut] = useState('09:00');
+  const [heureFin, setHeureFin] = useState('17:00');
   const [programme, setProgramme] = useState(
-    Object.fromEntries(jours.map(j => [j, { lieu: '', matin: '', apresMidi: '' }]))
+    Object.fromEntries(jours.map(j => [j, { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' }]))
   );
-
   const [clubId, setClubId] = useState(null);
   const [confirmation, setConfirmation] = useState('');
   const timerRef = useRef();
 
-  // --- Confirmation UI reset
+  // Supprime automatiquement les stages dépassés (backend = sécurité, ici = UX)
+  useEffect(() => {
+    async function autoCleanStages() {
+      if (!clubId) return;
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: expired } = await supabase
+        .from('stages')
+        .select('id')
+        .eq('club_id', clubId)
+        .lt('date_fin', today);
+      if (expired && expired.length) {
+        await supabase.from('stages').delete().in('id', expired.map(e => e.id));
+      }
+    }
+    autoCleanStages();
+  }, [clubId]);
+
+  // Confirmation reset
   useEffect(() => {
     if (confirmation) {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -66,7 +72,6 @@ export default function Stages() {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [confirmation]);
 
-  // --- Récupère clubId et charge stages via cache
   useEffect(() => {
     async function loadData() {
       const { data: session } = await supabase.auth.getSession();
@@ -84,33 +89,37 @@ export default function Stages() {
     loadData();
   }, []);
 
-  // --- Fonction fetch pour le cache
+  // Fetch only future/active stages
   const fetchStages = async () => {
     if (!clubId) return [];
+    const today = new Date().toISOString().slice(0, 10);
     const { data: stagesList } = await supabase
       .from('stages')
       .select('*')
       .eq('club_id', clubId)
+      .gte('date_fin', today)
       .order('date_debut', { ascending: false });
     return stagesList || [];
   };
 
-  // --- useCacheData
   const cacheKey = clubId ? `stages_club_${clubId}` : null;
   const [stages, refreshStages, loading] = useCacheData(
     cacheKey,
     fetchStages,
-    3600 // 1h TTL
+    3600
   );
 
-  // --- Reset form
   const resetForm = () => {
     setTitre('');
     setDateDebut('');
     setDateFin('');
     setAgeMin('');
     setAgeMax('');
-    setProgramme(Object.fromEntries(jours.map(j => [j, { lieu: '', matin: '', apresMidi: '' }])));
+    setHeureDebut('09:00');
+    setHeureFin('17:00');
+    setProgramme(
+      Object.fromEntries(jours.map(j => [j, { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' }]))
+    );
     setEditMode(false);
     setOpenedStageId(null);
   };
@@ -127,12 +136,14 @@ export default function Stages() {
     setDateFin(stage.date_fin || '');
     setAgeMin(stage.age_min ? String(stage.age_min) : '');
     setAgeMax(stage.age_max ? String(stage.age_max) : '');
+    setHeureDebut(stage.heure_debut || '09:00');
+    setHeureFin(stage.heure_fin || '17:00');
     setProgramme({
-      lundi:    stage.programme_lundi    ? JSON.parse(stage.programme_lundi)    : { lieu: '', matin: '', apresMidi: '' },
-      mardi:    stage.programme_mardi    ? JSON.parse(stage.programme_mardi)    : { lieu: '', matin: '', apresMidi: '' },
-      mercredi: stage.programme_mercredi ? JSON.parse(stage.programme_mercredi) : { lieu: '', matin: '', apresMidi: '' },
-      jeudi:    stage.programme_jeudi    ? JSON.parse(stage.programme_jeudi)    : { lieu: '', matin: '', apresMidi: '' },
-      vendredi: stage.programme_vendredi ? JSON.parse(stage.programme_vendredi) : { lieu: '', matin: '', apresMidi: '' },
+      lundi: stage.programme_lundi ? JSON.parse(stage.programme_lundi) : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
+      mardi: stage.programme_mardi ? JSON.parse(stage.programme_mardi) : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
+      mercredi: stage.programme_mercredi ? JSON.parse(stage.programme_mercredi) : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
+      jeudi: stage.programme_jeudi ? JSON.parse(stage.programme_jeudi) : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
+      vendredi: stage.programme_vendredi ? JSON.parse(stage.programme_vendredi) : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
     });
     setConfirmation('');
   };
@@ -163,6 +174,8 @@ export default function Stages() {
       date_fin: dateFin,
       age_min: parseInt(ageMin) || null,
       age_max: parseInt(ageMax) || null,
+      heure_debut: normalizeHour(heureDebut),
+      heure_fin: normalizeHour(heureFin),
       programme_lundi: JSON.stringify(programme.lundi),
       programme_mardi: JSON.stringify(programme.mardi),
       programme_mercredi: JSON.stringify(programme.mercredi),
@@ -173,7 +186,7 @@ export default function Stages() {
     if (error) {
       setConfirmation('❌ Erreur lors de l’enregistrement');
     } else {
-      await refreshStages(); // <--- On refresh le cache
+      await refreshStages();
       setConfirmation('✅ Stage enregistré !');
       resetForm();
     }
@@ -189,6 +202,8 @@ export default function Stages() {
       date_fin: dateFin,
       age_min: parseInt(ageMin) || null,
       age_max: parseInt(ageMax) || null,
+      heure_debut: normalizeHour(heureDebut),
+      heure_fin: normalizeHour(heureFin),
       programme_lundi: JSON.stringify(programme.lundi),
       programme_mardi: JSON.stringify(programme.mardi),
       programme_mercredi: JSON.stringify(programme.mercredi),
@@ -199,7 +214,7 @@ export default function Stages() {
     if (error) {
       setConfirmation('❌ Erreur lors de la modification');
     } else {
-      await refreshStages(); // <--- On refresh le cache
+      await refreshStages();
       setConfirmation('✅ Stage modifié !');
       setEditMode(false);
     }
@@ -214,7 +229,7 @@ export default function Stages() {
           const { error } = await supabase.from('stages').delete().eq('id', openedStageId);
           if (error) setConfirmation('❌ Erreur suppression');
           else {
-            await refreshStages(); // <--- On refresh le cache
+            await refreshStages();
             setConfirmation('🗑️ Stage supprimé');
             resetForm();
           }
@@ -223,7 +238,7 @@ export default function Stages() {
     ]);
   };
 
-  // --- Toutes les autres fonctions inchangées ---
+  // Impression PDF (ajoute horaires)
   const imprimerStage = async () => {
     try {
       const html = `
@@ -239,14 +254,16 @@ export default function Stages() {
         <h2>${titre}</h2>
         <p><strong>Dates :</strong> du ${formatDateFR(dateDebut)} au ${formatDateFR(dateFin)}</p>
         ${ageMin && ageMax ? `<p><strong>Âge :</strong> ${ageMin} à ${ageMax} ans</p>` : ''}
+        <p><strong>Heure :</strong> ${normalizeHour(heureDebut)} - ${normalizeHour(heureFin)}</p>
         <table>
-          <thead><tr><th>Jour</th><th>Lieu</th><th>Matin</th><th>Après-midi</th></tr></thead>
+          <thead><tr><th>Jour</th><th>Lieu</th><th>Heures</th><th>Matin</th><th>Après-midi</th></tr></thead>
           <tbody>
             ${jours.map(jour => {
               const prog = programme[jour];
               return `<tr>
                 <td>${jour.charAt(0).toUpperCase() + jour.slice(1)}</td>
                 <td>${prog?.lieu || ''}</td>
+                <td>${normalizeHour(prog?.heureDebut) || normalizeHour(heureDebut)}-${normalizeHour(prog?.heureFin) || normalizeHour(heureFin)}</td>
                 <td>${prog?.matin || ''}</td>
                 <td>${prog?.apresMidi || ''}</td>
               </tr>`
@@ -265,10 +282,10 @@ export default function Stages() {
 
   const exporterStageCSV = async () => {
     try {
-      let csv = `Titre;Date début;Date fin;Âge min;Âge max;Jour;Lieu;Matin;Après-midi\n`;
+      let csv = `Titre;Date début;Date fin;Âge min;Âge max;Heure début;Heure fin;Jour;Lieu;Heures;Matin;Après-midi\n`;
       jours.forEach(jour => {
         const prog = programme[jour];
-        csv += `${titre};${dateDebut};${dateFin};${ageMin || ''};${ageMax || ''};${jour};${prog?.lieu || ''};${prog?.matin || ''};${prog?.apresMidi || ''}\n`;
+        csv += `${titre};${dateDebut};${dateFin};${ageMin || ''};${ageMax || ''};${normalizeHour(heureDebut)};${normalizeHour(heureFin)};${jour};${prog?.lieu || ''};${normalizeHour(prog?.heureDebut) || normalizeHour(heureDebut)}-${normalizeHour(prog?.heureFin) || normalizeHour(heureFin)};${prog?.matin || ''};${prog?.apresMidi || ''}\n`;
       });
 
       if (Platform.OS === 'web') {
@@ -285,181 +302,224 @@ export default function Stages() {
     }
   };
 
-  // --- AFFICHAGE (inchangé) ---
+  // ---- AFFICHAGE
   return (
     <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>
+      <Header title="Gestion des Stages" />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? "padding" : undefined}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>📘 Gestion des Stages</Text>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <Text style={styles.title}>📘 Gestion des Stages</Text>
+          <TouchableOpacity style={styles.button} onPress={handleNewStage}>
+            <Text style={styles.buttonText}>+ Nouveau Stage</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.button} onPress={handleNewStage}>
-          <Text style={styles.buttonText}>+ Nouveau Stage</Text>
-        </TouchableOpacity>
+          {/* LISTE DES STAGES */}
+          <FlatList
+            data={stages}
+            keyExtractor={item => item.id.toString()}
+            renderItem={({ item }) => (
+              <View style={{ width: '100%', maxWidth: 600, alignSelf: 'center' }}>
+                <TouchableOpacity
+                  style={[
+                    styles.stageCard,
+                    openedStageId === item.id && { borderColor: '#00ff88', borderWidth: 2 }
+                  ]}
+                  onPress={() => handleSelectStage(item)}
+                >
+                  <Text style={styles.stageTitle}>{item.titre}</Text>
+                  <Text style={styles.stageDate}>
+                    Du {formatDateFR(item.date_debut)} au {formatDateFR(item.date_fin)}
+                  </Text>
+                  {item.age_min && item.age_max &&
+                    <Text style={styles.stageAge}>Âge : {item.age_min} à {item.age_max} ans</Text>
+                  }
+                  <Text style={styles.stageAge}>
+                    Horaires : {normalizeHour(item.heure_debut) || '09:00'} - {normalizeHour(item.heure_fin) || '17:00'}
+                  </Text>
+                  <Text style={styles.openCloseBtn}>{openedStageId === item.id ? '▲' : '▼'}</Text>
+                </TouchableOpacity>
 
-        {/* LISTE DES STAGES */}
-        <FlatList
-          data={stages}
-          keyExtractor={item => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={{ width: '100%', maxWidth: 600, alignSelf: 'center' }}>
-              <TouchableOpacity
-                style={[
-                  styles.stageCard,
-                  openedStageId === item.id && { borderColor: '#00ff88', borderWidth: 2 }
-                ]}
-                onPress={() => handleSelectStage(item)}
-              >
-                <Text style={styles.stageTitle}>{item.titre}</Text>
-                <Text style={styles.stageDate}>
-                  Du {formatDateFR(item.date_debut)} au {formatDateFR(item.date_fin)}
-                </Text>
-                {item.age_min && item.age_max &&
-                  <Text style={styles.stageAge}>Âge : {item.age_min} à {item.age_max} ans</Text>
-                }
-                <Text style={styles.openCloseBtn}>{openedStageId === item.id ? '▲' : '▼'}</Text>
-              </TouchableOpacity>
-
-              {/* DÉROULEMENT ACCORDÉON */}
-              {openedStageId === item.id && (
-                <View style={[styles.formBlock, { width: '100%', maxWidth: 600, alignSelf: 'center' }]}>
-                  <TextInput style={styles.input} placeholder="Titre du stage" value={titre} onChangeText={setTitre} placeholderTextColor="#aaa" />
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TextInput style={[styles.input, { flex: 1 }]} placeholder="Date début (YYYY-MM-DD)" value={dateDebut} onChangeText={setDateDebut} placeholderTextColor="#aaa" />
-                    <TextInput style={[styles.input, { flex: 1 }]} placeholder="Date fin (YYYY-MM-DD)" value={dateFin} onChangeText={setDateFin} placeholderTextColor="#aaa" />
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TextInput style={[styles.input, { flex: 1 }]} placeholder="Âge min" value={ageMin} onChangeText={setAgeMin} keyboardType="numeric" placeholderTextColor="#aaa" />
-                    <TextInput style={[styles.input, { flex: 1 }]} placeholder="Âge max" value={ageMax} onChangeText={setAgeMax} keyboardType="numeric" placeholderTextColor="#aaa" />
-                  </View>
-                  <Text style={styles.subtitle}>Programme journalier</Text>
-                  {jours.map(day => (
-                    <View key={day} style={styles.dayBlock}>
-                      <Text style={styles.dayTitle}>{day.charAt(0).toUpperCase() + day.slice(1)}</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Lieu (facultatif)"
-                        value={programme[day].lieu}
-                        onChangeText={text => handleChangeProgramme(day, 'lieu', text)}
-                        placeholderTextColor="#bbb"
-                      />
-                      <Text style={styles.labelField}>{`${day.charAt(0).toUpperCase() + day.slice(1)} matin`}</Text>
-                      <TextInput
-                        multiline
-                        style={styles.textarea}
-                        placeholder="Programme matin"
-                        value={programme[day].matin}
-                        onChangeText={text => handleChangeProgramme(day, 'matin', text)}
-                        placeholderTextColor="#bbb"
-                      />
-                      <Text style={styles.labelField}>{`${day.charAt(0).toUpperCase() + day.slice(1)} aprem`}</Text>
-                      <TextInput
-                        multiline
-                        style={styles.textarea}
-                        placeholder="Programme après-midi"
-                        value={programme[day].apresMidi}
-                        onChangeText={text => handleChangeProgramme(day, 'apresMidi', text)}
-                        placeholderTextColor="#bbb"
-                      />
+                {openedStageId === item.id && (
+                  <View style={[styles.formBlock, { width: '100%', maxWidth: 600, alignSelf: 'center' }]}>
+                    <TextInput style={styles.input} placeholder="Titre du stage" value={titre} onChangeText={setTitre} placeholderTextColor="#aaa" />
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TextInput style={[styles.input, { flex: 1 }]} placeholder="Date début (YYYY-MM-DD)" value={dateDebut} onChangeText={setDateDebut} placeholderTextColor="#aaa" />
+                      <TextInput style={[styles.input, { flex: 1 }]} placeholder="Date fin (YYYY-MM-DD)" value={dateFin} onChangeText={setDateFin} placeholderTextColor="#aaa" />
                     </View>
-                  ))}
-
-                  {/* BOUTONS EN GRID ADAPTATIVE */}
-                  <View
-                    style={[
-                      styles.rowActions,
-                      width < 700
-                        ? { flexDirection: 'column', gap: 10 }
-                        : { flexDirection: 'row', gap: 20, justifyContent: 'space-between' }
-                    ]}
-                  >
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#0080ff', flex: 1 }]} onPress={imprimerStage}>
-                      <Text style={[styles.buttonText, { color: '#fff' }]}>📄 Imprimer</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#facc15', flex: 1 }]} onPress={exporterStageCSV}>
-                      <Text style={[styles.buttonText, { color: '#222' }]}>📤 Export</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#ff4444', flex: 1 }]} onPress={supprimerStage}>
-                      <Text style={[styles.buttonText, { color: '#fff' }]}>🗑️ Supprimer</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#00ff88', flex: 1 }]} onPress={() => setEditMode(true)}>
-                      <Text style={[styles.buttonText, { color: '#000' }]}>✏️ Modifier</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {editMode && (
-                    <TouchableOpacity
-                      style={[styles.button, { marginTop: 16 }]}
-                      onPress={modifierStage}
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TextInput style={[styles.input, { flex: 1 }]} placeholder="Âge min" value={ageMin} onChangeText={setAgeMin} keyboardType="numeric" placeholderTextColor="#aaa" />
+                      <Text style={{ color: '#fff', alignSelf: 'center' }}>ans</Text>
+                      <TextInput style={[styles.input, { flex: 1 }]} placeholder="Âge max" value={ageMax} onChangeText={setAgeMax} keyboardType="numeric" placeholderTextColor="#aaa" />
+                      <Text style={{ color: '#fff', alignSelf: 'center' }}>ans</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TextInput style={[styles.input, { flex: 1 }]} placeholder="Heure début (ex: 09:00 ou 9h00)" value={heureDebut} onChangeText={setHeureDebut} placeholderTextColor="#aaa" />
+                      <TextInput style={[styles.input, { flex: 1 }]} placeholder="Heure fin (ex: 17:00 ou 17h00)" value={heureFin} onChangeText={setHeureFin} placeholderTextColor="#aaa" />
+                    </View>
+                    <Text style={styles.subtitle}>Programme journalier</Text>
+                    {jours.map(day => (
+                      <View key={day} style={styles.dayBlock}>
+                        <Text style={styles.dayTitle}>{day.charAt(0).toUpperCase() + day.slice(1)}</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Lieu (facultatif)"
+                          value={programme[day].lieu}
+                          onChangeText={text => handleChangeProgramme(day, 'lieu', text)}
+                          placeholderTextColor="#bbb"
+                        />
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                          <TextInput
+                            style={[styles.input, { flex: 1 }]}
+                            placeholder="Heure début (optionnel)"
+                            value={programme[day].heureDebut}
+                            onChangeText={text => handleChangeProgramme(day, 'heureDebut', text)}
+                            placeholderTextColor="#bbb"
+                          />
+                          <TextInput
+                            style={[styles.input, { flex: 1 }]}
+                            placeholder="Heure fin (optionnel)"
+                            value={programme[day].heureFin}
+                            onChangeText={text => handleChangeProgramme(day, 'heureFin', text)}
+                            placeholderTextColor="#bbb"
+                          />
+                        </View>
+                        <Text style={styles.labelField}>{`${day.charAt(0).toUpperCase() + day.slice(1)} matin`}</Text>
+                        <TextInput
+                          multiline
+                          style={styles.textarea}
+                          placeholder="Programme matin"
+                          value={programme[day].matin}
+                          onChangeText={text => handleChangeProgramme(day, 'matin', text)}
+                          placeholderTextColor="#bbb"
+                        />
+                        <Text style={styles.labelField}>{`${day.charAt(0).toUpperCase() + day.slice(1)} aprem`}</Text>
+                        <TextInput
+                          multiline
+                          style={styles.textarea}
+                          placeholder="Programme après-midi"
+                          value={programme[day].apresMidi}
+                          onChangeText={text => handleChangeProgramme(day, 'apresMidi', text)}
+                          placeholderTextColor="#bbb"
+                        />
+                      </View>
+                    ))}
+                    <View
+                      style={[
+                        styles.rowActions,
+                        width < 700
+                          ? { flexDirection: 'column', gap: 10 }
+                          : { flexDirection: 'row', gap: 20, justifyContent: 'space-between' }
+                      ]}
                     >
-                      <Text style={styles.buttonText}>💾 Enregistrer la modification</Text>
-                    </TouchableOpacity>
-                  )}
+                      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#0080ff', flex: 1 }]} onPress={imprimerStage}>
+                        <Text style={[styles.buttonText, { color: '#fff' }]}>📄 Imprimer</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#facc15', flex: 1 }]} onPress={exporterStageCSV}>
+                        <Text style={[styles.buttonText, { color: '#222' }]}>📤 Export</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#ff4444', flex: 1 }]} onPress={supprimerStage}>
+                        <Text style={[styles.buttonText, { color: '#fff' }]}>🗑️ Supprimer</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#00ff88', flex: 1 }]} onPress={() => setEditMode(true)}>
+                        <Text style={[styles.buttonText, { color: '#000' }]}>✏️ Modifier</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {editMode && (
+                      <TouchableOpacity
+                        style={[styles.button, { marginTop: 16 }]}
+                        onPress={modifierStage}
+                      >
+                        <Text style={styles.buttonText}>💾 Enregistrer la modification</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+            horizontal={false}
+            showsVerticalScrollIndicator={false}
+            style={{ marginBottom: 24, marginTop: 10, width: '100%' }}
+          />
+
+          {/* CRÉATION NOUVEAU STAGE */}
+          {editMode && !openedStageId && (
+            <View style={[styles.formBlock, { width: '100%', maxWidth: 600, alignSelf: 'center' }]}>
+              <TextInput style={styles.input} placeholder="Titre du stage" value={titre} onChangeText={setTitre} placeholderTextColor="#aaa" />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Date début (YYYY-MM-DD)" value={dateDebut} onChangeText={setDateDebut} placeholderTextColor="#aaa" />
+                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Date fin (YYYY-MM-DD)" value={dateFin} onChangeText={setDateFin} placeholderTextColor="#aaa" />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Âge min" value={ageMin} onChangeText={setAgeMin} keyboardType="numeric" placeholderTextColor="#aaa" />
+                <Text style={{ color: '#fff', alignSelf: 'center' }}>ans</Text>
+                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Âge max" value={ageMax} onChangeText={setAgeMax} keyboardType="numeric" placeholderTextColor="#aaa" />
+                <Text style={{ color: '#fff', alignSelf: 'center' }}>ans</Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Heure début (ex: 09:00 ou 9h00)" value={heureDebut} onChangeText={setHeureDebut} placeholderTextColor="#aaa" />
+                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Heure fin (ex: 17:00 ou 17h00)" value={heureFin} onChangeText={setHeureFin} placeholderTextColor="#aaa" />
+              </View>
+              <Text style={styles.subtitle}>Programme journalier</Text>
+              {jours.map(day => (
+                <View key={day} style={styles.dayBlock}>
+                  <Text style={styles.dayTitle}>{day.charAt(0).toUpperCase() + day.slice(1)}</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Lieu (facultatif)"
+                    value={programme[day].lieu}
+                    onChangeText={text => handleChangeProgramme(day, 'lieu', text)}
+                    placeholderTextColor="#bbb"
+                  />
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TextInput
+                      style={[styles.input, { flex: 1 }]}
+                      placeholder="Heure début (optionnel)"
+                      value={programme[day].heureDebut}
+                      onChangeText={text => handleChangeProgramme(day, 'heureDebut', text)}
+                      placeholderTextColor="#bbb"
+                    />
+                    <TextInput
+                      style={[styles.input, { flex: 1 }]}
+                      placeholder="Heure fin (optionnel)"
+                      value={programme[day].heureFin}
+                      onChangeText={text => handleChangeProgramme(day, 'heureFin', text)}
+                      placeholderTextColor="#bbb"
+                    />
+                  </View>
+                  <Text style={styles.labelField}>{`${day.charAt(0).toUpperCase() + day.slice(1)} matin`}</Text>
+                  <TextInput
+                    multiline
+                    style={styles.textarea}
+                    placeholder="Programme matin"
+                    value={programme[day].matin}
+                    onChangeText={text => handleChangeProgramme(day, 'matin', text)}
+                    placeholderTextColor="#bbb"
+                  />
+                  <Text style={styles.labelField}>{`${day.charAt(0).toUpperCase() + day.slice(1)} aprem`}</Text>
+                  <TextInput
+                    multiline
+                    style={styles.textarea}
+                    placeholder="Programme après-midi"
+                    value={programme[day].apresMidi}
+                    onChangeText={text => handleChangeProgramme(day, 'apresMidi', text)}
+                    placeholderTextColor="#bbb"
+                  />
                 </View>
-              )}
+              ))}
+              <TouchableOpacity style={styles.button} onPress={enregistrerStage}>
+                <Text style={styles.buttonText}>💾 Enregistrer le stage</Text>
+              </TouchableOpacity>
             </View>
           )}
-          horizontal={false}
-          showsVerticalScrollIndicator={false}
-          style={{ marginBottom: 24, marginTop: 10, width: '100%' }}
-        />
 
-        {/* CRÉATION NOUVEAU STAGE */}
-        {editMode && !openedStageId && (
-          <View style={[styles.formBlock, { width: '100%', maxWidth: 600, alignSelf: 'center' }]}>
-            <TextInput style={styles.input} placeholder="Titre du stage" value={titre} onChangeText={setTitre} placeholderTextColor="#aaa" />
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TextInput style={[styles.input, { flex: 1 }]} placeholder="Date début (YYYY-MM-DD)" value={dateDebut} onChangeText={setDateDebut} placeholderTextColor="#aaa" />
-              <TextInput style={[styles.input, { flex: 1 }]} placeholder="Date fin (YYYY-MM-DD)" value={dateFin} onChangeText={setDateFin} placeholderTextColor="#aaa" />
-            </View>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TextInput style={[styles.input, { flex: 1 }]} placeholder="Âge min" value={ageMin} onChangeText={setAgeMin} keyboardType="numeric" placeholderTextColor="#aaa" />
-              <TextInput style={[styles.input, { flex: 1 }]} placeholder="Âge max" value={ageMax} onChangeText={setAgeMax} keyboardType="numeric" placeholderTextColor="#aaa" />
-            </View>
-            <Text style={styles.subtitle}>Programme journalier</Text>
-            {jours.map(day => (
-              <View key={day} style={styles.dayBlock}>
-                <Text style={styles.dayTitle}>{day.charAt(0).toUpperCase() + day.slice(1)}</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Lieu (facultatif)"
-                  value={programme[day].lieu}
-                  onChangeText={text => handleChangeProgramme(day, 'lieu', text)}
-                  placeholderTextColor="#bbb"
-                />
-                <Text style={styles.labelField}>{`${day.charAt(0).toUpperCase() + day.slice(1)} matin`}</Text>
-                <TextInput
-                  multiline
-                  style={styles.textarea}
-                  placeholder="Programme matin"
-                  value={programme[day].matin}
-                  onChangeText={text => handleChangeProgramme(day, 'matin', text)}
-                  placeholderTextColor="#bbb"
-                />
-                <Text style={styles.labelField}>{`${day.charAt(0).toUpperCase() + day.slice(1)} aprem`}</Text>
-                <TextInput
-                  multiline
-                  style={styles.textarea}
-                  placeholder="Programme après-midi"
-                  value={programme[day].apresMidi}
-                  onChangeText={text => handleChangeProgramme(day, 'apresMidi', text)}
-                  placeholderTextColor="#bbb"
-                />
-              </View>
-            ))}
-            <TouchableOpacity style={styles.button} onPress={enregistrerStage}>
-              <Text style={styles.buttonText}>💾 Enregistrer le stage</Text>
+          {confirmation !== '' && (
+            <TouchableOpacity onPress={() => setConfirmation('')}>
+              <Text style={styles.confirmationMsg}>
+                {confirmation} (cliquer pour fermer)
+              </Text>
             </TouchableOpacity>
-          </View>
-        )}
-
-        {confirmation !== '' && (
-          <TouchableOpacity onPress={() => setConfirmation('')}>
-            <Text style={styles.confirmationMsg}>
-              {confirmation} (cliquer pour fermer)
-            </Text>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
   );

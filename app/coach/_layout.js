@@ -54,8 +54,11 @@ export default function CoachLayout() {
   }
 
   const getPageTitle = () => {
-    const path = pathname.split('/').pop();
-    switch (path) {
+    // Gère les sous-routes, toujours basé sur le segment après 'coach'
+    const pathSegments = pathname.split('/');
+    const coachIndex = pathSegments.indexOf('coach');
+    const page = pathSegments[coachIndex + 1];
+    switch (page) {
       case 'dashboard': return 'Dashboard Coach';
       case 'convocation': return 'Convocations';
       case 'composition': return 'Composition';
@@ -68,7 +71,7 @@ export default function CoachLayout() {
 
   return authorized ? (
     <>
-      <Header title={getPageTitle()} />
+      <Header title={getPageTitle()} showBack={pathname !== '/coach/dashboard'} />
       <Slot />
     </>
   ) : null;
