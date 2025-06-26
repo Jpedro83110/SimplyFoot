@@ -14,7 +14,7 @@ export default function ConvocationDetail() {
   const [sansReponse, setSansReponse] = useState([]);
   const [stats, setStats] = useState({ nbBesoinTransport: 0, nbPrisEnCharge: 0 });
 
-  // Modal transport (pour prise en charge)
+  // Modal transport
   const [showModal, setShowModal] = useState(false);
   const [modalJoueur, setModalJoueur] = useState(null);
   const [lieuRdv, setLieuRdv] = useState('');
@@ -23,50 +23,69 @@ export default function ConvocationDetail() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
+
       // 1. Récup événement (équipe etc)
       const { data: evt } = await supabase
         .from('evenements')
         .select('*')
         .eq('id', id)
         .single();
-      if (!evt) return setLoading(false);
+      if (!evt) { setLoading(false); return; }
       setEvent(evt);
 
-      // 2. Récup tous les joueurs de l'équipe
-      const { data: joueursEquipe } = await supabase
+      // 2. Récup tous les joueurs de l'équipe (clé: id)
+      const { data: joueurs, error: joueursError } = await supabase
         .from('joueurs')
-        .select('id, utilisateur_id, nom, prenom, poste')
+        .select('id, nom, prenom, poste, equipe_id')
         .eq('equipe_id', evt.equipe_id);
+      if (joueursError) console.log("Erreur joueurs:", joueursError);
 
-      // 3. Participations à cet événement
-      const { data: participations } = await supabase
+      // 3. Récup participations à cet événement
+      const { data: participations, error: participationsError } = await supabase
         .from('participations_evenement')
         .select('*')
         .eq('evenement_id', id);
+      if (participationsError) console.log("Erreur participations:", participationsError);
 
-      // 4. Classement
-      const presents = [];
-      const absents = [];
-      const sansReponse = [];
+      // 4. Récup utilisateurs correspondant à ces joueurs (jointure sur joueur_id)
+      const joueursIds = (joueurs || []).map(j => j.id);
+      let utilisateursMap = {};
+      if (joueursIds.length) {
+        const { data: utilisateurs, error: utilisateursError } = await supabase
+          .from('utilisateurs')
+          .select('joueur_id, email, tel, nom, prenom')
+          .in('joueur_id', joueursIds);
+        if (utilisateursError) console.log("Erreur utilisateurs:", utilisateursError);
 
-      for (const joueur of joueursEquipe || []) {
+        (utilisateurs || []).forEach(u => { utilisateursMap[u.joueur_id] = u; });
+      }
+
+      // 5. Construction des listes pour l'affichage
+      const presentsArr = [];
+      const absentsArr = [];
+      const sansReponseArr = [];
+
+      for (const joueur of (joueurs || [])) {
+        const userData = utilisateursMap[joueur.id] || {};
+        const joueurComplet = { ...joueur, utilisateur: userData };
+
         const part = (participations || []).find(p => String(p.joueur_id) === String(joueur.id));
         if (!part) {
-          sansReponse.push(joueur);
+          sansReponseArr.push(joueurComplet);
         } else if (part.reponse === 'present') {
-          presents.push({ ...joueur, ...part });
+          presentsArr.push({ ...joueurComplet, ...part });
         } else if (part.reponse === 'absent') {
-          absents.push({ ...joueur, ...part });
+          absentsArr.push({ ...joueurComplet, ...part });
         }
       }
 
-      // Stats transport (combien besoin/pris en charge)
-      const nbBesoinTransport = presents.filter(j => j.besoin_transport).length;
-      const nbPrisEnCharge = presents.filter(j => j.besoin_transport && j.conducteur_id).length;
+      // Stats transport
+      const nbBesoinTransport = presentsArr.filter(j => j.besoin_transport).length;
+      const nbPrisEnCharge = presentsArr.filter(j => j.besoin_transport && j.conducteur_id).length;
 
-      setPresents(presents);
-      setAbsents(absents);
-      setSansReponse(sansReponse);
+      setPresents(presentsArr);
+      setAbsents(absentsArr);
+      setSansReponse(sansReponseArr);
       setStats({ nbBesoinTransport, nbPrisEnCharge });
       setLoading(false);
     }
@@ -74,7 +93,7 @@ export default function ConvocationDetail() {
     fetchData();
   }, [id, showModal]);
 
-  // Modal Transport (prise en charge d'un joueur)
+  // Modal Transport
   const openModal = (joueur) => {
     setModalJoueur(joueur);
     setLieuRdv('');
@@ -182,6 +201,7 @@ export default function ConvocationDetail() {
   );
 }
 
+// Section d'affichage de chaque liste
 function Section({ title, data, showTransport = false, onTransport }) {
   return (
     <View style={styles.section}>
@@ -191,8 +211,16 @@ function Section({ title, data, showTransport = false, onTransport }) {
       ) : (
         data.map((j) => (
           <View key={j.id} style={styles.card}>
-            <Text style={styles.cardName}>{j.prenom ? `${j.prenom} ` : ''}{j.nom}</Text>
+            <Text style={styles.cardName}>
+              {j.utilisateur?.prenom || j.prenom || ''} {j.utilisateur?.nom || j.nom || ''}
+            </Text>
             <Text style={styles.cardPoste}>Poste : {j.poste || 'NC'}</Text>
+            <Text style={{ color: '#fff', fontSize: 12 }}>
+              Email : {j.utilisateur?.email || '-'}
+            </Text>
+            <Text style={{ color: '#fff', fontSize: 12 }}>
+              Tél : {j.utilisateur?.tel || '-'}
+            </Text>
             {showTransport && j.besoin_transport && !j.conducteur_id && (
               <TouchableOpacity style={styles.transportBtn} onPress={() => onTransport(j)}>
                 <Text style={styles.transportText}>🚗 Proposer un transport</Text>
@@ -210,6 +238,7 @@ function Section({ title, data, showTransport = false, onTransport }) {
   );
 }
 
+// Styles inchangés, adapte si besoin
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212', padding: 20 },
   title: { fontSize: 22, fontWeight: 'bold', color: '#00ff88', textAlign: 'center', marginBottom: 10 },

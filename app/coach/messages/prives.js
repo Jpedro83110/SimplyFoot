@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Alert, ImageBackground
+  View, Text, TextInput, Pressable, ScrollView, StyleSheet, ImageBackground
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,17 +16,7 @@ export default function MessagesPrivesCoach() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Purge tous les messages vieux de +7 jours à chaque ouverture
-  useEffect(() => {
-    const purgeOldMessages = async () => {
-      const septJours = new Date(Date.now() - 7*24*60*60*1000).toISOString();
-      await supabase
-        .from('messages_prives')
-        .delete()
-        .lt('created_at', septJours);
-    };
-    purgeOldMessages();
-  }, []);
+  // ** Purge automatique supprimée **
 
   useEffect(() => {
     (async () => {
@@ -49,13 +39,13 @@ export default function MessagesPrivesCoach() {
     }
   }, [selectedEquipe]);
 
-  // --- CACHE / FIL MSG ---
+  // --- CACHE / FILTRAGE DES MESSAGES ---
   const cacheKey = selectedJoueur && coachId ? `messages_prives_${coachId}_${selectedJoueur}` : null;
   const [filMessages, refreshMessages, cacheLoading] = useCacheData(
     cacheKey,
     async () => {
       if (!coachId || !selectedJoueur) return [];
-      const septJours = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+      const septJours = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase
         .from('messages_prives')
         .select('*')
@@ -64,12 +54,12 @@ export default function MessagesPrivesCoach() {
       const messages = (data || []).filter(
         (msg) =>
           ((msg.emetteur_id === coachId && msg.recepteur_id === selectedJoueur) ||
-           (msg.recepteur_id === coachId && msg.emetteur_id === selectedJoueur)) &&
+            (msg.recepteur_id === coachId && msg.emetteur_id === selectedJoueur)) &&
           new Date(msg.created_at) >= new Date(septJours)
       );
       return messages || [];
     },
-    30 // TTL du cache, ici 30s
+    30 // cache TTL 30 secondes
   );
 
   useEffect(() => {

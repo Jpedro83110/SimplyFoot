@@ -26,7 +26,7 @@ export default {
       foregroundImage: './assets/adaptive-icon-foreground.png',
       backgroundColor: '#121212',
     },
-    permissions: ['NOTIFICATIONS'],
+    permissions: ['NOTIFICATIONS'], // 👈 plus de "CAMERA"
   },
   web: {
     favicon: './assets/icon.png',
@@ -35,7 +35,7 @@ export default {
   plugins: [
     'expo-router',
     'expo-notifications',
-    'expo-sqlite',         // ← ajout ici, à la bonne place
+    'expo-sqlite'
   ],
   extra: {
     eas: {

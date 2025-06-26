@@ -1,14 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Switch,
-  Linking,
-  Platform
+  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Switch, Linking, Platform, Modal, TextInput, ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
@@ -28,8 +20,14 @@ export default function ConvocationReponse() {
   const [reponse, setReponse] = useState(null);
   const [reponseLoading, setReponseLoading] = useState(false);
   const [joueurId, setJoueurId] = useState(null);
+  const [showTransportModal, setShowTransportModal] = useState(false);
 
-  // Fetch event + joueurId + participation + décharge
+  // Pour la messagerie transport
+  const [messages, setMessages] = useState([]);
+  const [nouvelleAdresse, setNouvelleAdresse] = useState('');
+  const [nouvelleHeure, setNouvelleHeure] = useState('');
+  const [sendingProposition, setSendingProposition] = useState(false);
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -38,16 +36,14 @@ export default function ConvocationReponse() {
         const utilisateurId = session.data.session?.user?.id;
         if (!utilisateurId) throw new Error('Utilisateur non trouvé.');
 
-        // Get joueurId depuis "utilisateurs"
         const { data: utilisateur, error: userErr } = await supabase
           .from('utilisateurs')
-          .select('joueur_id')
+          .select('joueur_id, nom, prenom')
           .eq('id', utilisateurId)
           .single();
         if (userErr || !utilisateur || !utilisateur.joueur_id) throw userErr || new Error('joueur_id manquant');
         setJoueurId(utilisateur.joueur_id);
 
-        // Get event
         const { data: evt, error: evtErr } = await supabase
           .from('evenements')
           .select('titre, date, heure, lieu, lieu_complement, meteo, latitude, longitude')
@@ -56,7 +52,6 @@ export default function ConvocationReponse() {
         if (evtErr || !evt) throw evtErr;
         setEvent(evt);
 
-        // Décharge transport (optionnel)
         const { data: decharge } = await supabase
           .from('decharges_generales')
           .select('accepte_transport')
@@ -64,7 +59,6 @@ export default function ConvocationReponse() {
           .single();
         setAccepteTransport(decharge?.accepte_transport || false);
 
-        // Participation (pour afficher réponse déjà envoyée)
         const { data: participation } = await supabase
           .from('participations_evenement')
           .select('reponse, besoin_transport')
@@ -73,6 +67,8 @@ export default function ConvocationReponse() {
           .single();
         setReponse(participation?.reponse ?? null);
         setBesoinTransport(participation?.besoin_transport ?? false);
+
+        await fetchTransportMessages();
       } catch (err) {
         Alert.alert('Erreur', 'Impossible de charger la convocation.');
       } finally {
@@ -82,16 +78,25 @@ export default function ConvocationReponse() {
     fetchData();
   }, [id]);
 
-  // Quand on change le switch, update besoin_transport si présent
-  useEffect(() => {
-    if (reponse === 'present') {
-      envoyerReponse('present', true);
+  // Fetch messages pour la messagerie transport
+  const fetchTransportMessages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('messages_besoin_transport')
+        .select(`
+          *, 
+          joueurs:joueur_id(nom, prenom, age)
+        `)
+        .eq('evenement_id', id);
+      if (error) throw error;
+      setMessages(data || []);
+    } catch (err) {
+      setMessages([]);
     }
-    // eslint-disable-next-line
-  }, [besoinTransport]);
+  };
 
-  // Fonction pour répondre à la convocation
-  const envoyerReponse = async (valeur, triggeredBySwitch = false) => {
+  // Réponse à la convocation
+  const envoyerReponse = async (valeur) => {
     try {
       setReponseLoading(true);
       if (!joueurId || !id || !valeur) {
@@ -99,16 +104,7 @@ export default function ConvocationReponse() {
         setReponseLoading(false);
         return;
       }
-
       const besoinTransportFinal = accepteTransport && besoinTransport && valeur === 'present';
-
-      // Si c'est triggered par le switch, mais la réponse n'est pas présent, on ne fait rien
-      if (triggeredBySwitch && reponse !== 'present') {
-        setReponseLoading(false);
-        return;
-      }
-
-      // Upsert dans participations_evenement
       const { error } = await supabase
         .from('participations_evenement')
         .upsert(
@@ -130,17 +126,102 @@ export default function ConvocationReponse() {
       setReponse(valeur);
       setBesoinTransport(besoinTransportFinal);
       setReponseLoading(false);
-      if (!triggeredBySwitch) Alert.alert('✅ Réponse enregistrée !');
+      await fetchTransportMessages();
+      Alert.alert('✅ Réponse enregistrée !');
     } catch (err) {
       setReponseLoading(false);
       Alert.alert('Erreur', 'Erreur critique dans l’envoi.');
     }
   };
 
+  // Insertion demande transport quand "Envoyer la demande"
+  const envoyerDemandeTransport = async () => {
+    if (!nouvelleAdresse || !nouvelleHeure) {
+      Alert.alert("Merci de remplir le lieu et l'heure.");
+      return;
+    }
+    try {
+      setSendingProposition(true);
+      const { error } = await supabase
+        .from('messages_besoin_transport')
+        .insert({
+          evenement_id: id,
+          joueur_id: joueurId,
+          auteur_id: joueurId,
+          adresse_demande: nouvelleAdresse,   // <-- MAPPING OK
+          heure_demande: nouvelleHeure,
+          etat: 'en_attente',                 // <-- MAPPING OK
+          created_at: new Date()
+        });
+      if (error) {
+        Alert.alert("Erreur", "Insertion échouée : " + error.message);
+      } else {
+        setShowTransportModal(false);
+        setNouvelleAdresse('');
+        setNouvelleHeure('');
+        Alert.alert('✅ Demande envoyée à la messagerie transport !');
+        await fetchTransportMessages();
+      }
+    } finally {
+      setSendingProposition(false);
+    }
+  };
+
+  // Propositions et signatures
+  const proposerLieuHeure = async (msgId) => {
+    try {
+      setSendingProposition(true);
+      const { error } = await supabase
+        .from('messages_besoin_transport')
+        .update({
+          adresse_demande: nouvelleAdresse,
+          heure_demande: nouvelleHeure,
+          etat: 'proposition_faite'
+        })
+        .eq('id', msgId);
+      if (error) throw error;
+      setNouvelleAdresse('');
+      setNouvelleHeure('');
+      await fetchTransportMessages();
+    } catch (err) {
+      Alert.alert('Erreur', "Impossible d'envoyer la proposition.");
+    } finally {
+      setSendingProposition(false);
+    }
+  };
+
+  const signerTransport = async (msgId, qui) => {
+    try {
+      let fields = {};
+      if (qui === 'demandeur') {
+        fields = {
+          signature_demandeur: true,
+          signature_demandeur_date: new Date(),
+          etat: 'proposition_faite'
+        };
+      }
+      if (qui === 'conducteur') {
+        fields = {
+          signature_conducteur: true,
+          signature_conducteur_date: new Date(),
+          etat: 'signe'
+        };
+      }
+      const { error } = await supabase
+        .from('messages_besoin_transport')
+        .update(fields)
+        .eq('id', msgId);
+      if (error) throw error;
+      await fetchTransportMessages();
+    } catch (err) {
+      Alert.alert('Erreur', "Impossible de signer.");
+    }
+  };
+
   if (loading || !event) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <Text style={styles.title}>{event?.titre}</Text>
       <Text style={styles.info}>📅 {dayjs(event?.date).format('dddd D MMMM YYYY')} à {event?.heure}</Text>
       <Text style={styles.info}>📍 {event?.lieu}</Text>
@@ -150,13 +231,12 @@ export default function ConvocationReponse() {
         </Text>
       )}
 
-      {/* METEO */}
       {event?.meteo && (
         <Text style={[styles.info, { color: '#62d4ff', fontWeight: '700' }]}>
           <Ionicons name="cloud-outline" size={16} color="#62d4ff" /> {event.meteo}
         </Text>
       )}
-      {/* GPS */}
+
       {(event?.latitude && event?.longitude) && (
         <TouchableOpacity
           style={{ marginTop: 8, alignSelf: 'center', backgroundColor: '#181f22', borderRadius: 8, paddingHorizontal: 13, paddingVertical: 6 }}
@@ -210,8 +290,114 @@ export default function ConvocationReponse() {
           />
         </View>
       )}
-    </View>
-  );
+
+      {/* Affiche le bouton transport SEULEMENT si besoinTransport === true ET reponse === 'present' */}
+      {reponse === 'present' && besoinTransport && (
+        <TouchableOpacity
+          style={styles.transportBtn}
+          onPress={() => setShowTransportModal(true)}
+        >
+          <Ionicons name="car-outline" size={18} color="#fff" />
+          <Text style={{ color: '#fff', marginLeft: 8, fontWeight: 'bold' }}>Messagerie Besoin de Transport</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* MODALE MESSAGERIE BESOIN DE TRANSPORT */}
+      <Modal
+        visible={showTransportModal}
+        animationType="slide"
+        onRequestClose={() => setShowTransportModal(false)}
+        transparent={false}
+      >
+        <ScrollView style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>🚗 Besoins de transport pour cet événement</Text>
+          {messages.length === 0 && (
+            <Text style={{ color: '#aaa', marginTop: 25, textAlign: 'center' }}>Aucun besoin de transport déclaré.</Text>
+          )}
+
+          {messages.map((msg) => (
+            <View key={msg.id} style={styles.messageCard}>
+              <Text style={{ color: '#00ff88', fontWeight: 'bold', fontSize: 16 }}>
+                {msg.joueurs?.prenom} {msg.joueurs?.nom} {msg.joueurs?.age ? `(âge: ${msg.joueurs.age})` : ""}
+              </Text>
+              <Text style={{ color: '#fff', marginBottom: 4 }}>Statut : <Text style={{ color: '#00ff88' }}>{msg.etat}</Text></Text>
+              {msg.adresse_demande && <Text style={{ color: '#fff' }}>Lieu : {msg.adresse_demande}</Text>}
+              {msg.heure_demande && <Text style={{ color: '#fff' }}>Heure : {msg.heure_demande}</Text>}
+              <View style={{ flexDirection: 'row', marginTop: 6 }}>
+                <TouchableOpacity
+                  style={styles.proposeBtn}
+                  onPress={() => {
+                    setNouvelleAdresse('');
+                    setNouvelleHeure('');
+                    proposerLieuHeure(msg.id);
+                  }}
+                  disabled={sendingProposition}
+                >
+                  <Ionicons name="navigate-outline" size={16} color="#111" />
+                  <Text style={{ color: '#111', marginLeft: 5 }}>Proposer lieu/heure</Text>
+                </TouchableOpacity>
+                {/* Si besoin, boutons signature */}
+                {!msg.signature_demandeur && (
+                  <TouchableOpacity
+                    style={styles.signatureBtn}
+                    onPress={() => signerTransport(msg.id, 'demandeur')}
+                  >
+                    <Ionicons name="pencil-outline" size={16} color="#00ff88" />
+                    <Text style={{ color: '#00ff88', marginLeft: 5 }}>Signer demandeur</Text>
+                  </TouchableOpacity>
+                )}
+                {msg.signature_demandeur && !msg.signature_conducteur && (
+                  <TouchableOpacity
+                    style={styles.signatureBtn}
+                    onPress={() => signerTransport(msg.id, 'conducteur')}
+                  >
+                    <Ionicons name="pencil" size={16} color="#00ff88" />
+                    <Text style={{ color: '#00ff88', marginLeft: 5 }}>Signer conducteur</Text>
+                  </TouchableOpacity>
+                )}
+                {msg.signature_demandeur && msg.signature_conducteur && (
+                  <Text style={{ color: '#00ff88', fontWeight: 'bold', marginLeft: 10 }}>✔️ Signé par les deux parties</Text>
+                )}
+              </View>
+            </View>
+          ))}
+
+          {/* ==== Champs à remplir pour ENVOYER LA DEMANDE ==== */}
+          <View style={{ marginTop: 20 }}>
+            <TextInput
+              style={styles.input}
+              placeholder="Lieu de RDV"
+              placeholderTextColor="#aaa"
+              value={nouvelleAdresse}
+              onChangeText={setNouvelleAdresse}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Heure"
+              placeholderTextColor="#aaa"
+              value={nouvelleHeure}
+              onChangeText={setNouvelleHeure}
+            />
+            <TouchableOpacity
+              style={[styles.closeBtn, { backgroundColor: '#00ff88', marginTop: 10 }]}
+              onPress={envoyerDemandeTransport}
+              disabled={sendingProposition}
+            >
+              <Text style={{ color: '#111', fontWeight: 'bold' }}>
+                Envoyer la demande
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={() => setShowTransportModal(false)}
+          >
+            <Text style={{ color: '#111', fontWeight: 'bold' }}>Fermer</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </Modal>
+    </ScrollView>
+  )
 }
 
 const styles = StyleSheet.create({
@@ -225,4 +411,12 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontWeight: 'bold' },
   switchBlock: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingVertical: 10, borderTopWidth: 1, borderColor: '#333' },
   label: { color: '#ccc', fontSize: 15 },
+  transportBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#00ff88', padding: 10, borderRadius: 10, marginVertical: 15, alignSelf: 'center' },
+  modalContainer: { backgroundColor: '#181f22', flex: 1, padding: 20 },
+  modalTitle: { color: '#00ff88', fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  messageCard: { backgroundColor: '#242c2e', borderRadius: 10, marginBottom: 18, padding: 15, shadowColor: "#000", shadowOpacity: 0.09, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  proposeBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#00ff88', borderRadius: 7, padding: 7, marginRight: 10 },
+  signatureBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#181f22', borderRadius: 7, padding: 7, borderWidth: 1, borderColor: '#00ff88', marginRight: 10 },
+  input: { backgroundColor: '#242c2e', color: '#fff', borderRadius: 8, padding: 9, marginTop: 8, borderColor: '#00ff88', borderWidth: 1, marginBottom: 6 },
+  closeBtn: { backgroundColor: '#00ff88', borderRadius: 9, alignItems: 'center', marginTop: 16, padding: 12 },
 });

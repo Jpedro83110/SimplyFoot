@@ -7,6 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Linking from 'expo-linking';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
@@ -16,7 +18,6 @@ export default function JoueurDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // State principal
   const [user, setUser] = useState(null);
   const [joueur, setJoueur] = useState(null);
   const [equipe, setEquipe] = useState(null);
@@ -27,57 +28,43 @@ export default function JoueurDashboard() {
 
   const router = useRouter();
 
-  // Chargement principal
   useEffect(() => {
     let mounted = true;
-
     async function fetchAll() {
       try {
-        // 1. Auth/session
         const { data: sessionData } = await supabase.auth.getSession();
         const session = sessionData?.session;
         if (!session) throw new Error('Session expirée, reconnectez-vous.');
 
-        // 2. User (utilisateur)
-        const { data: userData, error: errUser } = await supabase
+        const { data: userData } = await supabase
           .from('utilisateurs')
           .select('*')
           .eq('id', session.user.id)
           .single();
-        if (errUser || !userData) throw new Error("Utilisateur introuvable.");
-        if (!userData.joueur_id) throw new Error("Utilisateur non lié à un joueur.");
+        if (!userData?.joueur_id) throw new Error("Utilisateur non lié à un joueur.");
         if (mounted) setUser(userData);
 
-        // 3. Joueur
-        const { data: joueurData, error: errJoueur } = await supabase
+        const { data: joueurData } = await supabase
           .from('joueurs')
           .select('*')
           .eq('id', userData.joueur_id)
           .single();
-        if (errJoueur || !joueurData) throw new Error("Joueur introuvable ou non affecté.");
         if (mounted) setJoueur(joueurData);
 
-        // 4. Équipe (récupère club_id dedans)
-        if (!joueurData.equipe_id) throw new Error("Joueur non affecté à une équipe.");
-        const { data: equipeData, error: errEquipe } = await supabase
+        const { data: equipeData } = await supabase
           .from('equipes')
           .select('*')
           .eq('id', joueurData.equipe_id)
           .single();
-        if (errEquipe || !equipeData) throw new Error("Équipe introuvable.");
         if (mounted) setEquipe(equipeData);
 
-        // 5. Club
-        if (!equipeData.club_id) throw new Error("Équipe non liée à un club.");
-        const { data: clubData, error: errClub } = await supabase
+        const { data: clubData } = await supabase
           .from('clubs')
           .select('id, nom, logo_url, facebook_url, instagram_url, boutique_url')
           .eq('id', equipeData.club_id)
           .single();
-        if (errClub || !clubData) throw new Error("Club introuvable.");
         if (mounted) setClub(clubData);
 
-        // 6. Prochain événement
         const { data: eventData } = await supabase
           .from('evenements')
           .select('*')
@@ -88,36 +75,29 @@ export default function JoueurDashboard() {
           .single();
         if (mounted) setEvenement(eventData || null);
 
-        // 7. Participations (présence)
         const { data: participData } = await supabase
           .from('participations_evenement')
           .select('*')
           .eq('joueur_id', joueurData.id);
         if (mounted) setParticipations(participData || []);
 
-        // 8. Messages (badge)
         const lastViewed = await AsyncStorage.getItem(LAST_MESSAGES_VIEWED);
         const lastDate = lastViewed ? new Date(lastViewed) : new Date(0);
-        let nouveau = false;
-        // Messages privés
         const { data: messagesPrives } = await supabase
           .from('messages_prives')
           .select('created_at')
           .eq('recepteur_id', session.user.id);
-        // Groupe coach
         const { data: messagesGroupes } = await supabase
           .from('messages_groupe_coach')
           .select('created_at')
           .eq('equipe_id', equipeData.id);
-        // Check dates
         const allDates = [
           ...(messagesPrives?.map(m => new Date(m.created_at)) || []),
           ...(messagesGroupes?.map(m => new Date(m.created_at)) || []),
         ];
-        nouveau = allDates.some(date => date > lastDate);
+        const nouveau = allDates.some(date => date > lastDate);
         if (mounted) setNouveauMessage(nouveau);
 
-        // End loading
         if (mounted) setLoading(false);
       } catch (e) {
         if (mounted) {
@@ -126,17 +106,14 @@ export default function JoueurDashboard() {
         }
       }
     }
-
     fetchAll();
     return () => { mounted = false; };
   }, []);
 
-  // Taux de présence
   const present = participations.filter(p => p.reponse === 'present').length;
   const total = participations.length;
   const tauxPresence = total > 0 ? Math.round((present / total) * 100) : 0;
 
-  // Calcul âge
   const calculAge = (date) => {
     if (!date) return 'Non renseigné';
     const birth = new Date(date);
@@ -147,14 +124,12 @@ export default function JoueurDashboard() {
     return age + ' ans';
   };
 
-  // Navigation messagerie
   const handleOpenMessages = async () => {
     await AsyncStorage.setItem(LAST_MESSAGES_VIEWED, new Date().toISOString());
     setNouveauMessage(false);
     router.push('/joueur/messages');
   };
 
-  // Shortcuts
   const shortcuts = [
     { icon: <Ionicons name="calendar" size={28} color={GREEN} />, label: 'Convocations', go: () => router.push('/joueur/convocation') },
     {
@@ -162,15 +137,7 @@ export default function JoueurDashboard() {
         <View style={{ position: 'relative' }}>
           <MaterialCommunityIcons name="message-text-outline" size={28} color={GREEN} />
           {nouveauMessage && (
-            <View style={{
-              position: 'absolute',
-              top: -4,
-              right: -4,
-              width: 12,
-              height: 12,
-              borderRadius: 6,
-              backgroundColor: '#fc2b3a',
-            }} />
+            <View style={{ position: 'absolute', top: -4, right: -4, width: 12, height: 12, borderRadius: 6, backgroundColor: '#fc2b3a' }} />
           )}
         </View>
       ),
@@ -181,6 +148,7 @@ export default function JoueurDashboard() {
     { icon: <MaterialCommunityIcons name="account-tie" size={28} color={GREEN} />, label: 'Suivi coach', go: () => router.push('/joueur/suivi-coach') },
     { icon: <MaterialCommunityIcons name="calendar-month-outline" size={28} color={GREEN} />, label: 'Programme', go: () => router.push('/joueur/programme-stage') },
     { icon: <Ionicons name="people" size={28} color={GREEN} />, label: 'Mon équipe', go: () => router.push('/joueur/equipe') },
+    { icon: <Ionicons name="nutrition" size={28} color={GREEN} />, label: 'Conseils', go: () => router.push('/joueur/nutrition/scanner') },
   ];
 
   // LOADING / ERROR
@@ -249,7 +217,7 @@ export default function JoueurDashboard() {
       <View style={{ width: '92%', alignSelf: 'center', marginBottom: 12 }}>
         <Text style={{ color: '#aaa', fontSize: 13, marginBottom: 4 }}>
           Taux de présence : <Text style={{ color: GREEN, fontWeight: 'bold' }}>{tauxPresence}%</Text>
-          {total > 0 ? ` (${present} / ${total})` : ''}
+          {total > 0 ?  ` (${present} / ${total})` : ''}
         </Text>
         <View style={{ height: 9, backgroundColor: '#232b28', borderRadius: 8, overflow: 'hidden' }}>
           <View style={{
@@ -367,7 +335,21 @@ export default function JoueurDashboard() {
 
 // Styles : inchangés (reprends ceux de tes autres dashboards)
 const styles = StyleSheet.create({
-  headerCard: { marginTop: 28, marginBottom: 16, backgroundColor: '#161b20', borderRadius: 22, padding: 20, borderWidth: 2, borderColor: GREEN, shadowColor: GREEN, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4, width: '92%', alignSelf: 'center' },
+  headerCard: {
+    marginTop: 28,
+    marginBottom: 16,
+    backgroundColor: '#161b20',
+    borderRadius: 22,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: GREEN,
+    shadowColor: GREEN,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+    width: '92%',
+    alignSelf: 'center'
+  },
   rowBetween: { flexDirection: 'row', alignItems: 'center' },
   rowWrap: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 6 },
   avatarCircle: { backgroundColor: '#232b28', width: 54, height: 54, borderRadius: 30, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: GREEN },
