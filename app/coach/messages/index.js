@@ -25,7 +25,7 @@ export default function MessagesIndex() {
     supabase
       .from('messages_besoin_transport')
       .select('id', { count: 'exact', head: true })
-      .eq('statut', 'en_attente')
+      .eq('etat', 'en_attente')
       .then(({ count }) => setHasTransportRequest(count > 0));
     */
   }, []);

@@ -26,8 +26,9 @@ export default function ListeDemandesTransport() {
       .from('messages_besoin_transport')
       .select(`
         *,
-        joueur:joueur_id (prenom, nom),
-        evenement:evenement_id (titre, date, heure)
+        utilisateur:joueur_id (prenom, nom),
+        evenement:evenement_id (titre, date, heure),
+        decharge:joueur_id (parent_prenom, parent_nom, accepte_transport)
       `)
       .not('statut', 'eq', 'signe')
       .order('created_at', { ascending: false });
@@ -54,8 +55,17 @@ export default function ListeDemandesTransport() {
               <Ionicons name="person" size={22} color="#00ff88" style={{ marginRight: 10 }} />
               <View>
                 <Text style={styles.joueur}>
-                  {demande.joueur?.prenom} {demande.joueur?.nom}
+                  {demande.utilisateur?.prenom} {demande.utilisateur?.nom}
                 </Text>
+                {/* Affichage du parent et décharge */}
+                {demande.decharge && (
+                  <Text style={styles.info}>
+                    👪 Parent : {demande.decharge.parent_prenom} {demande.decharge.parent_nom}
+                    {demande.decharge.accepte_transport
+                      ? " (décharge acceptée)"
+                      : " (décharge non signée)"}
+                  </Text>
+                )}
                 <Text style={styles.evenement}>
                   🏟️ {demande.evenement?.titre} — {demande.evenement?.date} {demande.evenement?.heure && `à ${demande.evenement.heure}`}
                 </Text>
