@@ -186,10 +186,12 @@ export default function PresidentDashboard() {
           <FullButton title="Infos club" icon="information-circle" onPress={() => router.push('/president/infos')} />
         </Section>
 
-        <Section title="🧾 Gestion du club">
-          <HalfButton title="Voir le staff" icon="people" onPress={() => router.push('/president/staff')} />
-          <HalfButton title="Liste licenciés" icon="clipboard" onPress={() => router.push('/president/membres')} />
-        </Section>
+<Section title="🧾 Gestion du club">
+  <HalfButton title="Voir le staff" icon="people" onPress={() => router.push('/president/staff')} />
+  <HalfButton title="Liste licenciés" icon="clipboard" onPress={() => router.push('/president/membres')} />
+  <HalfButton title="Anniversaires" icon="cake" onPress={() => router.push('/president/anniversaires')} />
+</Section>
+
 
         <Section title="📅 Organisation">
           <HalfButton title="Événements" icon="calendar" onPress={() => router.push('/president/evenements')} />

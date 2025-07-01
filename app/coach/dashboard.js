@@ -233,6 +233,7 @@ useEffect(() => {
       <View style={styles.buttonRow}>
         <ActionButton label="Créer équipe" icon="people" onPress={() => router.push('/coach/creation-equipe')} />
         <ActionButton label="Créer événement" icon="calendar" onPress={() => router.push('/coach/creation-evenement')} />
+          <ActionButton label="Anniversaires" icon="cake" onPress={() => router.push('/coach/anniversaires')} />
       </View>
       <View style={styles.buttonRow}>
         <ActionButton label="Feuille de match" icon="document-text" onPress={() => router.push('/coach/feuille-match')} />

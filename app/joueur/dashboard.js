@@ -130,26 +130,27 @@ export default function JoueurDashboard() {
     router.push('/joueur/messages');
   };
 
-  const shortcuts = [
-    { icon: <Ionicons name="calendar" size={28} color={GREEN} />, label: 'Convocations', go: () => router.push('/joueur/convocation') },
-    {
-      icon: (
-        <View style={{ position: 'relative' }}>
-          <MaterialCommunityIcons name="message-text-outline" size={28} color={GREEN} />
-          {nouveauMessage && (
-            <View style={{ position: 'absolute', top: -4, right: -4, width: 12, height: 12, borderRadius: 6, backgroundColor: '#fc2b3a' }} />
-          )}
-        </View>
-      ),
-      label: 'Messagerie',
-      go: handleOpenMessages
-    },
-    { icon: <MaterialCommunityIcons name="star-circle-outline" size={28} color={GREEN} />, label: 'Note globale', go: () => router.push('/joueur/note-globale') },
-    { icon: <MaterialCommunityIcons name="account-tie" size={28} color={GREEN} />, label: 'Suivi coach', go: () => router.push('/joueur/suivi-coach') },
-    { icon: <MaterialCommunityIcons name="calendar-month-outline" size={28} color={GREEN} />, label: 'Programme', go: () => router.push('/joueur/programme-stage') },
-    { icon: <Ionicons name="people" size={28} color={GREEN} />, label: 'Mon équipe', go: () => router.push('/joueur/equipe') },
-    { icon: <Ionicons name="nutrition" size={28} color={GREEN} />, label: 'Conseils', go: () => router.push('/joueur/nutrition/scanner') },
-  ];
+const shortcuts = [
+  { icon: <Ionicons name="calendar" size={28} color={GREEN} />, label: 'Convocations', go: () => router.push('/joueur/convocation') },
+  {
+    icon: (
+      <View style={{ position: 'relative' }}>
+        <MaterialCommunityIcons name="message-text-outline" size={28} color={GREEN} />
+        {nouveauMessage && (
+          <View style={{ position: 'absolute', top: -4, right: -4, width: 12, height: 12, borderRadius: 6, backgroundColor: '#fc2b3a' }} />
+        )}
+      </View>
+    ),
+    label: 'Messagerie',
+    go: handleOpenMessages
+  },
+  { icon: <MaterialCommunityIcons name="star-circle-outline" size={28} color={GREEN} />, label: 'Note globale', go: () => router.push('/joueur/note-globale') },
+  { icon: <MaterialCommunityIcons name="account-tie" size={28} color={GREEN} />, label: 'Suivi coach', go: () => router.push('/joueur/suivi-coach') },
+  { icon: <MaterialCommunityIcons name="calendar-month-outline" size={28} color={GREEN} />, label: 'Programme', go: () => router.push('/joueur/programme-stage') },
+  { icon: <MaterialCommunityIcons name="cake-variant" size={28} color={GREEN} />, label: 'Anniversaires', go: () => router.push('/joueur/anniversaires') }, // <--- AJOUT
+  { icon: <Ionicons name="people" size={28} color={GREEN} />, label: 'Mon équipe', go: () => router.push('/joueur/equipe') },
+  { icon: <Ionicons name="nutrition" size={28} color={GREEN} />, label: 'Conseils', go: () => router.push('/joueur/nutrition/scanner') },
+];
 
   // LOADING / ERROR
   if (loading) {
