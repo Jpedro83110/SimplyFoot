@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Platform, Dimensions, ScrollView, Pressable } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import vacancesScolaires from '../lib/vacancesScolaires';
 
@@ -32,6 +32,7 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
   const [markedDates, setMarkedDates] = useState({});
   const [loading, setLoading] = useState(true);
   const [annivList, setAnnivList] = useState([]);
+  const [selectedAnniv, setSelectedAnniv] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -39,14 +40,20 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
     const year = now.getFullYear();
     let annivs = {};
     let annivTab = [];
+
     membres.forEach(m => {
       if (!m.date_naissance) return;
       const date = new Date(m.date_naissance);
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const key = `${year}-${month}-${day}`;
-      annivs[key] = annivs[key] || { dots: [] };
-      annivs[key].dots.push({ key: m.id, color: DOT_COLOR });
+
+      annivs[key] = {
+        selected: true,
+        selectedColor: '#00ff88',
+        marked: true,
+        disableTouchEvent: false
+      };
       let annivDate = new Date(year, date.getMonth(), date.getDate());
       if (annivDate < now) annivDate.setFullYear(year + 1);
       const joursRestants = Math.ceil((annivDate - now) / (1000 * 3600 * 24));
@@ -58,7 +65,7 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
     });
     annivTab = annivTab.sort((a, b) => a.joursRestants - b.joursRestants);
 
-    // ---- Ajout des vacances scolaires (zone sélectionnée)
+    // Vacances scolaires
     const vacances = vacancesScolaires[zone];
     let vacancesMap = {};
     vacances.forEach(v => {
@@ -81,20 +88,25 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
       }
     });
 
-    // ---- Fusion anniversaire (dot) + vacances (customStyles)
+    // Fusion anniversaires + vacances
     let allMarked = { ...vacancesMap };
     Object.entries(annivs).forEach(([key, value]) => {
       allMarked[key] = {
         ...(allMarked[key] || {}),
-        ...value, // pour dots
-        marked: true,
-        dotColor: DOT_COLOR
+        ...value,
       };
     });
+
     setMarkedDates(allMarked);
     setAnnivList(annivTab);
     setLoading(false);
   }, [membres, zone]);
+
+  // Sélection jour anniversaire sur calendrier
+  const handleDayPress = (day) => {
+    const found = annivList.find(m => m.date === day.dateString);
+    setSelectedAnniv(found || null);
+  };
 
   const screenWidth = Dimensions.get('window').width;
   const containerWidth = screenWidth < 600 ? '98%' : 520;
@@ -102,7 +114,7 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
   if (loading) return <ActivityIndicator color={DOT_COLOR} style={{ margin: 40 }} />;
 
   return (
-    <View style={[styles.bg, { alignItems: 'center', width: '100%' }]}>
+    <ScrollView contentContainerStyle={{ alignItems: 'center', paddingBottom: 60, backgroundColor: '#111417', minHeight: '100%' }}>
       <View style={styles.glowBar} />
       <View style={[styles.container, { maxWidth: containerWidth }]}>
         {/* Sélecteur de zone chromé */}
@@ -118,7 +130,7 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
             </TouchableOpacity>
           ))}
         </View>
-        {/* Calendrier FR premium */}
+        {/* Calendrier */}
         <Calendar
           style={styles.calendar}
           markingType={'custom'}
@@ -143,9 +155,10 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
               monthText: { color: '#00ff88', fontSize: 22, fontWeight: '700' }
             }
           }}
+          onDayPress={handleDayPress}
         />
 
-        {/* Légende stylée */}
+        {/* Légende */}
         <View style={styles.legend}>
           <View style={styles.legendItem}>
             <View style={[styles.dot, { backgroundColor: DOT_COLOR, shadowColor: DOT_COLOR, shadowOpacity: 0.6, shadowRadius: 8 }]} />
@@ -159,35 +172,65 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
 
         <View style={{ borderTopWidth: 1.5, borderTopColor: '#222d', marginVertical: 12, width: '98%', alignSelf: 'center' }} />
 
-        {/* Liste des anniversaires à venir */}
-        <Text style={styles.listTitle}>🎉 Anniversaires à venir</Text>
-        <ScrollView style={{ flex: 1, width: '100%', maxHeight: 410 }} contentContainerStyle={styles.list}>
-          {annivList.slice(0, 15).map(m => (
-            <View style={styles.card} key={m.id}>
+        {/* Popup anniversaire sélectionné */}
+        {selectedAnniv && (
+          <Pressable style={{ marginBottom: 8, width: '100%' }} onPress={() => setSelectedAnniv(null)}>
+            <View style={[styles.card, { borderWidth: 2, borderColor: '#00ff88', backgroundColor: '#172023', marginBottom: 12 }]}>
               <Image
                 source={{
                   uri:
-                    m.photo_url && m.photo_url.trim() !== ''
-                      ? m.photo_url
+                    selectedAnniv.photo_url && selectedAnniv.photo_url.trim() !== ''
+                      ? selectedAnniv.photo_url
                       : 'https://ui-avatars.com/api/?name=' +
-                        encodeURIComponent(`${m.prenom || ''} ${m.nom || ''}`) +
+                        encodeURIComponent(`${selectedAnniv.prenom || ''} ${selectedAnniv.nom || ''}`) +
                         '&background=222&color=fff&rounded=true'
                 }}
                 style={styles.avatar}
               />
               <View style={{ flex: 1 }}>
                 <Text style={styles.nom}>
-                  {m.prenom} {m.nom} <Text style={styles.role}>({m.role})</Text>
+                  {selectedAnniv.prenom} {selectedAnniv.nom} <Text style={styles.role}>({selectedAnniv.role})</Text>
                 </Text>
                 <Text style={styles.date}>
-                  🎂 {m.date.slice(8, 10)}/{m.date.slice(5, 7)} — dans {m.joursRestants} jour{m.joursRestants > 1 ? "s" : ""}
+                  🎂 {selectedAnniv.date.slice(8, 10)}/{selectedAnniv.date.slice(5, 7)} — dans {selectedAnniv.joursRestants} jour{selectedAnniv.joursRestants > 1 ? "s" : ""}
                 </Text>
               </View>
             </View>
-          ))}
-        </ScrollView>
+          </Pressable>
+        )}
+
+        {/* Liste anniversaire défilante */}
+        <Text style={styles.listTitle}>🎉 Anniversaires à venir</Text>
+        <View style={{ width: '100%' }}>
+          {annivList.length === 0
+            ? <Text style={{ color: '#fff', margin: 10 }}>Aucun anniversaire à venir.</Text>
+            : annivList.map(m => (
+                <View style={styles.card} key={m.id}>
+                  <Image
+                    source={{
+                      uri:
+                        m.photo_url && m.photo_url.trim() !== ''
+                          ? m.photo_url
+                          : 'https://ui-avatars.com/api/?name=' +
+                            encodeURIComponent(`${m.prenom || ''} ${m.nom || ''}`) +
+                            '&background=222&color=fff&rounded=true'
+                    }}
+                    style={styles.avatar}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.nom}>
+                      {m.prenom} {m.nom} <Text style={styles.role}>({m.role})</Text>
+                    </Text>
+                    <Text style={styles.date}>
+                      🎂 {m.date.slice(8, 10)}/{m.date.slice(5, 7)} — dans {m.joursRestants} jour{m.joursRestants > 1 ? "s" : ""}
+                    </Text>
+                  </View>
+                </View>
+              ))
+          }
+        </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -264,7 +307,7 @@ const styles = StyleSheet.create({
     elevation: 2
   },
   zoneBtnTxt: { color: '#00ffcc', fontWeight: '600', fontSize: 17, textAlign: 'center' },
-  zoneBtnActiveTxt: { color: '#111', fontWeight: '700', fontSize: 18, textAlign: 'center' },
+  zoneBtnActiveTxt: { color: '#fff', fontWeight: '700', fontSize: 18, textAlign: 'center' },
 
   calendar: {
     borderRadius: 23,

@@ -1,14 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Linking,
-  Image,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  ActivityIndicator, Alert, Linking, Image, Platform, Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -16,117 +9,147 @@ import { Ionicons } from '@expo/vector-icons';
 import TeamCard from '../../components/TeamCard';
 import useCacheData from '../../lib/cache';
 
+const { width: screenWidth } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+
 export default function CoachDashboard() {
   const [userId, setUserId] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [error, setError] = useState(null);
   const [club, setClub] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(Date.now());
   const router = useRouter();
 
-useEffect(() => {
-  supabase.auth.getSession().then(async ({ data: sessionData }) => {
-    const id = sessionData?.session?.user?.id ?? null;
-    setUserId(id);
-    setLoadingAuth(false);
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: sessionData }) => {
+      const id = sessionData?.session?.user?.id ?? null;
+      setUserId(id);
+      setLoadingAuth(false);
 
-    if (id) {
-      // Récupérer les infos du coach pour obtenir le club_id
-      const { data: coachData } = await supabase
-        .from('utilisateurs')
-        .select('club_id')
-        .eq('id', id)
-        .single();
-
-      const clubId = coachData?.club_id;
-      if (clubId) {
-        const { data: clubData } = await supabase
-          .from('clubs')
-          .select('id, nom, facebook_url, instagram_url, boutique_url')
-          .eq('id', clubId)
+      if (id) {
+        // Récupérer club infos pour social
+        const { data: coachData, error: coachError } = await supabase
+          .from('utilisateurs')
+          .select('club_id')
+          .eq('id', id)
           .single();
-
-        console.log('clubData:', clubData);
-        setClub(clubData);
+        
+        const clubId = coachData?.club_id;
+        
+        if (clubId) {
+          const { data: clubData, error: clubError } = await supabase
+            .from('clubs')
+            .select('id, nom, facebook_url, instagram_url, boutique_url, logo_url')
+            .eq('id', clubId)
+            .single();
+          
+          setClub(clubData);
+        }
       }
-    }
-  });
-}, []);
+    });
+  }, []);
 
-  async function fetchCoach(userId) {
-    const { data, error } = await supabase.from('utilisateurs').select('*').eq('id', userId).single();
-    if (error) throw error;
-    return data;
-  }
+  // Fetch coach full info (pour prénom/nom)
+  const [coach, , loadingCoach] = useCacheData(
+    userId ? `coach_${userId}` : null,
+    async () => {
+      const { data, error } = await supabase.from('utilisateurs').select('*').eq('id', userId).single();
+      if (error) throw error;
+      return data;
+    },
+    12 * 3600
+  );
+  
+  const clubId = coach?.club_id;
 
-  async function fetchEquipes(userId) {
-    const { data, error } = await supabase.from('equipes').select('*').eq('coach_id', userId);
+  // Fetch équipes du club
+  async function fetchEquipesByClub(clubId) {
+    if (!clubId) return [];
+    
+    const { data, error } = await supabase
+      .from('equipes')
+      .select('*')
+      .eq('club_id', clubId);
+    
     if (error) throw error;
+    
     const equipesAvecJoueurs = await Promise.all(
       (data || []).map(async (equipe) => {
         const { data: joueurs } = await supabase
           .from('joueurs')
           .select('id')
           .eq('equipe_id', equipe.id);
-        return {
-          ...equipe,
-          joueurs: joueurs?.length || 0,
-        };
+        
+        return { ...equipe, joueurs: joueurs?.length || 0 };
       })
     );
+    
     return equipesAvecJoueurs;
   }
 
-  async function fetchStages(clubId) {
-    const { data } = await supabase.from('stages').select('id').eq('club_id', clubId).maybeSingle();
-    return data;
-  }
-
-  async function fetchEvenements(userId) {
-    const { data, error } = await supabase.from('evenements')
-      .select('*')
-      .eq('coach_id', userId)
-      .gte('date', new Date().toISOString())
-      .order('date', { ascending: true });
-    if (error) throw error;
-    return data;
-  }
-
-  async function fetchParticipations(evenementId) {
-    const { data } = await supabase.from('participations_evenement')
-      .select('*')
-      .eq('evenement_id', evenementId);
-    return data;
-  }
-
-  const [coach, , loadingCoach] = useCacheData(
-    userId ? `coach_${userId}` : null,
-    () => fetchCoach(userId),
-    12 * 3600
-  );
   const [equipes, , loadingEquipes] = useCacheData(
-    userId ? `equipes_${userId}` : null,
-    () => fetchEquipes(userId),
+    clubId ? `equipes_${clubId}_${refreshKey}` : null,
+    () => fetchEquipesByClub(clubId),
     3 * 3600
   );
-  const clubId = coach?.club_id;
+
+  // --- SUPPRIMER une équipe ---
+  const handleDeleteEquipe = (equipeId, nomEquipe) => {
+    Alert.alert(
+      "Suppression",
+      `Supprimer l'équipe "${nomEquipe}" ? Cette action est irréversible.`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer", style: "destructive",
+          onPress: async () => {
+            await supabase.from('equipes').delete().eq('id', equipeId);
+            setRefreshKey(Date.now());
+          }
+        }
+      ]
+    );
+  };
+
+  // --- Autres hooks (stages, events, participations) ---
   const [stage] = useCacheData(
     clubId ? `stage_${clubId}` : null,
-    () => fetchStages(clubId),
+    async () => {
+      const { data } = await supabase.from('stages').select('id').eq('club_id', clubId).maybeSingle();
+      return data;
+    },
     12 * 3600
   );
+
   const [evenements] = useCacheData(
     userId ? `evenements_${userId}` : null,
-    () => fetchEvenements(userId),
+    async () => {
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const filterDate = yesterday.toISOString().split('T')[0];
+      
+      const { data, error } = await supabase.from('evenements')
+        .select('*').eq('coach_id', userId)
+        .gte('date', filterDate)
+        .order('date', { ascending: true });
+      if (error) throw error;
+      return data;
+    },
     1 * 3600
   );
-
   const evenement = evenements?.[0] || null;
+
   const [participations] = useCacheData(
     evenement?.id ? `participations_${evenement.id}` : null,
-    () => fetchParticipations(evenement.id),
+    async () => {
+      const { data } = await supabase.from('participations_evenement')
+        .select('*').eq('evenement_id', evenement.id);
+      return data;
+    },
     300
   );
-
+  
   const presences = {
     present: participations?.filter(p => p.reponse === 'present').length ?? 0,
     absent: participations?.filter(p => p.reponse === 'absent').length ?? 0,
@@ -135,14 +158,26 @@ useEffect(() => {
     ).length ?? 0,
   };
 
+  // Gestion upload photo de profil
+  const handleUploadProfilePhoto = () => {
+    Alert.alert(
+      "Photo de profil",
+      "Fonctionnalité de téléchargement de photo à implémenter",
+      [{ text: "OK" }]
+    );
+  };
+
   const loading = loadingAuth || loadingCoach || loadingEquipes;
 
-  // DEBUG: voir ce que reçoit le dashboard
-  console.log('COACH club =', club);
-
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+  if (loading) return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator color="#00ff88" size="large" />
+      <Text style={styles.loadingText}>Chargement...</Text>
+    </View>
+  );
+  
   if (error) return (
-    <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+    <View style={styles.loadingContainer}>
       <Text style={{ color: '#ff4444', marginBottom: 20 }}>{error}</Text>
       <TouchableOpacity
         style={[styles.button, { backgroundColor: '#00ff88', width: 180 }]}
@@ -153,35 +188,102 @@ useEffect(() => {
     </View>
   );
 
-  return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>
-        {coach
-          ? <>Bienvenue {coach.prenom} {coach.nom} – <Text style={{ color: '#aaa', fontWeight: '400' }}>Coach</Text></>
-          : "Bienvenue Coach"}
-      </Text>
+  // Actions rapides data
+  const actionsData = [
+    { label: "Créer équipe", icon: "people", route: "/coach/creation-equipe" },
+    { label: "Créer événement", icon: "calendar", route: "/coach/creation-evenement" },
+    { label: "Anniversaires", icon: "gift-outline", route: "/coach/anniversaires" },
+    { label: "Feuille de match", icon: "document-text", route: "/coach/feuille-match" },
+    { label: "Composition", icon: "grid", route: "/coach/composition" },
+    { label: "Messagerie", icon: "chatbox", route: "/coach/messages" },
+    { label: "Statistiques", icon: "bar-chart", route: "/coach/statistiques" },
+  ];
 
+  // Ajouter le stage si disponible
+  if (stage?.id) {
+    actionsData.push({ label: "Programme de stage", icon: "book", route: "/coach/programme-stage" });
+  }
+
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* --- HEADER AVEC LOGOS --- */}
+      <View style={styles.headerSection}>
+        <View style={styles.logoContainer}>
+          {/* Logo du club */}
+          <View style={styles.logoWrapper}>
+            {club?.logo_url ? (
+              <Image 
+                source={{ uri: club.logo_url }} 
+                style={styles.clubLogo}
+                onError={() => console.log("Erreur chargement logo club")}
+              />
+            ) : (
+              <View style={[styles.clubLogo, styles.placeholderLogo]}>
+                <Ionicons name="shield-outline" size={20} color="#00ff88" />
+              </View>
+            )}
+          </View>
+
+          {/* Photo de profil */}
+          <TouchableOpacity 
+            style={styles.profilePhotoWrapper}
+            onPress={handleUploadProfilePhoto}
+          >
+            {coach?.photo_url ? (
+              <Image 
+                source={{ uri: coach.photo_url }} 
+                style={styles.profilePhoto}
+                onError={() => console.log("Erreur chargement photo profil")}
+              />
+            ) : (
+              <View style={[styles.profilePhoto, styles.placeholderPhoto]}>
+                <Ionicons name="person-add-outline" size={16} color="#00ff88" />
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.title}>
+          {coach
+            ? <>Bienvenue {coach.prenom} {coach.nom} – <Text style={styles.titleSub}>Coach</Text></>
+            : "Bienvenue Coach"}
+        </Text>
+      </View>
+
+      {/* --- ÉQUIPES --- */}
       <Text style={styles.subtitle}>📌 Vos équipes</Text>
       {equipes && equipes.length > 0 ? (
         equipes.map((eq) => (
-          <TouchableOpacity key={eq.id} onPress={() => router.push(`/coach/equipe/${eq.id}`)}>
-            <TeamCard equipe={eq} />
-          </TouchableOpacity>
+          <View key={eq.id} style={{ marginBottom: 12 }}>
+            <TouchableOpacity onPress={() => router.push(`/coach/equipe/${eq.id}`)}>
+              <TeamCard equipe={eq} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => handleDeleteEquipe(eq.id, eq.nom)}
+            >
+              <Ionicons name="trash-outline" size={18} color="#ff4444" />
+              <Text style={{ color: "#ff4444", marginLeft: 6, fontSize: 13 }}>Supprimer</Text>
+            </TouchableOpacity>
+          </View>
         ))
       ) : (
-        <Text style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10 }}>Aucune équipe pour le moment.</Text>
+        <Text style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10 }}>
+          Aucune équipe pour le moment.
+        </Text>
       )}
 
+      {/* --- BOUTON EVENEMENTS --- */}
       <TouchableOpacity
-        style={{ backgroundColor: '#00ff88', padding: 12, borderRadius: 10, marginTop: 20 }}
+        style={styles.clubEventsButton}
         onPress={() => router.push('/coach/evenements-club')}
       >
-        <Text style={{ color: '#000', textAlign: 'center', fontWeight: 'bold' }}>
+        <Text style={styles.clubEventsButtonText}>
           📆 Événements du Club
         </Text>
       </TouchableOpacity>
 
-      {/* EVENEMENT */}
+      {/* --- PROCHAIN ÉVÉNEMENT --- */}
       <Text style={styles.subtitle}>📋 Prochain événement</Text>
       {evenement ? (
         <TouchableOpacity style={styles.cardGreen} onPress={() => router.push(`/coach/convocation/${evenement.id}`)}>
@@ -197,8 +299,7 @@ useEffect(() => {
           {evenement.latitude && evenement.longitude && (
             <TouchableOpacity
               onPress={() =>
-                Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${evenement.latitude},${evenement.longitude}`)
-              }
+                Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${evenement.latitude},${evenement.longitude}`)}
               style={{ marginTop: 4, alignSelf: 'flex-start' }}
             >
               <Text style={styles.mapLink}>🗺️ Voir sur Google Maps</Text>
@@ -212,44 +313,30 @@ useEffect(() => {
         <Text style={styles.eventInfo}>Aucun événement à venir.</Text>
       )}
 
+      {/* --- CONVOCATIONS / EVENEMENTS --- */}
       <TouchableOpacity
-        style={{
-          backgroundColor: '#171e20',
-          borderColor: '#00ff88',
-          borderWidth: 1,
-          borderRadius: 10,
-          marginBottom: 14,
-          paddingVertical: 13,
-          alignItems: 'center'
-        }}
+        style={styles.allConvocationsButton}
         onPress={() => router.push('/coach/convocation')}
       >
-        <Text style={{ color: '#00ff88', fontWeight: 'bold', fontSize: 15 }}>
+        <Text style={styles.allConvocationsButtonText}>
           📑 Voir toutes les convocations / événements
         </Text>
       </TouchableOpacity>
 
+      {/* --- ACTIONS RAPIDES RESPONSIVE --- */}
       <Text style={styles.subtitle}>⚙️ Actions rapides</Text>
-      <View style={styles.buttonRow}>
-        <ActionButton label="Créer équipe" icon="people" onPress={() => router.push('/coach/creation-equipe')} />
-        <ActionButton label="Créer événement" icon="calendar" onPress={() => router.push('/coach/creation-evenement')} />
-          <ActionButton label="Anniversaires" icon="cake" onPress={() => router.push('/coach/anniversaires')} />
+      <View style={styles.actionsContainer}>
+        {actionsData.map((action, index) => (
+          <ActionButton 
+            key={index}
+            label={action.label} 
+            icon={action.icon} 
+            onPress={() => router.push(action.route)} 
+          />
+        ))}
       </View>
-      <View style={styles.buttonRow}>
-        <ActionButton label="Feuille de match" icon="document-text" onPress={() => router.push('/coach/feuille-match')} />
-        <ActionButton label="Composition" icon="grid" onPress={() => router.push('/coach/composition')} />
-      </View>
-      <View style={styles.buttonRow}>
-        <ActionButton label="Messagerie" icon="chatbox" onPress={() => router.push('/coach/messages')} />
-        <ActionButton label="Statistiques" icon="bar-chart" onPress={() => router.push('/coach/statistiques')} />
-      </View>
-      {stage?.id && (
-        <View style={styles.buttonRow}>
-          <ActionButton label="Programme de stage" icon="book" onPress={() => router.push('/coach/programme-stage')} />
-        </View>
-      )}
 
-      {/* Réseaux sociaux */}
+      {/* --- SOCIAL LINKS --- */}
       {club && (
         <View style={styles.socialLinks}>
           {club.facebook_url && (
@@ -284,21 +371,15 @@ useEffect(() => {
         </View>
       )}
 
+      {/* --- LOGOUT --- */}
       <TouchableOpacity
-        style={{
-          marginTop: 40,
-          borderColor: '#00ff88',
-          borderWidth: 2,
-          paddingVertical: 14,
-          borderRadius: 10,
-          alignItems: 'center',
-        }}
+        style={styles.logoutButton}
         onPress={async () => {
           await supabase.auth.signOut();
           router.replace('/');
         }}
       >
-        <Text style={{ color: '#00ff88', fontSize: 16, fontWeight: '700' }}>🚪 Se déconnecter</Text>
+        <Text style={styles.logoutButtonText}>🚪 Se déconnecter</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -314,8 +395,104 @@ function ActionButton({ label, icon, onPress }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212', padding: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: '#121212',
+    padding: Platform.OS === 'web' ? 24 : 20,
+    ...(Platform.OS === 'web' && {
+      maxWidth: 800,
+      alignSelf: 'center',
+      width: '100%',
+    }),
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#121212',
+  },
+  loadingText: {
+    color: '#00ff88',
+    marginTop: 10,
+    fontSize: 16,
+  },
+
+  // Header avec logos
+  headerSection: {
+    marginBottom: 20,
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  logoWrapper: {
+    flex: 1,
+  },
+  clubLogo: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#00ff88',
+  },
+  placeholderLogo: {
+    backgroundColor: '#1e1e1e',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profilePhotoWrapper: {
+    marginLeft: 'auto',
+  },
+  profilePhoto: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#00ff88',
+  },
+  placeholderPhoto: {
+    backgroundColor: '#1e1e1e',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Actions responsive
+  actionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  actionButton: {
+    backgroundColor: 'transparent',
+    borderColor: '#00ff88',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: Platform.OS === 'web' ? 12 : 10,
+    paddingHorizontal: Platform.OS === 'web' ? 8 : 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    minHeight: Platform.OS === 'web' ? 100 : 85,
+    
+    // Responsive width
+    width: Platform.OS === 'web' 
+      ? `${100 / 3 - 1}%`  // Web: 3 colonnes (33% - margin)
+      : `${100 / 2 - 1}%`, // Mobile: 2 colonnes (50% - margin)
+    
+    // Hover effect sur web
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    }),
+  },
+
+  // Styles existants
   title: { fontSize: 26, color: '#00ff88', fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  titleSub: { color: '#aaa', fontWeight: '400' },
   subtitle: { color: '#aaa', fontSize: 16, marginTop: 20, marginBottom: 10 },
   cardGreen: {
     backgroundColor: '#1e1e1e',
@@ -328,39 +505,51 @@ const styles = StyleSheet.create({
   eventTitle: { color: '#00ff88', fontSize: 18, fontWeight: '700', marginBottom: 4 },
   eventInfo: { color: '#ccc', fontSize: 15, marginBottom: 4 },
   mapLink: { color: '#00ff88', textDecorationLine: 'underline', marginTop: 4 },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  actionButton: {
-    backgroundColor: 'transparent',
-    borderColor: '#00ff88',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    marginHorizontal: 6,
-    minWidth: 120,
-  },
   buttonText: {
     color: '#00ff88',
-    fontSize: 12,
+    fontSize: Platform.OS === 'web' ? 13 : 12,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 1,
+    textAlign: 'center',
   },
-  button: {
-    backgroundColor: '#00ff88',
-    borderRadius: 10,
+  deleteButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 22,
-    marginTop: 12,
+    alignSelf: 'flex-end',
+    marginTop: 5,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(255,68,68,0.08)',
+    borderRadius: 8,
+  },
+  clubEventsButton: {
+    backgroundColor: '#00ff88',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 25,
+  },
+  clubEventsButtonText: {
+    color: '#000',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  allConvocationsButton: {
+    backgroundColor: '#171e20',
+    borderColor: '#00ff88',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 13,
+    marginBottom: 14,
+    alignItems: 'center'
+  },
+  allConvocationsButtonText: {
+    color: '#00ff88',
+    fontWeight: 'bold',
+    fontSize: 15,
+    textAlign: 'center',
   },
   socialLinks: {
     flexDirection: 'row',
@@ -374,5 +563,18 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     marginHorizontal: 5,
     backgroundColor: '#222',
+  },
+  logoutButton: {
+    marginTop: 40,
+    borderColor: '#00ff88',
+    borderWidth: 2,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  logoutButtonText: {
+    color: '#00ff88',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

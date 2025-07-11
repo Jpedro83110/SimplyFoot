@@ -32,16 +32,32 @@ export default function BesoinTransportCoach() {
     if (!selectedEquipe) return;
     (async () => {
       setLoading(true);
+      
+      // ✅ CORRECTION: Filtre pour inclure les événements du jour même
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const filterDate = yesterday.toISOString().split('T')[0]; // Format YYYY-MM-DD
+      
+      console.log("Date d'aujourd'hui:", today.toISOString().split('T')[0]);
+      console.log("Filtrage des événements à partir du:", filterDate);
+
       const { data: evts } = await supabase
         .from('evenements')
         .select('*')
         .eq('equipe_id', selectedEquipe.id)
-        .order('date', { ascending: false });
-      setEvenements(evts || []);
+        .gte('date', filterDate) // ← AJOUTÉ: Filtre >= hier (pour inclure aujourd'hui)
+        .order('date', { ascending: true }); // ← MODIFIÉ: Ordre croissant pour voir les prochains en premier
+      
+      console.log("✅ Événements futurs récupérés:", evts?.length || 0);
+
+      // ✅ SÉCURITÉ SUPPLÉMENTAIRE: Double filtrage côté client
+      const filteredEvents = (evts || []).filter(evt => evt.date >= filterDate);
+      setEvenements(filteredEvents);
 
       // Pour chaque événement, on récupère les demandes associées
       let demandesMap = {};
-      for (let evt of evts || []) {
+      for (let evt of filteredEvents) {
         const { data: demandes } = await supabase
           .from('messages_besoin_transport')
           .select('*')
@@ -67,6 +83,7 @@ export default function BesoinTransportCoach() {
         }));
       }
       setDemandesParEvenement(demandesMap);
+      console.log("Événements finaux avec demandes:", Object.keys(demandesMap).length);
       setLoading(false);
     })();
   }, [selectedEquipe]);
@@ -98,46 +115,54 @@ export default function BesoinTransportCoach() {
         </Text>
       </TouchableOpacity>
       <Text style={styles.title}>Demandes de transport — {selectedEquipe.categorie}</Text>
+      <Text style={styles.subtitle}>Événements à venir nécessitant un transport</Text>
 
-      {evenements.map(evt => (
-        <View key={evt.id} style={styles.eventBlock}>
-          <Text style={styles.eventTitle}>
-            <Ionicons name="calendar" size={15} color={YELLOW} /> {evt.titre || 'Événement'} — {evt.date} — {evt.lieu || ''}
-          </Text>
-          {(demandesParEvenement[evt.id] || []).length === 0 ? (
-            <Text style={styles.empty}>Aucune demande</Text>
-          ) : (
-            (demandesParEvenement[evt.id] || []).map(d => (
-              <View key={d.id} style={styles.card}>
-                <Text style={styles.info}>
-                  <Ionicons name="person-circle-outline" size={16} color={GREEN} /> {d.joueur_prenom} {d.joueur_nom}
-                </Text>
-                {d.hasParent ? (
-                  <Text style={styles.info}>
-                    <Ionicons name="people-circle" size={13} color={YELLOW} /> Parent : {d.parent_prenom} {d.parent_nom}
-                  </Text>
-                ) : (
-                  <Text style={[styles.info, {color:'#aaa'}]}>
-                    <Ionicons name="warning" size={13} color="#ff3e3e" /> Pas de parent validé
-                  </Text>
-                )}
-                <Text style={styles.info}>
-                  <Ionicons name="home" size={13} color="#44d" /> {d.adresse_demande}
-                  {"   "}
-                  <Ionicons name="time" size={13} color="#44d" /> {d.heure_demande}
-                </Text>
-                <Text style={[styles.info, {marginTop:2}]}>
-                  <Ionicons name="information-circle" size={13} color="#ffe44d" /> Statut : <Text style={{color: YELLOW}}>{d.etat}</Text>
-                </Text>
-                {/* **Le coach peut cliquer pour interagir/proposer** */}
-                <TouchableOpacity style={styles.detailBtn} onPress={() => router.push(`/transport/demande/${d.id}`)}>
-                  <Text style={{ color: '#111', fontWeight: 'bold' }}>Détail / Proposer / Signer</Text>
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
+      {evenements.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>Aucun événement à venir</Text>
+          <Text style={styles.emptySubtitle}>Il n'y a pas d'événements futurs pour cette équipe</Text>
         </View>
-      ))}
+      ) : (
+        evenements.map(evt => (
+          <View key={evt.id} style={styles.eventBlock}>
+            <Text style={styles.eventTitle}>
+              <Ionicons name="calendar" size={15} color={YELLOW} /> {evt.titre || 'Événement'} — {evt.date} — {evt.lieu || ''}
+            </Text>
+            {(demandesParEvenement[evt.id] || []).length === 0 ? (
+              <Text style={styles.empty}>Aucune demande de transport</Text>
+            ) : (
+              (demandesParEvenement[evt.id] || []).map(d => (
+                <View key={d.id} style={styles.card}>
+                  <Text style={styles.info}>
+                    <Ionicons name="person-circle-outline" size={16} color={GREEN} /> {d.joueur_prenom} {d.joueur_nom}
+                  </Text>
+                  {d.hasParent ? (
+                    <Text style={styles.info}>
+                      <Ionicons name="people-circle" size={13} color={YELLOW} /> Parent : {d.parent_prenom} {d.parent_nom}
+                    </Text>
+                  ) : (
+                    <Text style={[styles.info, {color:'#aaa'}]}>
+                      <Ionicons name="warning" size={13} color="#ff3e3e" /> Pas de parent validé
+                    </Text>
+                  )}
+                  <Text style={styles.info}>
+                    <Ionicons name="home" size={13} color="#44d" /> {d.adresse_demande}
+                    {"   "}
+                    <Ionicons name="time" size={13} color="#44d" /> {d.heure_demande}
+                  </Text>
+                  <Text style={[styles.info, {marginTop:2}]}>
+                    <Ionicons name="information-circle" size={13} color="#ffe44d" /> Statut : <Text style={{color: YELLOW}}>{d.etat}</Text>
+                  </Text>
+                  {/* **Le coach peut cliquer pour interagir/proposer** */}
+                  <TouchableOpacity style={styles.detailBtn} onPress={() => router.push(`/transport/demande/${d.id}`)}>
+                    <Text style={{ color: '#111', fontWeight: 'bold' }}>Détail / Proposer / Signer</Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+          </View>
+        ))
+      )}
     </ScrollView>
   );
 }
@@ -146,6 +171,7 @@ const styles = StyleSheet.create({
   choixContainer: { padding: 20, alignItems: 'center', backgroundColor: '#101417', minHeight: '100%' },
   container: { padding: 16, backgroundColor: '#101417', minHeight: '100%' },
   title: { fontSize: 22, color: '#00ff88', fontWeight: 'bold', marginVertical: 16, textAlign: 'center' },
+  subtitle: { color: '#aaa', fontSize: 14, textAlign: 'center', marginBottom: 20, fontStyle: 'italic' },
   equipeBtn: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#222',
     borderColor: '#00ff88', borderWidth: 2, padding: 18, borderRadius: 16, marginVertical: 10, width: 220, justifyContent: 'center'
@@ -155,6 +181,25 @@ const styles = StyleSheet.create({
   eventBlock: { marginTop: 22, marginBottom: 10 },
   eventTitle: { color: '#ffe44d', fontWeight: 'bold', fontSize: 17, marginBottom: 10 },
   empty: { color: '#aaa', fontStyle: 'italic', marginBottom: 10 },
+  emptyContainer: { 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginTop: 50, 
+    padding: 20 
+  },
+  emptyTitle: { 
+    color: '#888', 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    textAlign: 'center', 
+    marginBottom: 8 
+  },
+  emptySubtitle: { 
+    color: '#666', 
+    fontSize: 14, 
+    textAlign: 'center', 
+    fontStyle: 'italic' 
+  },
   card: { backgroundColor: '#181f22', borderRadius: 10, marginBottom: 10, padding: 12, borderColor: '#00ff88', borderWidth: 1 },
   info: { color: '#fff', fontSize: 14, marginBottom: 2, flexDirection: 'row', alignItems: 'center' },
   detailBtn: { marginTop: 8, backgroundColor: '#00ff88', padding: 10, borderRadius: 8, alignItems: 'center' }

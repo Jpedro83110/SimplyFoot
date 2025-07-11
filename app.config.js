@@ -26,7 +26,7 @@ export default {
       foregroundImage: './assets/adaptive-icon-foreground.png',
       backgroundColor: '#121212',
     },
-    permissions: ['NOTIFICATIONS'], // 👈 plus de "CAMERA"
+    permissions: ['NOTIFICATIONS'],
   },
   web: {
     favicon: './assets/icon.png',
@@ -35,7 +35,13 @@ export default {
   plugins: [
     'expo-router',
     'expo-notifications',
-    'expo-sqlite'
+    'expo-sqlite',
+    [
+      'expo-image-picker',
+      {
+        photosPermission: "L'application accède à vos photos pour vous permettre de partager avec vos amis."
+      }
+    ]
   ],
   extra: {
     eas: {

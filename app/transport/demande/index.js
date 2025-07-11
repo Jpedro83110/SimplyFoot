@@ -30,7 +30,7 @@ export default function ListeDemandesTransport() {
         evenement:evenement_id (titre, date, heure),
         decharge:joueur_id (parent_prenom, parent_nom, accepte_transport)
       `)
-      .not('statut', 'eq', 'signe')
+      .not('etat', 'eq', 'signe')
       .order('created_at', { ascending: false });
 
     if (!error && data) setDemandes(data);

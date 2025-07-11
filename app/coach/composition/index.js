@@ -29,24 +29,35 @@ export default function ListeCompositions() {
     if (!data) {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData?.session?.user?.id;
-      // console.log("SESSION USER ID :", userId);
+      
+      // ✅ CORRECTION: Filtre à partir d'hier pour inclure les événements du jour
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const filterDate = yesterday.toISOString().split('T')[0]; // Format YYYY-MM-DD
+      
+      console.log("Date d'aujourd'hui:", today.toISOString().split('T')[0]);
+      console.log("Filtrage des événements à partir du:", filterDate);
 
       const { data: freshData, error } = await supabase
         .from('evenements')
         .select('*')
         .eq('coach_id', userId)
+        .gte('date', filterDate) // ← MODIFIÉ: Filtre >= hier (pour inclure aujourd'hui)
         .order('date', { ascending: true });
-      // console.log("Evenements reçus :", freshData, "erreur ?", error);
+      
+      console.log("Événements futurs reçus:", freshData?.length || 0, "événements");
 
       if (!error) {
         data = freshData;
         await saveToCache(CACHE_KEY, freshData); // MAJ le cache
       } else {
+        console.error("Erreur lors de la récupération des événements:", error);
         data = [];
       }
     }
 
-    // Patch : accepte cache {value: [...]} ou tableau simple
+    // Patch : accepte cache {value: [...]} ou tableau simple
     let evenementsList = [];
     if (data && Array.isArray(data.value)) {
       evenementsList = data.value;
@@ -66,6 +77,15 @@ export default function ListeCompositions() {
       await saveToCache(CACHE_KEY, evenementsList);
     }
 
+    // ✅ SÉCURITÉ SUPPLÉMENTAIRE: Double filtrage côté client (à partir d'hier)
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const filterDate = yesterday.toISOString().split('T')[0];
+    
+    evenementsList = evenementsList.filter(ev => ev.date >= filterDate);
+
+    console.log("Événements finaux après filtrage:", evenementsList.length);
     setEvenements(evenementsList);
     setLoading(false);
     setRefreshing(false);
@@ -124,7 +144,9 @@ export default function ListeCompositions() {
           </TouchableOpacity>
         ))
       ) : !loading ? (
-        <Text style={{ color: "#888", textAlign: "center", marginTop: 30 }}>Aucun événement à afficher</Text>
+        <Text style={{ color: "#888", textAlign: "center", marginTop: 30 }}>
+          Aucun événement à venir à afficher
+        </Text>
       ) : null}
 
       {loading && <Text style={{ color: '#00ff88', textAlign: 'center', marginTop: 30 }}>Chargement…</Text>}

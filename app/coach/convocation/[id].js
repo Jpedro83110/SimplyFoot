@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Modal, TextInput, Platform
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 
 export default function ConvocationDetail() {
   const { id } = useLocalSearchParams();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState(null);
   const [presents, setPresents] = useState([]);
@@ -20,78 +21,96 @@ export default function ConvocationDetail() {
   const [lieuRdv, setLieuRdv] = useState('');
   const [heureRdv, setHeureRdv] = useState('');
 
+  // ✅ CORRIGÉ : Un seul useEffect avec la fonction async à l'intérieur
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
 
-      // 1. Récup événement (équipe etc)
-      const { data: evt } = await supabase
-        .from('evenements')
-        .select('*')
-        .eq('id', id)
-        .single();
-      if (!evt) { setLoading(false); return; }
-      setEvent(evt);
+      try {
+        // 1. Récup événement (équipe etc)
+        const { data: evt } = await supabase
+          .from('evenements')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (!evt) { setLoading(false); return; }
+        setEvent(evt);
 
-      // 2. Récup tous les joueurs de l'équipe (clé: id)
-      const { data: joueurs, error: joueursError } = await supabase
-        .from('joueurs')
-        .select('id, nom, prenom, poste, equipe_id')
-        .eq('equipe_id', evt.equipe_id);
-      if (joueursError) console.log("Erreur joueurs:", joueursError);
+        // 2. Récup tous les joueurs de l'équipe (clé: id)
+        const { data: joueurs, error: joueursError } = await supabase
+          .from('joueurs')
+          .select('id, nom, prenom, poste, equipe_id')
+          .eq('equipe_id', evt.equipe_id);
+        if (joueursError) console.log("Erreur joueurs:", joueursError);
 
-      // 3. Récup participations à cet événement
-      const { data: participations, error: participationsError } = await supabase
-        .from('participations_evenement')
-        .select('*')
-        .eq('evenement_id', id);
-      if (participationsError) console.log("Erreur participations:", participationsError);
+        // 3. Récup participations à cet événement
+        const { data: participations, error: participationsError } = await supabase
+          .from('participations_evenement')
+          .select('*')
+          .eq('evenement_id', id);
+        if (participationsError) console.log("Erreur participations:", participationsError);
 
-      // 4. Récup utilisateurs correspondant à ces joueurs (jointure sur joueur_id)
-      const joueursIds = (joueurs || []).map(j => j.id);
-      let utilisateursMap = {};
-      if (joueursIds.length) {
-        const { data: utilisateurs, error: utilisateursError } = await supabase
-          .from('utilisateurs')
-          .select('joueur_id, email, tel, nom, prenom')
-          .in('joueur_id', joueursIds);
-        if (utilisateursError) console.log("Erreur utilisateurs:", utilisateursError);
+        // 4. Récup utilisateurs correspondant à ces joueurs (jointure sur joueur_id)
+        const joueursIds = (joueurs || []).map(j => j.id);
+        let utilisateursMap = {};
+        if (joueursIds.length) {
+          const { data: utilisateurs, error: utilisateursError } = await supabase
+            .from('utilisateurs')
+            .select('joueur_id, numero_licence, tel, nom, prenom')
+            .in('joueur_id', joueursIds);
+          if (utilisateursError) console.log("Erreur utilisateurs:", utilisateursError);
 
-        (utilisateurs || []).forEach(u => { utilisateursMap[u.joueur_id] = u; });
-      }
-
-      // 5. Construction des listes pour l'affichage
-      const presentsArr = [];
-      const absentsArr = [];
-      const sansReponseArr = [];
-
-      for (const joueur of (joueurs || [])) {
-        const userData = utilisateursMap[joueur.id] || {};
-        const joueurComplet = { ...joueur, utilisateur: userData };
-
-        const part = (participations || []).find(p => String(p.joueur_id) === String(joueur.id));
-        if (!part) {
-          sansReponseArr.push(joueurComplet);
-        } else if (part.reponse === 'present') {
-          presentsArr.push({ ...joueurComplet, ...part });
-        } else if (part.reponse === 'absent') {
-          absentsArr.push({ ...joueurComplet, ...part });
+          (utilisateurs || []).forEach(u => { utilisateursMap[u.joueur_id] = u; });
         }
+
+        // 5. Construction des listes pour l'affichage
+        const presentsArr = [];
+        const absentsArr = [];
+        const sansReponseArr = [];
+
+        for (const joueur of (joueurs || [])) {
+          const userData = utilisateursMap[joueur.id] || {};
+          const joueurComplet = { ...joueur, utilisateur: userData };
+
+          const part = (participations || []).find(p => String(p.joueur_id) === String(joueur.id));
+
+          if (!part) {
+            sansReponseArr.push(joueurComplet);
+          } else {
+            switch (part.reponse) {
+              case 'present':
+                presentsArr.push({ ...joueurComplet, ...part });
+                break;
+              case 'absent':
+                absentsArr.push({ ...joueurComplet, ...part });
+                break;
+              case null:
+              case undefined:
+              default:
+                sansReponseArr.push({ ...joueurComplet, ...part });
+            }
+          }
+        }
+
+        // Stats transport
+        const nbBesoinTransport = presentsArr.filter(j => j.besoin_transport).length;
+        const nbPrisEnCharge = presentsArr.filter(j => j.besoin_transport && j.conducteur_id).length;
+
+        setPresents(presentsArr);
+        setAbsents(absentsArr);
+        setSansReponse(sansReponseArr);
+        setStats({ nbBesoinTransport, nbPrisEnCharge });
+        
+      } catch (error) {
+        console.error('Erreur lors du chargement des données:', error);
+      } finally {
+        setLoading(false);
       }
-
-      // Stats transport
-      const nbBesoinTransport = presentsArr.filter(j => j.besoin_transport).length;
-      const nbPrisEnCharge = presentsArr.filter(j => j.besoin_transport && j.conducteur_id).length;
-
-      setPresents(presentsArr);
-      setAbsents(absentsArr);
-      setSansReponse(sansReponseArr);
-      setStats({ nbBesoinTransport, nbPrisEnCharge });
-      setLoading(false);
     }
 
+    // ✅ CORRIGÉ : Appel de la fonction ici, à l'intérieur du même useEffect
     fetchData();
-  }, [id, showModal]);
+  }, [id, showModal]); // ✅ CORRIGÉ : Dépendances correctes
 
   // Modal Transport
   const openModal = (joueur) => {
@@ -135,9 +154,15 @@ export default function ConvocationDetail() {
         )}
 
         <View style={styles.statsRecap}>
-          <Text style={styles.statsPresent}>✅ Présents : {presents.length}</Text>
-          <Text style={styles.statsAbsent}>❌ Absents : {absents.length}</Text>
-          <Text style={styles.statsSansReponse}>❔ Sans réponse : {sansReponse.length}</Text>
+          <View style={styles.statItem}>
+            <Text style={styles.statsPresent}>✅ Présents : {presents.length}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statsAbsent}>❌ Absents : {absents.length}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statsSansReponse}>❔ Sans réponse : {sansReponse.length}</Text>
+          </View>
         </View>
         <View style={styles.statsTransport}>
           <Text style={styles.statsTransportText}>
@@ -151,6 +176,7 @@ export default function ConvocationDetail() {
           data={presents}
           showTransport
           onTransport={openModal}
+          router={router}
         />
         {/* Absents */}
         <Section title="❌ Absents" data={absents} />
@@ -202,7 +228,7 @@ export default function ConvocationDetail() {
 }
 
 // Section d'affichage de chaque liste
-function Section({ title, data, showTransport = false, onTransport }) {
+function Section({ title, data, showTransport = false, onTransport, router }) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -222,14 +248,24 @@ function Section({ title, data, showTransport = false, onTransport }) {
               Tél : {j.utilisateur?.tel || '-'}
             </Text>
             {showTransport && j.besoin_transport && !j.conducteur_id && (
-              <TouchableOpacity style={styles.transportBtn} onPress={() => onTransport(j)}>
-                <Text style={styles.transportText}>🚗 Proposer un transport</Text>
-              </TouchableOpacity>
+              <View style={styles.transportInfo}>
+                <Text style={styles.transportInfoText}>
+                  🚗 Besoin de transport
+                </Text>
+                <TouchableOpacity 
+                  style={styles.transportButton}
+                  onPress={() => router.push('/coach/messages/besoin-transport')}
+                >
+                  <Text style={styles.transportButtonText}>Gérer</Text>
+                </TouchableOpacity>
+              </View>
             )}
             {showTransport && j.besoin_transport && j.conducteur_id && (
-              <Text style={styles.transportInfo}>
-                ✅ Pris en charge{j.lieu_rdv ? ` — ${j.lieu_rdv} à ${j.heure_rdv}` : ''}
-              </Text>
+              <View style={styles.transportSuccess}>
+                <Text style={styles.transportSuccessText}>
+                  ✅ Pris en charge{j.lieu_rdv ? ` — ${j.lieu_rdv} à ${j.heure_rdv}` : ''}
+                </Text>
+              </View>
             )}
           </View>
         ))
@@ -238,9 +274,18 @@ function Section({ title, data, showTransport = false, onTransport }) {
   );
 }
 
-// Styles inchangés, adapte si besoin
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212', padding: 20 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#121212', 
+    padding: Platform.OS === 'web' ? 24 : 20,
+    // Responsive sur web
+    ...(Platform.OS === 'web' && {
+      maxWidth: 800,
+      alignSelf: 'center',
+      width: '100%',
+    }),
+  },
   title: { fontSize: 22, fontWeight: 'bold', color: '#00ff88', textAlign: 'center', marginBottom: 10 },
   info: { color: '#aaa', fontSize: 16, textAlign: 'center', marginBottom: 5 },
   section: { marginBottom: 30 },
@@ -248,10 +293,15 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#1e1e1e',
     borderRadius: 10,
-    padding: 12,
+    padding: Platform.OS === 'web' ? 16 : 12,
     marginBottom: 12,
     borderLeftWidth: 4,
     borderLeftColor: '#00ff88',
+    // Responsive width sur web
+    ...(Platform.OS === 'web' && {
+      maxWidth: '100%',
+      minWidth: 300,
+    }),
   },
   cardName: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   cardPoste: { color: '#aaa', marginBottom: 8 },
@@ -263,21 +313,59 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   transportText: { color: '#111', fontWeight: 'bold' },
-  transportInfo: { color: '#0f0', marginTop: 6 },
+  transportInfo: { 
+    backgroundColor: '#ffa500', 
+    padding: 10, 
+    borderRadius: 6, 
+    marginTop: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#ff8c00'
+  },
+  transportSuccess: {
+    backgroundColor: '#00ff88',
+    padding: 8,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  transportSuccessText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 13,
+    textAlign: 'center'
+  },
   empty: { color: '#888', fontStyle: 'italic' },
   statsRecap: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+    justifyContent: Platform.OS === 'web' ? 'space-around' : 'center',
     marginVertical: 14,
     backgroundColor: '#191e1c',
     borderRadius: 10,
-    padding: 10,
+    padding: Platform.OS === 'web' ? 10 : 12,
     borderWidth: 1,
     borderColor: '#00ff88',
   },
-  statsPresent: { color: '#00ff88', fontWeight: 'bold', fontSize: 15 },
-  statsAbsent: { color: '#ff3e60', fontWeight: 'bold', fontSize: 15 },
-  statsSansReponse: { color: '#ffe44d', fontWeight: 'bold', fontSize: 15 },
+  statItem: {
+    alignItems: Platform.OS === 'web' ? 'center' : 'flex-start',
+    marginBottom: Platform.OS === 'web' ? 0 : 8,
+  },
+  statsPresent: { 
+    color: '#00ff88', 
+    fontWeight: 'bold', 
+    fontSize: Platform.OS === 'web' ? 15 : 16,
+    textAlign: Platform.OS === 'web' ? 'center' : 'left',
+  },
+  statsAbsent: { 
+    color: '#ff3e60', 
+    fontWeight: 'bold', 
+    fontSize: Platform.OS === 'web' ? 15 : 16,
+    textAlign: Platform.OS === 'web' ? 'center' : 'left',
+  },
+  statsSansReponse: { 
+    color: '#ffe44d', 
+    fontWeight: 'bold', 
+    fontSize: Platform.OS === 'web' ? 15 : 16,
+    textAlign: Platform.OS === 'web' ? 'center' : 'left',
+  },
   statsTransport: { alignItems: 'center', marginBottom: 14 },
   statsTransportText: { color: '#0ff', fontSize: 14, fontWeight: 'bold' },
   modalOverlay: {
