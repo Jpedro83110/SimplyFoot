@@ -21,7 +21,9 @@ export default function BesoinTransportCoach() {
       setLoading(true);
       const session = await supabase.auth.getSession();
       const userId = session.data.session.user.id;
-      const { data: eqs } = await supabase.from('equipes').select('*').eq('coach_id', userId);
+      
+      const { data: eqs, error } = await supabase.from('equipes').select('*').eq('coach_id', userId);
+      
       setEquipes(eqs || []);
       setLoading(false);
     })();
@@ -30,60 +32,63 @@ export default function BesoinTransportCoach() {
   // 2. Quand une équipe est sélectionnée, charge les événements + demandes de transport
   useEffect(() => {
     if (!selectedEquipe) return;
+    
     (async () => {
       setLoading(true);
       
-      // ✅ CORRECTION: Filtre pour inclure les événements du jour même
+      // Obtenir la date d'aujourd'hui
       const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      const filterDate = yesterday.toISOString().split('T')[0]; // Format YYYY-MM-DD
-      
-      console.log("Date d'aujourd'hui:", today.toISOString().split('T')[0]);
-      console.log("Filtrage des événements à partir du:", filterDate);
+      const todayStr = today.toISOString().split('T')[0]; // Format YYYY-MM-DD
 
-      const { data: evts } = await supabase
+      // Récupérer TOUS les événements de l'équipe d'abord
+      const { data: allEvents, error: eventsError } = await supabase
         .from('evenements')
         .select('*')
         .eq('equipe_id', selectedEquipe.id)
-        .gte('date', filterDate) // ← AJOUTÉ: Filtre >= hier (pour inclure aujourd'hui)
-        .order('date', { ascending: true }); // ← MODIFIÉ: Ordre croissant pour voir les prochains en premier
+        .order('date', { ascending: true });
       
-      console.log("✅ Événements futurs récupérés:", evts?.length || 0);
+      if (allEvents && allEvents.length > 0) {
+        // Filtrer côté client pour plus de contrôle
+        const filteredEvents = allEvents.filter(evt => {
+          const eventDateStr = evt.date.slice(0, 10);
+          return eventDateStr >= todayStr;
+        });
+        
+        setEvenements(filteredEvents);
 
-      // ✅ SÉCURITÉ SUPPLÉMENTAIRE: Double filtrage côté client
-      const filteredEvents = (evts || []).filter(evt => evt.date >= filterDate);
-      setEvenements(filteredEvents);
+        // Pour chaque événement, on récupère les demandes associées
+        let demandesMap = {};
+        for (let evt of filteredEvents) {
+          const { data: demandes, error: demandesError } = await supabase
+            .from('messages_besoin_transport')
+            .select('*')
+            .eq('evenement_id', evt.id);
 
-      // Pour chaque événement, on récupère les demandes associées
-      let demandesMap = {};
-      for (let evt of filteredEvents) {
-        const { data: demandes } = await supabase
-          .from('messages_besoin_transport')
-          .select('*')
-          .eq('evenement_id', evt.id)
-          .eq('etat', 'en_attente');
+          demandesMap[evt.id] = await Promise.all((demandes || []).map(async (d) => {
+            // Joueur
+            const { data: user } = await supabase.from('utilisateurs').select('prenom, nom').eq('id', d.joueur_id).single();
+            // Parent demandeur (via décharge)
+            const { data: decharge } = await supabase.from('decharges_generales')
+              .select('parent_prenom, parent_nom, accepte_transport')
+              .eq('joueur_id', d.joueur_id).eq('accepte_transport', true).single();
 
-        demandesMap[evt.id] = await Promise.all((demandes || []).map(async (d) => {
-          // Joueur
-          const { data: user } = await supabase.from('utilisateurs').select('prenom, nom').eq('id', d.joueur_id).single();
-          // Parent demandeur (via décharge)
-          const { data: decharge } = await supabase.from('decharges_generales')
-            .select('parent_prenom, parent_nom, accepte_transport')
-            .eq('joueur_id', d.joueur_id).eq('accepte_transport', true).single();
-
-          return {
-            ...d,
-            joueur_prenom: user?.prenom || '',
-            joueur_nom: user?.nom || '',
-            parent_prenom: decharge?.parent_prenom || '',
-            parent_nom: decharge?.parent_nom || '',
-            hasParent: !!decharge,
-          };
-        }));
+            return {
+              ...d,
+              joueur_prenom: user?.prenom || '',
+              joueur_nom: user?.nom || '',
+              parent_prenom: decharge?.parent_prenom || '',
+              parent_nom: decharge?.parent_nom || '',
+              hasParent: !!decharge,
+            };
+          }));
+        }
+        
+        setDemandesParEvenement(demandesMap);
+      } else {
+        setEvenements([]);
+        setDemandesParEvenement({});
       }
-      setDemandesParEvenement(demandesMap);
-      console.log("Événements finaux avec demandes:", Object.keys(demandesMap).length);
+      
       setLoading(false);
     })();
   }, [selectedEquipe]);
@@ -95,13 +100,17 @@ export default function BesoinTransportCoach() {
     return (
       <ScrollView contentContainerStyle={styles.choixContainer}>
         <Text style={styles.title}>Sélectionne une équipe :</Text>
-        {equipes.map(eq => (
-          <TouchableOpacity key={eq.id} style={styles.equipeBtn} onPress={() => setSelectedEquipe(eq)}>
-            <FontAwesome5 name="users" color={GREEN} size={18} style={{marginRight:7}} />
-            <Text style={styles.equipeText}>{eq.categorie} — {eq.nom}</Text>
-            <Ionicons name="chevron-forward" size={19} color={YELLOW} style={{marginLeft:7}} />
-          </TouchableOpacity>
-        ))}
+        {equipes.length === 0 ? (
+          <Text style={styles.emptyTitle}>Aucune équipe trouvée pour ce coach</Text>
+        ) : (
+          equipes.map(eq => (
+            <TouchableOpacity key={eq.id} style={styles.equipeBtn} onPress={() => setSelectedEquipe(eq)}>
+              <FontAwesome5 name="users" color={GREEN} size={18} style={{marginRight:7}} />
+              <Text style={styles.equipeText}>{eq.categorie} — {eq.nom}</Text>
+              <Ionicons name="chevron-forward" size={19} color={YELLOW} style={{marginLeft:7}} />
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     );
   }

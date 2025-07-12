@@ -22,6 +22,7 @@ export default function ListeDemandesTransport() {
 
   async function fetchDemandes() {
     setLoading(true);
+
     const { data, error } = await supabase
       .from('messages_besoin_transport')
       .select(`
@@ -33,7 +34,20 @@ export default function ListeDemandesTransport() {
       .not('etat', 'eq', 'signe')
       .order('created_at', { ascending: false });
 
-    if (!error && data) setDemandes(data);
+    if (!error && data) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Garder les demandes dont la date d'événement est aujourd'hui ou à venir
+      const demandesFiltrees = data.filter(d => {
+        if (!d.evenement || !d.evenement.date) return false;
+        const eventDate = new Date(d.evenement.date.slice(0, 10));
+        eventDate.setHours(0, 0, 0, 0);
+        return eventDate >= today;
+      });
+
+      setDemandes(demandesFiltrees);
+    }
     setLoading(false);
   }
 
@@ -43,7 +57,7 @@ export default function ListeDemandesTransport() {
       {loading ? (
         <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />
       ) : demandes.length === 0 ? (
-        <Text style={styles.empty}>Aucune demande de transport actuellement.</Text>
+        <Text style={styles.empty}>Aucune demande de transport à venir.</Text>
       ) : (
         <ScrollView>
           {demandes.map((demande) => (

@@ -89,27 +89,50 @@ export default function TransportDetail() {
     }
     setEvenement(eventData);
 
-    // 6. Autorisation
+// 6. Autorisation
     let isAuthorized = false;
+    console.log('🔥 DEBUG AUTH - Début autorisation 🔥');
+    console.log('🔥 connectedId:', connectedId);
+    console.log('🔥 dechargeData:', dechargeData);
+    
+    // Coach de l'équipe peut proposer
     if (eventData?.equipe_id) {
       const { data: equipe } = await supabase
         .from('equipes')
         .select('coach_id')
         .eq('id', eventData.equipe_id)
         .single();
+      console.log('🔥 Équipe coach_id:', equipe?.coach_id);
+      console.log('🔥 Est coach?', equipe?.coach_id === connectedId);
       if (equipe?.coach_id === connectedId) isAuthorized = true;
     }
-    if (
-      dechargeData?.accepte_transport &&
-      joueurData &&
-      session?.session?.user &&
-      (
-        session?.session?.user?.user_metadata?.prenom === dechargeData.parent_prenom &&
-        session?.session?.user?.user_metadata?.nom === dechargeData.parent_nom
-      )
-    ) {
-      isAuthorized = true;
-    }
+    
+// Vérifier la décharge du joueur CONNECTÉ (Lyam), pas du demandeur (Lisandro)
+if (connectedId) {
+  const { data: currentUser } = await supabase
+    .from('utilisateurs')
+    .select('prenom, nom, joueur_id')
+    .eq('id', connectedId)
+    .single();
+  
+  console.log('🔥 currentUser (Lyam):', currentUser);
+  
+  // Récupérer la décharge de LYAM (pas de Lisandro)
+  const { data: currentUserDecharge } = await supabase
+    .from('decharges_generales')
+    .select('accepte_transport')
+    .eq('joueur_id', currentUser?.joueur_id)
+    .eq('accepte_transport', true)
+    .single();
+  
+  console.log('🔥 Décharge de Lyam:', currentUserDecharge);
+  
+  if (currentUserDecharge?.accepte_transport) {
+    isAuthorized = true;
+  }
+}
+    
+    console.log('🔥 AUTORISATION FINALE:', isAuthorized);
     setAutorise(isAuthorized);
 
     // 7. Propositions transport
