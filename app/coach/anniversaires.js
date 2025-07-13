@@ -38,30 +38,43 @@ export default function CoachAnniversaires() {
         // 4. Tous les joueurs de ces équipes
         const { data: joueurs } = await supabase
           .from('joueurs')
-          .select('id, nom, prenom, date_naissance, photo_url, equipe_id')
+          .select('id, nom, prenom, date_naissance, photo_profil_url, equipe_id')
           .in('equipe_id', equipeIds);
 
-        // 5. Tous les coachs du club (table STAFF)
+        // 5. Tous les coachs du club (table STAFF, avec photo_url)
         const { data: coachs } = await supabase
           .from('staff')
-          .select('id, nom, prenom, date_naissance, role, actif, club_id')
+          .select('id, nom, prenom, date_naissance, role, actif, club_id, photo_url')
           .eq('role', 'coach')
           .eq('club_id', coachUser.club_id)
           .eq('actif', true);
 
-        // Fusion joueurs + coachs (coachUser lui-même inclus si staff)
+        // 6. Président du club (table utilisateurs, pas de photo)
+        const { data: presidents } = await supabase
+          .from('utilisateurs')
+          .select('id, nom, prenom, date_naissance, role')
+          .eq('role', 'president')
+          .eq('club_id', coachUser.club_id);
+
+        // 7. Fusionne tout
         let membres = [];
         if (joueurs) membres = membres.concat(joueurs.map(j => ({
           ...j,
           role: 'joueur',
+          photo_url: j.photo_profil_url || null,
         })));
         if (coachs) membres = membres.concat(coachs.map(c => ({
           ...c,
-          photo_url: null, // Ajoute ici le champ photo si tu l'as dans staff
           role: 'coach',
+          photo_url: c.photo_url || null,
+        })));
+        if (presidents) membres = membres.concat(presidents.map(p => ({
+          ...p,
+          role: 'président',
+          photo_url: null,
         })));
 
-        // Filtrer ceux qui ont bien une date_naissance
+        // 8. Filtrer ceux qui ont une date de naissance
         membres = membres.filter(m => !!m.date_naissance);
 
         setMembres(membres);
@@ -81,7 +94,6 @@ export default function CoachAnniversaires() {
     );
   }
 
-  // <ScrollView> dans la page parent si tu veux scroll global
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#111417' }}>
       <CalendrierAnniversaires membres={membres} zoneInitiale="B" />

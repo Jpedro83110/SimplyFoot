@@ -7,22 +7,26 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import useCacheData from '../../lib/cache'; // <-- AJOUT
 
 export default function Membres() {
   const [equipeFiltre, setEquipeFiltre] = useState('');
   const [clubId, setClubId] = useState(null);
+  const [joueurs, setJoueurs] = useState([]);
+  const [equipes, setEquipes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const router = useRouter();
 
-  // --- On charge clubId (session)
   useEffect(() => {
     async function getClubId() {
+      setLoading(true);
       const session = await supabase.auth.getSession();
       const userId = session?.data?.session?.user?.id;
       if (!userId) return Alert.alert("Erreur", "Utilisateur non authentifié");
@@ -35,80 +39,71 @@ export default function Membres() {
 
       if (!club?.id) return Alert.alert("Erreur", "Club introuvable");
       setClubId(club.id);
+      setLoading(false);
     }
     getClubId();
   }, []);
 
-  // --- FONCTION DE FETCH
-  const fetchMembresEtEquipes = async () => {
-    // On récupère équipes et utilisateurs d'un coup
-    const { data: allEquipes, error: eqErr } = await supabase
-      .from('equipes')
-      .select('id, nom')
-      .eq('club_id', clubId);
+  useEffect(() => {
+    if (!clubId) return;
+    setLoading(true);
 
-    if (eqErr) throw new Error(eqErr.message);
+    async function fetchData() {
+      try {
+        // 1. Toutes les équipes du club
+        const { data: equipesData } = await supabase
+          .from('equipes')
+          .select('id, nom, categorie')
+          .eq('club_id', clubId);
 
-    const { data: utilisateurs, error: err1 } = await supabase
-      .from('utilisateurs')
-      .select('id, nom, prenom, role, joueur_id')
-      .eq('club_id', clubId)
-      .ilike('role', 'joueur');
+        setEquipes(equipesData || []);
 
-    if (err1) throw new Error(err1.message);
-
-    const joueurIds = utilisateurs
-      .map(u => u.joueur_id)
-      .filter(id => typeof id === 'string' && id.trim() !== '');
-
-    let joueurs = [];
-    if (joueurIds.length > 0) {
-      const { data: joueursData, error: err2 } = await supabase
-        .from('joueurs')
-        .select('id, equipe_id, numero_licence, visite_medicale_valide, equipement')
-        .in('id', joueurIds);
-      if (err2) throw new Error(err2.message);
-      joueurs = joueursData;
+        // 2. Tous les joueurs de ces équipes
+        const equipeIds = (equipesData || []).map(e => e.id);
+        let joueursData = [];
+        if (equipeIds.length) {
+          const { data: joueursResult } = await supabase
+            .from('joueurs')
+            .select('id, prenom, nom, equipe_id, numero_licence, visite_medicale_valide, equipement, photo_profil_url, photo_url')
+            .in('equipe_id', equipeIds);
+          joueursData = joueursResult || [];
+        }
+        setJoueurs(joueursData);
+      } catch (err) {
+        Alert.alert("Erreur", "Impossible de charger les joueurs.");
+      }
+      setLoading(false);
     }
 
-    const equipeMap = Object.fromEntries((allEquipes || []).map(eq => [eq.id, eq.nom]));
+    fetchData();
+  }, [clubId]);
 
-    // Mapping utilisateurs + joueurs
-    const mapped = utilisateurs.map((u) => {
-      const j = joueurs.find(j => j.id === u.joueur_id);
-      return {
-        id: u.id,
-        joueur_id: u.joueur_id,
-        nom: `${u.prenom} ${u.nom}`,
-        equipe: j?.equipe_id ? equipeMap[j.equipe_id] || '-' : '-',
-        equipe_id: j?.equipe_id?.toString() || '',
-        licence: j?.numero_licence || '—',
-        visite_medicale: j?.visite_medicale_valide || false,
-        equipement: j?.equipement || false,
-      };
+  // Map équipe_id -> {nom, categorie}
+  const equipeMap = Object.fromEntries(
+    (equipes || []).map(eq => [eq.id?.toString(), { nom: eq.nom, categorie: eq.categorie }])
+  );
+
+  // Filtre + tri
+  const joueursFiltres = joueurs
+    .filter(j => {
+      if (!equipeFiltre) return true;
+      return (j.equipe_id?.toString() || '') === equipeFiltre;
+    })
+    .sort((a, b) => {
+      // Catégorie > nom équipe > nom joueur
+      const equipeA = equipeMap[a.equipe_id?.toString()] || {};
+      const equipeB = equipeMap[b.equipe_id?.toString()] || {};
+      return (
+        (equipeA.categorie || '').localeCompare(equipeB.categorie || '', 'fr', { sensitivity: 'base' }) ||
+        (equipeA.nom || '').localeCompare(equipeB.nom || '', 'fr', { sensitivity: 'base' }) ||
+        (a.nom || '').localeCompare(b.nom || '', 'fr', { sensitivity: 'base' })
+      );
     });
 
-    return {
-      membres: mapped,
-      equipes: allEquipes || [],
-    };
-  };
-
-  // --- USECACHEDATA (clé unique par club)
-  const cacheKey = clubId ? `membres_club_${clubId}` : null;
-  const [data, refreshData, loading] = useCacheData(
-    cacheKey,
-    fetchMembresEtEquipes,
-    3600 // 1h
-  );
-  const membres = data?.membres || [];
-  const equipes = data?.equipes || [];
-
-  // --- Filtre instantané
-  const joueursFiltres = membres.filter(m => {
-    if (!equipeFiltre) return true;
-    return m.equipe_id === equipeFiltre;
-  });
+  const nbTotal = joueurs.length;
+  const nbEquipe = equipeFiltre
+    ? joueurs.filter(j => (j.equipe_id?.toString() || '') === equipeFiltre).length
+    : nbTotal;
 
   return (
     <LinearGradient colors={["#0a0a0a", "#0f0f0f"]} style={styles.container}>
@@ -121,12 +116,27 @@ export default function Membres() {
             onValueChange={value => setEquipeFiltre(value.toString())}
             style={styles.picker}
           >
-            <Picker.Item label="Toutes les équipes" value="" />
-            {equipes.map(eq => (
-              <Picker.Item key={eq.id} label={eq.nom} value={eq.id.toString()} />
-            ))}
+            <Picker.Item label={`Toutes les équipes (${nbTotal})`} value="" />
+            {(equipes || [])
+              .sort((a, b) => {
+                return (
+                  (a.categorie || '').localeCompare(b.categorie || '', 'fr', { sensitivity: 'base' }) ||
+                  (a.nom || '').localeCompare(b.nom || '', 'fr', { sensitivity: 'base' })
+                );
+              })
+              .map(eq => (
+                <Picker.Item
+                  key={eq.id}
+                  label={`${eq.nom}${eq.categorie ? ` (${eq.categorie})` : ''}`}
+                  value={eq.id.toString()}
+                />
+              ))}
           </Picker>
         </View>
+
+        <Text style={styles.nbLicencieText}>
+          {nbEquipe} licencié{nbEquipe > 1 ? "s" : ""}
+        </Text>
 
         {loading ? (
           <ActivityIndicator color="#00ff88" size="large" style={{ marginTop: 40 }} />
@@ -135,30 +145,57 @@ export default function Membres() {
             Aucun joueur trouvé.
           </Text>
         ) : (
-          joueursFiltres.map((m) => (
-            <View key={m.id} style={styles.card}>
-              <Text style={[styles.name, { textAlign: 'center' }]}>{m.nom}</Text>
-              <Text style={[styles.role, { textAlign: 'center' }]}>{m.equipe}</Text>
-              <Text style={[styles.detail, { textAlign: 'center' }]}>🎫 Licence : {m.licence}</Text>
-              <Text style={[styles.detail, { textAlign: 'center' }]}>🩺 Visite médicale : {m.visite_medicale ? '✅ OK' : '❌'}</Text>
-              <Text style={[styles.detail, { textAlign: 'center' }]}>🎒 Équipement : {m.equipement ? '✅ Fourni' : '❌'}</Text>
+          joueursFiltres.map((j) => {
+            const eq = equipeMap[j.equipe_id?.toString()] || {};
+            // Gestion photo profil
+            let photo = j.photo_profil_url && j.photo_profil_url.trim() !== ''
+              ? j.photo_profil_url
+              : null;
 
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={styles.smallButton}
-                  onPress={() => router.push(`/joueur/eval-mentale?user=${m.joueur_id}`)}
-                >
-                  <Text style={styles.smallButtonText}>🧠 Mentale</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.smallButton}
-                  onPress={() => router.push(`/joueur/eval-technique?user=${m.joueur_id}`)}
-                >
-                  <Text style={styles.smallButtonText}>⚽ Technique</Text>
-                </TouchableOpacity>
+            if (!photo) {
+              // fallback initiales
+              let nom = (j.prenom || '') + ' ' + (j.nom || '');
+              if (nom.trim() === '') nom = 'FC'; // fallback total
+              photo =
+                'https://ui-avatars.com/api/?name=' +
+                encodeURIComponent(nom.trim()) +
+                '&background=232b28&color=fff&rounded=true';
+            }
+            return (
+              <View key={j.id} style={styles.card}>
+                <View style={styles.row}>
+                  <Image
+                    source={{ uri: photo }}
+                    style={styles.avatar}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name}>{j.prenom} {j.nom}</Text>
+                    <Text style={styles.role}>
+                      {eq.nom}
+                      {eq.categorie ? <Text style={{ color: '#00ffcc', fontWeight: '600' }}> ({eq.categorie})</Text> : null}
+                    </Text>
+                    <Text style={styles.detail}>🎫 Licence : {j.numero_licence || '—'}</Text>
+                    <Text style={styles.detail}>🩺 Visite médicale : {j.visite_medicale_valide ? '✅ OK' : '❌'}</Text>
+                    <Text style={styles.detail}>🎒 Équipement : {j.equipement ? '✅ Fourni' : '❌'}</Text>
+                    <View style={styles.buttonRow}>
+                      <TouchableOpacity
+                        style={styles.smallButton}
+                        onPress={() => router.push(`/joueur/eval-mentale?user=${j.id}`)}
+                      >
+                        <Text style={styles.smallButtonText}>🧠 Mentale</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.smallButton}
+                        onPress={() => router.push(`/joueur/eval-technique?user=${j.id}`)}
+                      >
+                        <Text style={styles.smallButtonText}>⚽ Technique</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
               </View>
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </LinearGradient>
@@ -179,13 +216,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#00ff88',
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 12,
     overflow: 'hidden',
   },
   picker: {
     height: 50,
     color: '#00ff88',
     backgroundColor: '#181818',
+  },
+  nbLicencieText: {
+    textAlign: 'center',
+    color: '#00ffcc',
+    fontWeight: 'bold',
+    marginBottom: 9,
+    fontSize: 15,
   },
   card: {
     backgroundColor: '#1e1e1e',
@@ -195,16 +239,29 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#00ff88',
   },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#00ff88',
+    backgroundColor: '#232b28',
+  },
   name: {
     fontSize: 17,
     color: '#fff',
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   role: {
     color: '#ccc',
     fontSize: 14,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   detail: {
     color: '#aaa',
@@ -213,8 +270,8 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
+    justifyContent: 'flex-start',
+    marginTop: 8,
     gap: 12,
   },
   smallButton: {
@@ -225,6 +282,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    marginRight: 10,
   },
   smallButtonText: {
     color: '#00ff88',

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, FlatList, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, FlatList, ScrollView, Image } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -7,6 +7,7 @@ export default function Equipe() {
   const [players, setPlayers] = useState([]);
   const [coach, setCoach] = useState(null);
   const [coachTeams, setCoachTeams] = useState([]);
+  const [equipeCategorie, setEquipeCategorie] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,45 +17,54 @@ export default function Equipe() {
         const userId = session.data.session?.user?.id;
         if (!userId) { alert("Utilisateur non connecté."); setLoading(false); return; }
 
+        // Récupérer le joueur pour avoir son equipe_id
         const { data: joueur } = await supabase
           .from('joueurs').select('id, equipe_id')
           .eq('id', userId).single();
 
         if (!joueur?.equipe_id) { alert("Aucune équipe trouvée."); setLoading(false); return; }
 
+        // Récupérer l'équipe (coach_id, categorie)
         const { data: equipe } = await supabase
-          .from('equipes').select('id, coach_id, nom')
+          .from('equipes').select('id, coach_id, nom, categorie')
           .eq('id', joueur.equipe_id).single();
 
         if (!equipe?.coach_id) { alert("Équipe introuvable ou coach non défini."); setLoading(false); return; }
 
+        setEquipeCategorie(equipe.categorie || '');
+
+        // Récupérer le coach (info utilisateur)
         const { data: coachUser } = await supabase
           .from('utilisateurs').select('prenom, nom, email, id')
           .eq('id', equipe.coach_id).single();
 
-        // Ici, la jointure est sur utilisateur_id !
+        // Récupérer la photo du coach dans staff
+        let coachPhoto = null;
         let coachPhone = null;
         if (coachUser && coachUser.id) {
-          const { data: staffInfo, error: staffError } = await supabase
-            .from('staff').select('telephone')
+          const { data: staffInfo } = await supabase
+            .from('staff').select('photo_url, telephone')
             .eq('utilisateur_id', coachUser.id)
             .maybeSingle();
-          console.log('STAFF INFO', staffInfo, staffError);
+          coachPhoto = staffInfo?.photo_url || null;
           coachPhone = staffInfo?.telephone || null;
         }
 
         setCoach({
           ...coachUser,
-          telephone: coachPhone
+          telephone: coachPhone,
+          photo_url: coachPhoto
         });
 
+        // Équipes du coach
         const { data: teamsOfCoach } = await supabase
           .from('equipes').select('nom')
           .eq('coach_id', equipe.coach_id);
         setCoachTeams(teamsOfCoach || []);
 
+        // Récupérer tous les joueurs de l'équipe (avec photo_profil_url)
         const { data: joueursEquipe } = await supabase
-          .from('joueurs').select('id, nom, prenom, poste')
+          .from('joueurs').select('id, nom, prenom, poste, photo_profil_url')
           .eq('equipe_id', joueur.equipe_id);
 
         setPlayers(joueursEquipe);
@@ -64,7 +74,6 @@ export default function Equipe() {
         setLoading(false);
       }
     }
-
     fetchData();
   }, []);
 
@@ -75,33 +84,53 @@ export default function Equipe() {
       <Text style={styles.title}>
         <Ionicons name="people-circle-outline" size={22} color="#00ff88" /> Mon Équipe
       </Text>
+
       {coach && (
         <View style={styles.coachCard}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
-            <MaterialCommunityIcons name="account-tie" size={18} color="#00ff88" style={{ marginRight: 7 }} />
-            <Text style={styles.coachTitle}>
-              Coach : <Text style={{ color: '#fff' }}>{coach.prenom} {coach.nom}</Text>
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+            <Image
+              source={{
+                uri: coach.photo_url && coach.photo_url.trim() !== ''
+                  ? coach.photo_url
+                  : 'https://ui-avatars.com/api/?name=' +
+                    encodeURIComponent(`${coach.prenom || ''} ${coach.nom || ''}`) +
+                    '&background=232b28&color=fff&rounded=true'
+              }}
+              style={styles.avatarCoach}
+            />
+            <View style={{ marginLeft: 13, flex: 1, flexShrink: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                <MaterialCommunityIcons name="account-tie" size={19} color="#00ff88" style={{ marginRight: 7 }} />
+                <Text style={styles.coachTitle}>
+                  Coach : <Text style={{ color: '#fff' }}>{coach.prenom} {coach.nom}</Text>
+                </Text>
+              </View>
+              <View style={styles.coachInfoRow}>
+                <Ionicons name="call-outline" size={16} color="#00ff88" style={{ marginRight: 4 }} />
+                <Text style={styles.coachText}>
+                  {coach.telephone
+                    ? <Text style={{ color: '#fff', fontWeight: '600' }}>{coach.telephone}</Text>
+                    : <Text style={{ color: '#666' }}>Non communiqué</Text>
+                  }
+                </Text>
+              </View>
+              <View style={styles.coachInfoRow}>
+                <Ionicons name="mail-outline" size={16} color="#00ff88" style={{ marginRight: 4 }} />
+                <Text style={styles.coachText}>{coach.email || <Text style={{ color: '#666' }}>Non communiqué</Text>}</Text>
+              </View>
+              <Text style={styles.coachTeams}>
+                {coachTeams.length > 0
+                  ? <><MaterialCommunityIcons name="soccer-field" size={15} color="#00ff88" /> <Text style={{ color: '#bbb' }}>Équipe du coach : </Text><Text style={{ color: '#fff' }}>{coachTeams.map(e => e.nom).join(', ')}</Text></>
+                  : <Text style={{ color: '#666' }}>Aucune équipe trouvée</Text>
+                }
+              </Text>
+              {equipeCategorie ? (
+                <Text style={styles.coachCategorie}>
+                  <Ionicons name="school-outline" size={15} color="#00ff88" /> <Text style={{ color: '#bbb' }}>Catégorie : </Text><Text style={{ color: '#fff' }}>{equipeCategorie}</Text>
+                </Text>
+              ) : null}
+            </View>
           </View>
-          <View style={styles.coachInfoRow}>
-            <Ionicons name="call-outline" size={16} color="#00ff88" style={{ marginRight: 4 }} />
-            <Text style={styles.coachText}>
-              {coach.telephone
-                ? <Text style={{ color: '#fff', fontWeight: '600' }}>{coach.telephone}</Text>
-                : <Text style={{ color: '#666' }}>Non communiqué</Text>
-              }
-            </Text>
-          </View>
-          <View style={styles.coachInfoRow}>
-            <Ionicons name="mail-outline" size={16} color="#00ff88" style={{ marginRight: 4 }} />
-            <Text style={styles.coachText}>{coach.email || <Text style={{ color: '#666' }}>Non communiqué</Text>}</Text>
-          </View>
-          <Text style={styles.coachTeams}>
-            {coachTeams.length > 0
-              ? <><MaterialCommunityIcons name="soccer-field" size={15} color="#00ff88" /> <Text style={{ color: '#bbb' }}>Équipe du coach : </Text><Text style={{ color: '#fff' }}>{coachTeams.map(e => e.nom).join(', ')}</Text></>
-              : <Text style={{ color: '#666' }}>Aucune équipe trouvée</Text>
-            }
-          </Text>
         </View>
       )}
 
@@ -112,7 +141,16 @@ export default function Equipe() {
         renderItem={({ item }) => (
           <View style={styles.playerCard}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="person-circle-outline" size={20} color="#00ff88" style={{ marginRight: 8 }} />
+              <Image
+                source={{
+                  uri: item.photo_profil_url && item.photo_profil_url.trim() !== ''
+                    ? item.photo_profil_url
+                    : 'https://ui-avatars.com/api/?name=' +
+                      encodeURIComponent(`${item.prenom || ''} ${item.nom || ''}`) +
+                      '&background=222&color=fff&rounded=true'
+                }}
+                style={styles.avatar}
+              />
               <Text style={styles.cardTitle}>{item.prenom} {item.nom}</Text>
             </View>
             <Text style={styles.cardDetail}>{item.poste ? `Poste : ${item.poste}` : 'Poste non défini'}</Text>
@@ -149,6 +187,15 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 2,
   },
+  avatarCoach: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#00ff88',
+    backgroundColor: '#232b28',
+    marginRight: 10,
+  },
   coachTitle: {
     color: '#00ff88',
     fontWeight: '700',
@@ -173,6 +220,12 @@ const styles = StyleSheet.create({
     color: '#bbb',
     marginLeft: 2,
   },
+  coachCategorie: {
+    marginTop: 3,
+    fontSize: 13,
+    color: '#bbb',
+    marginLeft: 2,
+  },
   equipeTitle: {
     fontSize: 17,
     fontWeight: '600',
@@ -193,6 +246,15 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 10,
+    borderWidth: 2,
+    borderColor: '#00ff88',
+    backgroundColor: '#232b28',
+  },
   cardTitle: {
     color: '#fff',
     fontSize: 15,
@@ -202,7 +264,7 @@ const styles = StyleSheet.create({
   cardDetail: {
     color: '#bbb',
     fontSize: 13,
-    marginLeft: 28,
-    marginTop: -2,
+    marginLeft: 58,
+    marginTop: -4,
   },
 });

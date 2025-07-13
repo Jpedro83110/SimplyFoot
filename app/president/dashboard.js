@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
+import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../lib/supabase';
 import useCacheData from '../../lib/cache';
 
@@ -25,36 +26,6 @@ export default function PresidentDashboard() {
   const [userId, setUserId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
-  const [imageRefreshKey, setImageRefreshKey] = useState(Date.now());
-  
-  // États pour la gestion des erreurs d'image
-  const [imageError, setImageError] = useState(false);
-  const [imageRetryCount, setImageRetryCount] = useState(0);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const MAX_RETRY = 3;
-
-  // Hook pour forcer le rechargement de l'image
-  const useForceImageReload = () => {
-    const [reloadKey, setReloadKey] = useState(Date.now());
-    
-    const forceReload = useCallback(() => {
-      console.log('Force reload déclenché');
-      setReloadKey(Date.now());
-    }, []);
-    
-    return [reloadKey, forceReload];
-  };
-
-  const [forceReloadKey, forceReload] = useForceImageReload();
-
-  // Réinitialisez les états lors du changement d'image
-  const resetImageStates = () => {
-    console.log('Reset des états image');
-    setImageError(false);
-    setImageRetryCount(0);
-    setImageLoaded(false);
-    setImageRefreshKey(Date.now());
-  };
 
   // Vérification de l'authentification
   useEffect(() => {
@@ -143,321 +114,200 @@ export default function PresidentDashboard() {
     6 * 3600
   );
 
-  // Fonction pour supprimer l'ancien logo
-  const deleteOldLogo = async (logoUrl) => {
+  // FONCTION OPTIMISÉE - Upload logo mobile/web compatible
+  const handleLogoUpload = async () => {
     try {
-      if (!logoUrl || logoUrl.includes('logo.png')) return;
+      setUploading(true);
+      setError(null);
+
+      // Vérifier la session
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        Alert.alert("Erreur", "Session expirée, veuillez vous reconnecter.");
+        router.replace('/auth/login-club');
+        return;
+      }
+
+      // Demander les permissions pour mobile
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission requise', 'Nous avons besoin de votre permission pour accéder à vos photos.');
+          return;
+        }
+      }
+
+      // Sélection d'image selon la plateforme
+      let image;
       
-      const urlParts = logoUrl.split('/');
-      const fileName = urlParts[urlParts.length - 1];
-      const cleanFileName = fileName.split('?')[0];
-      const filePath = `logos/${cleanFileName}`;
-      
-      console.log('Tentative de suppression du fichier:', filePath);
-      
-      const { error } = await supabase.storage
-        .from('fichiers')
-        .remove([filePath]);
-      
-      if (error) {
-        console.warn('Erreur lors de la suppression:', error);
+      if (Platform.OS === 'web') {
+        // Pour le web, on va utiliser un input file
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        
+        return new Promise((resolve) => {
+          input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+              await processLogoUpload(file, null);
+            }
+            resolve();
+          };
+          input.click();
+        });
       } else {
-        console.log('Ancien logo supprimé avec succès');
-      }
-    } catch (err) {
-      console.warn('Erreur lors de la suppression de l\'ancien logo:', err);
-    }
-  };
+        // Pour mobile
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+          base64: true,
+        });
 
-  // FONCTION CORRIGÉE - Mise à jour de l'état local
-  const updateLocalState = async (publicUrl) => {
-    try {
-      console.log('=== MISE À JOUR ÉTAT LOCAL ===');
-      console.log('Nouvelle URL:', publicUrl);
-      
-      // 1. Forcer la réinitialisation des états d'image AVANT tout
-      resetImageStates();
-      
-      // 2. Mettre à jour l'état local IMMÉDIATEMENT
-      setClubState(prev => ({ 
-        ...prev, 
-        logo_url: publicUrl 
-      }));
-      
-      // 3. NE PAS invalider le cache - cela recharge les anciennes données !
-      // On garde l'état local à jour sans toucher au cache
-      
-      // 4. Forcer un re-render
-      forceReload();
-      
-      // 5. Attendre que la nouvelle URL soit propagée
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log('État local mis à jour avec succès');
-      console.log('==================================');
-      
+        if (!result.canceled && result.assets[0]) {
+          await processLogoUpload(null, result.assets[0]);
+        }
+      }
+
     } catch (error) {
-      console.error('Erreur updateLocalState:', error);
+      console.error('❌ Erreur sélection logo:', error);
+      Alert.alert('Erreur', 'Impossible de sélectionner le logo');
+      setUploading(false);
     }
   };
 
-  // FONCTION CORRIGÉE - Mise à jour après upload  
-  const updateLogoAfterUpload = async (publicUrl) => {
+  // FONCTION OPTIMISÉE - Traitement de l'upload
+  const processLogoUpload = async (webFile, mobileImage) => {
     try {
-      console.log('Début mise à jour logo:', publicUrl);
-      
-      // 1. Attendre un peu que le serveur soit prêt
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // 2. Mettre à jour l'état local SANS invalider le cache
-      await updateLocalState(publicUrl);
-      
-      console.log('Mise à jour terminée avec succès');
-      
-    } catch (error) {
-      console.error('Erreur mise à jour logo:', error);
-      // Continuer quand même
-      await updateLocalState(publicUrl);
-    }
-  };
+      console.log('🖼️ Début upload logo...');
 
-  // FONCTION CORRIGÉE - Modifier le logo (mobile)
-  const modifierLogo = async () => {
-    if (Platform.OS === 'web') return;
-    
-    try {
-      setUploading(true);
-      setError(null);
-      
-      // Vérifier la session
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        Alert.alert("Erreur", "Session expirée, veuillez vous reconnecter.");
-        router.replace('/auth/login-club');
-        return;
-      }
-      
-      // Demander les permissions
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert("Permission refusée", "L'accès à la galerie est nécessaire pour changer le logo.");
-        return;
+      // 1. Supprimer l'ancien logo s'il existe
+      if (club?.logo_url && !club.logo_url.includes('logo.png')) {
+        try {
+          const urlParts = club.logo_url.split('/');
+          let oldFileName = urlParts[urlParts.length - 1];
+          
+          // Enlever le cache-buster s'il existe
+          oldFileName = oldFileName.split('?')[0];
+          
+          const oldFilePath = `logos/${oldFileName}`;
+          
+          console.log('🗑️ Suppression ancien logo:', oldFilePath);
+          
+          const { error: deleteError } = await supabase.storage
+            .from('fichiers')
+            .remove([oldFilePath]);
+          
+          if (deleteError) {
+            console.warn('⚠️ Impossible de supprimer l\'ancien logo:', deleteError.message);
+          } else {
+            console.log('✅ Ancien logo supprimé');
+          }
+        } catch (deleteErr) {
+          console.warn('⚠️ Erreur lors de la suppression:', deleteErr);
+        }
       }
 
-      // Ouvrir la galerie
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
+      // 2. Préparer le nouveau logo selon la plateforme
+      let fileData;
+      let fileExt = 'png';
+      let contentType = 'image/png';
 
-      if (result.canceled || !result.assets?.[0]) {
-        return;
+      if (Platform.OS === 'web' && webFile) {
+        // Web : utiliser le fichier directement
+        fileData = webFile;
+        fileExt = webFile.type.split('/')[1] || 'png';
+        contentType = webFile.type;
+        
+        // Vérifier la taille
+        if (webFile.size > 2 * 1024 * 1024) {
+          throw new Error('Le fichier est trop volumineux (max 2MB)');
+        }
+        
+      } else if (mobileImage) {
+        // Mobile : utiliser base64
+        if (!mobileImage.base64) {
+          throw new Error('Pas de données base64 disponibles');
+        }
+        
+        fileData = decode(mobileImage.base64);
+        
+        // Détecter le type depuis l'URI mobile
+        if (mobileImage.uri.includes('png') || mobileImage.type?.includes('png')) {
+          fileExt = 'png';
+          contentType = 'image/png';
+        } else if (mobileImage.uri.includes('jpeg') || mobileImage.uri.includes('jpg') || mobileImage.type?.includes('jpeg')) {
+          fileExt = 'jpg';
+          contentType = 'image/jpeg';
+        }
+      } else {
+        throw new Error('Aucune donnée d\'image disponible');
       }
 
-      const asset = result.assets[0];
-      const uri = asset.uri;
-      
-      // Lire le fichier avec FileSystem d'Expo
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      if (!fileInfo.exists) {
-        throw new Error("Fichier non trouvé");
-      }
+      // 3. Nom de fichier avec timestamp pour éviter les conflits
+      const fileName = `logos/${club.id}_${Date.now()}.${fileExt}`;
+      console.log('📁 Upload nouveau logo:', fileName);
 
-      // Vérifier la taille du fichier
-      if (fileInfo.size > 2 * 1024 * 1024) {
-        Alert.alert("Erreur", "Le fichier est trop volumineux (max 2MB).");
-        return;
-      }
-
-      // SUPPRIMER L'ANCIEN LOGO D'ABORD
-      if (club?.logo_url) {
-        await deleteOldLogo(club.logo_url);
-      }
-
-      // Créer un nom de fichier unique
-      const fileExtension = asset.mimeType?.split('/')[1] || 'png';
-      const fileName = `logo_${club.id}_${Date.now()}.${fileExtension}`;
-      const filePath = `logos/${fileName}`;
-
-      // Lire le fichier en base64 pour mobile
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      // Convertir en Blob pour l'upload
-      const byteCharacters = atob(base64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: asset.mimeType || 'image/png' });
-
-      // Upload du fichier
+      // 4. Upload vers Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('fichiers')
-        .upload(filePath, blob, {
-          contentType: asset.mimeType || 'image/png',
-          upsert: false,
+        .upload(fileName, fileData, {
+          contentType: contentType,
+          upsert: true
         });
 
       if (uploadError) {
-        console.error('Erreur upload détaillée:', uploadError);
-        throw new Error(`Erreur upload: ${uploadError.message}`);
+        console.error('❌ Erreur upload:', uploadError);
+        throw new Error(`Upload échoué: ${uploadError.message}`);
       }
 
-      // Obtenir l'URL publique
+      console.log('✅ Logo uploadé:', uploadData.path);
+
+      // 5. Récupérer la nouvelle URL publique
       const { data: urlData } = supabase.storage
         .from('fichiers')
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
 
-      const publicUrl = urlData?.publicUrl;
-      if (!publicUrl) {
-        throw new Error("Impossible d'obtenir l'URL du fichier");
-      }
+      const baseLogoUrl = urlData.publicUrl;
+      console.log('🔗 URL de base:', baseLogoUrl);
 
-      // Mettre à jour la base de données
+      // 6. Mettre à jour la base de données
       const { error: updateError } = await supabase
         .from('clubs')
-        .update({ logo_url: publicUrl })
+        .update({ logo_url: baseLogoUrl })
         .eq('id', club.id);
 
       if (updateError) {
-        console.error('Erreur mise à jour BDD:', updateError);
-        
-        // Nettoyer le fichier uploadé en cas d'échec
-        await supabase.storage
-          .from('fichiers')
-          .remove([filePath]);
-          
-        throw new Error(`Erreur mise à jour: ${updateError.message}`);
+        console.error('❌ Erreur sauvegarde:', updateError);
+        throw new Error(`Sauvegarde échouée: ${updateError.message}`);
       }
 
-      // Utiliser la nouvelle fonction de mise à jour
-      await updateLogoAfterUpload(publicUrl);
+      // 7. Mettre à jour l'état local (avec cache-buster seulement sur web)
+      const displayLogoUrl = Platform.OS === 'web' 
+        ? `${baseLogoUrl}?t=${Date.now()}`
+        : baseLogoUrl;
 
-      // Confirmation de succès
-      Alert.alert("Succès", "Logo mis à jour avec succès !");
+      setClubState(prev => ({ ...prev, logo_url: displayLogoUrl }));
 
-    } catch (err) {
-      console.error('Erreur modification logo:', err);
-      setError(err.message);
-      Alert.alert("Erreur", err.message || "Problème lors de la modification du logo.");
+      console.log('🎉 Logo mis à jour avec succès !');
+      Alert.alert('Succès ! 🖼️', 'Logo du club mis à jour !');
+
+    } catch (error) {
+      console.error('❌ Erreur:', error);
+      Alert.alert('Erreur', `Impossible de mettre à jour le logo:\n${error.message}`);
     } finally {
       setUploading(false);
     }
   };
 
-  // FONCTION CORRIGÉE - Modifier le logo (web)
-  const modifierLogoWeb = async (event) => {
-    if (Platform.OS !== 'web') return;
-    
-    try {
-      setUploading(true);
-      setError(null);
-      
-      const file = event.target.files[0];
-      if (!file) return;
-
-      // Vérifications de base
-      if (!file.type.startsWith('image/')) {
-        Alert.alert("Erreur", "Veuillez sélectionner un fichier image.");
-        return;
-      }
-
-      if (file.size > 2 * 1024 * 1024) {
-        Alert.alert("Erreur", "Le fichier est trop volumineux (max 2MB).");
-        return;
-      }
-
-      // Vérifier la session
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        Alert.alert("Erreur", "Session expirée, veuillez vous reconnecter.");
-        router.replace('/auth/login-club');
-        return;
-      }
-
-      // SUPPRIMER L'ANCIEN LOGO D'ABORD
-      if (club?.logo_url) {
-        await deleteOldLogo(club.logo_url);
-      }
-
-      // Créer un nom de fichier unique
-      const fileExtension = file.type.split('/')[1] || 'png';
-      const fileName = `logo_${club.id}_${Date.now()}.${fileExtension}`;
-      const filePath = `logos/${fileName}`;
-
-      // Upload direct du fichier
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('fichiers')
-        .upload(filePath, file, {
-          contentType: file.type,
-          upsert: false,
-        });
-
-      if (uploadError) {
-        console.error('Erreur upload détaillée:', uploadError);
-        throw new Error(`Erreur upload: ${uploadError.message}`);
-      }
-
-      // Obtenir l'URL publique
-      const { data: urlData } = supabase.storage
-        .from('fichiers')
-        .getPublicUrl(filePath);
-
-      const publicUrl = urlData?.publicUrl;
-      if (!publicUrl) {
-        throw new Error("Impossible d'obtenir l'URL du fichier");
-      }
-
-      // Mettre à jour la base de données
-      const { error: updateError } = await supabase
-        .from('clubs')
-        .update({ logo_url: publicUrl })
-        .eq('id', club.id);
-
-      if (updateError) {
-        console.error('Erreur mise à jour BDD:', updateError);
-        
-        // Nettoyer le fichier uploadé en cas d'échec
-        await supabase.storage
-          .from('fichiers')
-          .remove([filePath]);
-          
-        throw new Error(`Erreur mise à jour: ${updateError.message}`);
-      }
-
-      // Utiliser la nouvelle fonction de mise à jour
-      await updateLogoAfterUpload(publicUrl);
-
-      // Confirmation de succès
-      Alert.alert("Succès", "Logo mis à jour avec succès !");
-
-    } catch (err) {
-      console.error('Erreur modification logo web:', err);
-      setError(err.message);
-      Alert.alert("Erreur", err.message || "Problème lors de la modification du logo.");
-    } finally {
-      setUploading(false);
-      // Réinitialiser l'input file
-      if (event.target) {
-        event.target.value = '';
-      }
-    }
-  };
-
-  // COMPOSANT IMAGE ULTRA-SIMPLIFIÉ ET FONCTIONNEL
-  const ImageComponent = () => {
+  // COMPOSANT IMAGE OPTIMISÉ
+  const LogoComponent = () => {
     const defaultLogo = require('../../assets/logo.png');
-    
-    // Utiliser DIRECTEMENT l'URL du state local
     const currentLogoUrl = club?.logo_url;
     
-    // Si erreur ou pas d'URL, afficher l'image par défaut
-    if (imageError || !currentLogoUrl) {
+    if (!currentLogoUrl || currentLogoUrl.includes('logo.png')) {
       return (
         <Image
           source={defaultLogo}
@@ -467,28 +317,18 @@ export default function PresidentDashboard() {
       );
     }
     
-    // URL SANS paramètres complexes - juste un timestamp simple
-    const imageUrl = `${currentLogoUrl}?refresh=${Date.now()}`;
-    
-    console.log('ImageComponent - URL utilisée:', imageUrl);
-    
     return (
-      <View style={styles.logoContainer}>
-        <Image
-          source={{ uri: imageUrl }}
-          style={styles.logo}
-          resizeMode="cover"
-          onError={(error) => {
-            console.log('Erreur image:', error);
-            setImageError(true);
-          }}
-          onLoad={() => {
-            console.log('Image chargée avec succès !');
-            setImageLoaded(true);
-            setImageError(false);
-          }}
-        />
-      </View>
+      <Image
+        source={{ uri: currentLogoUrl }}
+        style={styles.logo}
+        resizeMode="cover"
+        onError={(error) => {
+          console.log('Erreur chargement logo:', error);
+        }}
+        onLoad={() => {
+          console.log('Logo chargé avec succès !');
+        }}
+      />
     );
   };
 
@@ -534,20 +374,7 @@ export default function PresidentDashboard() {
     }
   }, [president, error, router]);
 
-  // Debug effet pour l'URL du logo
-  useEffect(() => {
-    if (club?.logo_url) {
-      console.log('=== LOGO DEBUG ===');
-      console.log('Logo URL:', club.logo_url);
-      console.log('Image refresh key:', imageRefreshKey);
-      console.log('Force reload key:', forceReloadKey);
-      console.log('Image error:', imageError);
-      console.log('Image loaded:', imageLoaded);
-      console.log('================');
-    }
-  }, [club?.logo_url, imageRefreshKey, forceReloadKey, imageError, imageLoaded]);
-
-  const loading = loadingAuth || loadingPresident || loadingClub || uploading;
+  const loading = loadingAuth || loadingPresident || loadingClub;
 
   if (loading) {
     return (
@@ -562,10 +389,26 @@ export default function PresidentDashboard() {
 
   return (
     <LinearGradient colors={["#0a0a0a", "#0f0f0f"]} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+  contentContainerStyle={[styles.scroll, { minHeight: '100vh' }]}
+  showsVerticalScrollIndicator={false}
+  keyboardShouldPersistTaps="handled"
+>
         {/* Header */}
         <View style={styles.header}>
-          <ImageComponent />
+          <TouchableOpacity style={styles.logoContainer} onPress={handleLogoUpload}>
+            <LogoComponent />
+            {uploading ? (
+              <View style={styles.uploadingOverlay}>
+                <ActivityIndicator size="small" color="#00ff88" />
+              </View>
+            ) : (
+              <View style={styles.cameraOverlay}>
+                <Ionicons name="camera" size={12} color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+          
           <View style={styles.headerTextBox}>
             <Text style={styles.welcome}>
               Bienvenue Président {president ? `${president.prenom} ${president.nom}` : ''}
@@ -582,50 +425,9 @@ export default function PresidentDashboard() {
             </View>
             
             {/* Bouton modifier logo */}
-            {Platform.OS === 'web' ? (
-              <>
-                <input
-                  type="file"
-                  accept="image/*"
-                  id="logo-upload"
-                  style={{ display: 'none' }}
-                  onChange={modifierLogoWeb}
-                />
-                <TouchableOpacity 
-                  onPress={() => {
-                    if (Platform.OS === 'web') {
-                      const input = document.getElementById('logo-upload');
-                      if (input) {
-                        input.click();
-                      }
-                    }
-                  }}
-                  disabled={uploading}
-                >
-                  <Text style={styles.logoButtonText}>
-                    {uploading ? '⏳ Modification...' : '🖼 Modifier le logo'}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <TouchableOpacity onPress={modifierLogo} disabled={uploading}>
-                <Text style={styles.logoButtonText}>
-                  {uploading ? '⏳ Modification...' : '🖼 Modifier le logo'}
-                </Text>
-              </TouchableOpacity>
-            )}
-            
-            {/* Bouton de debug temporaire */}
-            <TouchableOpacity 
-              onPress={() => {
-                console.log('Debug: Force reload + reset');
-                forceReload();
-                resetImageStates();
-              }}
-              style={{ marginTop: 5 }}
-            >
-              <Text style={[styles.logoButtonText, { fontSize: 11 }]}>
-                🔄 Forcer rechargement
+            <TouchableOpacity onPress={handleLogoUpload} disabled={uploading}>
+              <Text style={styles.logoButtonText}>
+                {uploading ? '⏳ Modification...' : '🖼 Modifier le logo'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -810,6 +612,30 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     backgroundColor: '#222',
+  },
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#00ff88',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#0a0a0a'
   },
   headerTextBox: {
     flex: 1,

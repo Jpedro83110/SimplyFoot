@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView,
-  Alert, ActivityIndicator
+  Alert, ActivityIndicator, Image
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import useCacheData from '../../lib/cache'; // <-- AJOUT
+import useCacheData from '../../lib/cache';
 
 export default function Staff() {
   const [nom, setNom] = useState('');
@@ -67,7 +67,7 @@ export default function Staff() {
       Alert.alert("✅ Coach ajouté", `${prenom} ${nom} a été ajouté au staff.`);
       setNom('');
       setPrenom('');
-      refreshStaff(); // <-- Refresh auto
+      refreshStaff();
     }
   };
 
@@ -87,7 +87,7 @@ export default function Staff() {
               Alert.alert("Erreur", "Impossible de supprimer ce coach.");
               console.error("Erreur suppression :", error);
             } else {
-              refreshStaff(); // <-- Refresh auto
+              refreshStaff();
             }
           }
         }
@@ -108,7 +108,19 @@ export default function Staff() {
           staff.map((membre) => (
             <View key={membre.id} style={styles.card}>
               <View style={styles.cardRow}>
-                <Text style={styles.cardName}>{membre.prenom} {membre.nom}</Text>
+                <View style={styles.avatarRow}>
+                  <Image
+                    source={{
+                      uri: membre.photo_url && membre.photo_url.trim() !== ''
+                        ? membre.photo_url
+                        : 'https://ui-avatars.com/api/?name=' +
+                          encodeURIComponent(`${membre.prenom || ''} ${membre.nom || ''}`) +
+                          '&background=232b28&color=fff&rounded=true'
+                    }}
+                    style={styles.avatar}
+                  />
+                  <Text style={styles.cardName}>{membre.prenom} {membre.nom}</Text>
+                </View>
                 <TouchableOpacity onPress={() => handleDeleteCoach(membre.id)}>
                   <Ionicons name="trash" size={22} color="#ff4444" />
                 </TouchableOpacity>
@@ -171,6 +183,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
+  },
+  avatarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#00ff88',
+    backgroundColor: '#232b28',
   },
   cardName: {
     fontSize: 17,

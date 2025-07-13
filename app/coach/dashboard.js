@@ -2,15 +2,18 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, Linking, Image, Platform, Dimensions,
+  Modal, TextInput
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import TeamCard from '../../components/TeamCard';
 import useCacheData from '../../lib/cache';
+import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
 
 const { width: screenWidth } = Dimensions.get('window');
-const isWeb = Platform.OS === 'web';
+const GREEN = '#00ff88';
 
 export default function CoachDashboard() {
   const [userId, setUserId] = useState(null);
@@ -18,7 +21,26 @@ export default function CoachDashboard() {
   const [error, setError] = useState(null);
   const [club, setClub] = useState(null);
   const [refreshKey, setRefreshKey] = useState(Date.now());
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const router = useRouter();
+
+  // États pour la modification
+  const [editData, setEditData] = useState({
+    telephone: '',
+    email: '',
+    niveau_diplome: '',
+    experience: '',
+  });
+
+  // Fonction helper pour ajouter un cache-buster à l'affichage
+  const getImageUrlWithCacheBuster = (url) => {
+    if (!url) return url;
+    
+    // Si l'URL contient déjà un paramètre, ajouter avec &, sinon avec ?
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}v=${refreshKey}`;
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: sessionData }) => {
@@ -27,20 +49,17 @@ export default function CoachDashboard() {
       setLoadingAuth(false);
 
       if (id) {
-        // Récupérer club infos pour social
-        const { data: coachData, error: coachError } = await supabase
+        const { data: coachData } = await supabase
           .from('utilisateurs')
           .select('club_id')
           .eq('id', id)
           .single();
         
-        const clubId = coachData?.club_id;
-        
-        if (clubId) {
-          const { data: clubData, error: clubError } = await supabase
+        if (coachData?.club_id) {
+          const { data: clubData } = await supabase
             .from('clubs')
             .select('id, nom, facebook_url, instagram_url, boutique_url, logo_url')
-            .eq('id', clubId)
+            .eq('id', coachData.club_id)
             .single();
           
           setClub(clubData);
@@ -49,20 +68,58 @@ export default function CoachDashboard() {
     });
   }, []);
 
-  // Fetch coach full info (pour prénom/nom)
-  const [coach, , loadingCoach] = useCacheData(
-    userId ? `coach_${userId}` : null,
+  // Fetch coach depuis staff avec URI stable + refreshKey pour forcer le refresh
+  const [coach, setCoach, loadingCoach] = useCacheData(
+    userId ? `coach_${userId}_${refreshKey}` : null,
     async () => {
-      const { data, error } = await supabase.from('utilisateurs').select('*').eq('id', userId).single();
-      if (error) throw error;
-      return data;
+      const { data: staffData, error: staffError } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('utilisateur_id', userId)
+        .single();
+      
+      if (staffError) {
+        const { data: userData, error: userError } = await supabase
+          .from('utilisateurs')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        
+        if (userError) throw userError;
+        return userData;
+      }
+      
+      // Nettoyer l'URL photo pour éviter les cache-busters
+      if (staffData.photo_url) {
+        staffData.photo_url = staffData.photo_url.split('?')[0];
+      }
+      
+      console.log('📷 Coach data loaded:', {
+        id: staffData.id,
+        nom: staffData.nom,
+        photo_url: staffData.photo_url,
+        refreshKey: refreshKey
+      });
+      
+      return staffData;
     },
     12 * 3600
   );
+
+  useEffect(() => {
+    if (coach) {
+      setEditData({
+        telephone: coach?.telephone || '',
+        email: coach?.email || '',
+        niveau_diplome: coach?.niveau_diplome || '',
+        experience: coach?.experience || '',
+      });
+    }
+  }, [coach]);
   
   const clubId = coach?.club_id;
 
-  // Fetch équipes du club
+  // Fetch équipes
   async function fetchEquipesByClub(clubId) {
     if (!clubId) return [];
     
@@ -93,7 +150,185 @@ export default function CoachDashboard() {
     3 * 3600
   );
 
-  // --- SUPPRIMER une équipe ---
+  // Upload photo
+  const handleUploadProfilePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission requise', 'Nous avons besoin de votre permission pour accéder à vos photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const image = result.assets[0];
+        setUploadingPhoto(true);
+        
+        try {
+          // 1. Supprimer l'ancienne photo plus efficacement
+          if (coach?.photo_url) {
+            try {
+              // Extraire le nom de fichier de l'URL complète
+              const url = coach.photo_url.split('?')[0]; // Enlever les paramètres de cache
+              const pathParts = url.split('/');
+              
+              // Chercher l'index de "photos_profils_coachs" dans l'URL
+              const folderIndex = pathParts.findIndex(part => part === 'photos_profils_coachs');
+              
+              if (folderIndex !== -1 && pathParts[folderIndex + 1]) {
+                const fileName = pathParts[folderIndex + 1];
+                const oldFilePath = `photos_profils_coachs/${fileName}`;
+                
+                console.log('🗑️ Suppression ancienne photo:', oldFilePath);
+                
+                const { error: deleteError } = await supabase.storage
+                  .from('fichiers')
+                  .remove([oldFilePath]);
+                
+                if (deleteError) {
+                  console.warn('⚠️ Erreur suppression:', deleteError.message);
+                } else {
+                  console.log('✅ Ancienne photo supprimée');
+                }
+              }
+            } catch (deleteErr) {
+              console.warn('⚠️ Erreur lors de la suppression:', deleteErr);
+            }
+          }
+
+          let fileData;
+          let fileExt = 'jpg';
+          
+          if (Platform.OS === 'web') {
+            const response = await fetch(image.uri);
+            fileData = await response.blob();
+            
+            if (image.uri.includes('.png')) fileExt = 'png';
+            else if (image.uri.includes('.jpeg') || image.uri.includes('.jpg')) fileExt = 'jpg';
+            else if (image.uri.includes('.gif')) fileExt = 'gif';
+          } else {
+            if (!image.base64) {
+              throw new Error('Pas de données base64 disponibles');
+            }
+            
+            fileData = decode(image.base64);
+            
+            if (image.uri.includes('png') || image.type?.includes('png')) fileExt = 'png';
+            else if (image.uri.includes('jpeg') || image.uri.includes('jpg') || image.type?.includes('jpeg')) fileExt = 'jpg';
+            else if (image.uri.includes('gif') || image.type?.includes('gif')) fileExt = 'gif';
+          }
+          
+          // 3. Nom de fichier avec timestamp
+          const fileName = `photos_profils_coachs/${userId}_${Date.now()}.${fileExt}`;
+          console.log('📁 Tentative upload:', fileName);
+          console.log('📦 Taille fichier:', fileData.size || fileData.byteLength || 'inconnue');
+
+          // 4. Upload avec gestion d'erreur améliorée
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('fichiers')
+            .upload(fileName, fileData, {
+              contentType: `image/${fileExt}`,
+              upsert: true
+            });
+
+          console.log('📤 Résultat upload:', { uploadData, uploadError });
+
+          if (uploadError) {
+            console.error('❌ Détail erreur upload:', uploadError);
+            throw new Error(`Upload échoué: ${uploadError.message}`);
+          }
+
+          if (!uploadData || !uploadData.path) {
+            throw new Error('Upload réussi mais pas de path retourné');
+          }
+
+          const { data: urlData } = supabase.storage
+            .from('fichiers')
+            .getPublicUrl(fileName);
+
+          const basePhotoUrl = urlData.publicUrl;
+          
+          // 6. Sauvegarder l'URL PROPRE en base (sans paramètres)
+          console.log('💾 Sauvegarde en base:', basePhotoUrl);
+          
+          const { error: updateError } = await supabase
+            .from('staff')
+            .update({ photo_url: basePhotoUrl })
+            .eq('utilisateur_id', userId);
+
+          if (updateError) {
+            console.error('❌ Erreur sauvegarde base:', updateError);
+            throw new Error(`Sauvegarde échouée: ${updateError.message}`);
+          }
+
+          console.log('✅ Sauvegarde en base réussie');
+
+          // 7. Mettre à jour l'état local et forcer le refresh complet
+          setCoach(prev => ({ ...prev, photo_url: basePhotoUrl }));
+          
+          // IMPORTANT : Forcer un nouveau refreshKey pour synchroniser toutes les plateformes
+          const newRefreshKey = Date.now();
+          setRefreshKey(newRefreshKey);
+          
+          console.log('🔄 RefreshKey updated:', newRefreshKey);
+          console.log('🎯 Photo finale mise à jour:', basePhotoUrl);
+          
+          // Petit délai pour s'assurer que le cache se met à jour
+          setTimeout(() => {
+            console.log('🔄 Forcing complete refresh...');
+          }, 500);
+          
+          Alert.alert('Succès ! 📸', 'Photo de profil mise à jour sur toutes les plateformes !');
+          
+        } catch (error) {
+          console.error('❌ Erreur complète:', error);
+          Alert.alert('Erreur', `Impossible de mettre à jour la photo:\n${error.message}`);
+        } finally {
+          setUploadingPhoto(false);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur sélection photo:', error);
+      Alert.alert('Erreur', 'Impossible de sélectionner la photo');
+      setUploadingPhoto(false);
+    }
+  };
+
+  // Sauvegarder modifications
+  const handleSaveChanges = async () => {
+    try {
+      const updateData = {
+        telephone: editData.telephone.trim(),
+        email: editData.email.trim(),
+        niveau_diplome: editData.niveau_diplome.trim(),
+        experience: editData.experience.trim(),
+      };
+
+      const { error } = await supabase
+        .from('staff')
+        .update(updateData)
+        .eq('utilisateur_id', userId);
+
+      if (error) throw error;
+
+      setCoach(prev => ({ ...prev, ...updateData }));
+      setShowEditModal(false);
+      
+      Alert.alert('Succès', 'Informations mises à jour !');
+    } catch (error) {
+      console.error('Erreur sauvegarde:', error);
+      Alert.alert('Erreur', 'Impossible de sauvegarder les modifications.');
+    }
+  };
+
+  // Supprimer équipe
   const handleDeleteEquipe = (equipeId, nomEquipe) => {
     Alert.alert(
       "Suppression",
@@ -111,7 +346,18 @@ export default function CoachDashboard() {
     );
   };
 
-  // --- Autres hooks (stages, events, participations) ---
+  // Calculer âge
+  const calculAge = (date) => {
+    if (!date) return null;
+    const birth = new Date(date);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age + ' ans';
+  };
+
+  // Hooks pour autres données
   const [stage] = useCacheData(
     clubId ? `stage_${clubId}` : null,
     async () => {
@@ -158,15 +404,6 @@ export default function CoachDashboard() {
     ).length ?? 0,
   };
 
-  // Gestion upload photo de profil
-  const handleUploadProfilePhoto = () => {
-    Alert.alert(
-      "Photo de profil",
-      "Fonctionnalité de téléchargement de photo à implémenter",
-      [{ text: "OK" }]
-    );
-  };
-
   const loading = loadingAuth || loadingCoach || loadingEquipes;
 
   if (loading) return (
@@ -180,15 +417,14 @@ export default function CoachDashboard() {
     <View style={styles.loadingContainer}>
       <Text style={{ color: '#ff4444', marginBottom: 20 }}>{error}</Text>
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: '#00ff88', width: 180 }]}
+        style={{ backgroundColor: '#00ff88', padding: 14, borderRadius: 12, width: 180 }}
         onPress={() => router.replace('/auth/login-club')}
       >
-        <Text style={styles.buttonText}>Reconnexion</Text>
+        <Text style={{ color: '#111', fontWeight: '700', textAlign: 'center' }}>Reconnexion</Text>
       </TouchableOpacity>
     </View>
   );
 
-  // Actions rapides data
   const actionsData = [
     { label: "Créer équipe", icon: "people", route: "/coach/creation-equipe" },
     { label: "Créer événement", icon: "calendar", route: "/coach/creation-evenement" },
@@ -199,58 +435,123 @@ export default function CoachDashboard() {
     { label: "Statistiques", icon: "bar-chart", route: "/coach/statistiques" },
   ];
 
-  // Ajouter le stage si disponible
   if (stage?.id) {
     actionsData.push({ label: "Programme de stage", icon: "book", route: "/coach/programme-stage" });
   }
 
+  const isMobile = screenWidth < 768;
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* --- HEADER AVEC LOGOS --- */}
-      <View style={styles.headerSection}>
-        <View style={styles.logoContainer}>
-          {/* Logo du club */}
-          <View style={styles.logoWrapper}>
-            {club?.logo_url ? (
-              <Image 
-                source={{ uri: club.logo_url }} 
-                style={styles.clubLogo}
-                onError={() => console.log("Erreur chargement logo club")}
-              />
-            ) : (
-              <View style={[styles.clubLogo, styles.placeholderLogo]}>
-                <Ionicons name="shield-outline" size={20} color="#00ff88" />
-              </View>
-            )}
-          </View>
+      {/* Header avec photo + titre + logo */}
+      <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.profilePhotoWrapper} onPress={handleUploadProfilePhoto}>
+          {uploadingPhoto ? (
+            <View style={[styles.profilePhoto, styles.placeholderPhoto]}>
+              <ActivityIndicator size="small" color={GREEN} />
+            </View>
+          ) : coach?.photo_url ? (
+            <Image 
+              source={{ uri: getImageUrlWithCacheBuster(coach.photo_url) }} 
+              style={styles.profilePhoto}
+              key={`${coach.photo_url}_${refreshKey}`} // Clé qui change à chaque refresh
+              onError={(error) => {
+                console.log('❌ Erreur chargement image:', error);
+                console.log('📷 URL problématique:', coach.photo_url);
+              }}
+              onLoad={() => {
+                console.log('✅ Image chargée avec succès:', getImageUrlWithCacheBuster(coach.photo_url));
+              }}
+            />
+          ) : (
+            <View style={[styles.profilePhoto, styles.placeholderPhoto]}>
+              <Ionicons name="camera" size={20} color={GREEN} />
+            </View>
+          )}
+          {!uploadingPhoto && (
+            <View style={styles.cameraOverlay}>
+              <Ionicons name="camera" size={12} color="#fff" />
+            </View>
+          )}
+        </TouchableOpacity>
 
-          {/* Photo de profil */}
-          <TouchableOpacity 
-            style={styles.profilePhotoWrapper}
-            onPress={handleUploadProfilePhoto}
-          >
-            {coach?.photo_url ? (
-              <Image 
-                source={{ uri: coach.photo_url }} 
-                style={styles.profilePhoto}
-                onError={() => console.log("Erreur chargement photo profil")}
-              />
-            ) : (
-              <View style={[styles.profilePhoto, styles.placeholderPhoto]}>
-                <Ionicons name="person-add-outline" size={16} color="#00ff88" />
-              </View>
-            )}
+        <Text style={styles.welcomeTitle}>Bienvenue Coach</Text>
+
+        <View style={styles.logoWrapper}>
+          {club?.logo_url ? (
+            <Image source={{ uri: club.logo_url }} style={styles.clubLogo} />
+          ) : (
+            <View style={[styles.clubLogo, styles.placeholderLogo]}>
+              <Ionicons name="shield-outline" size={20} color={GREEN} />
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Encadré infos coach */}
+      <View style={styles.headerCard}>
+        <View style={styles.nameAndEditRow}>
+          <Text style={styles.headerName}>
+            {coach?.prenom} {coach?.nom}
+          </Text>
+          <TouchableOpacity onPress={() => setShowEditModal(true)} style={styles.editButton}>
+            <Ionicons name="create-outline" size={20} color={GREEN} />
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.title}>
-          {coach
-            ? <>Bienvenue {coach.prenom} {coach.nom} – <Text style={styles.titleSub}>Coach</Text></>
-            : "Bienvenue Coach"}
+        <Text style={styles.headerCat}>
+          Coach · {club?.nom || 'Club'}
         </Text>
+
+        <View style={isMobile ? styles.infoContainerMobile : styles.infoContainerDesktop}>
+          {coach?.email && (
+            <View style={styles.infoRow}>
+              <Ionicons name="mail-outline" size={isMobile ? 16 : 14} color={GREEN} style={styles.infoIcon} />
+              <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
+                {coach.email}
+              </Text>
+            </View>
+          )}
+          
+          {coach?.telephone && (
+            <View style={styles.infoRow}>
+              <Ionicons name="call-outline" size={isMobile ? 16 : 14} color={GREEN} style={styles.infoIcon} />
+              <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
+                {coach.telephone}
+              </Text>
+            </View>
+          )}
+          
+          {calculAge(coach?.date_naissance) && (
+            <View style={styles.infoRow}>
+              <Ionicons name="calendar-outline" size={isMobile ? 16 : 14} color={GREEN} style={styles.infoIcon} />
+              <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
+                {calculAge(coach.date_naissance)}
+              </Text>
+            </View>
+          )}
+          
+          {coach?.niveau_diplome && (
+            <View style={styles.infoRow}>
+              <Ionicons name="school-outline" size={isMobile ? 16 : 14} color={GREEN} style={styles.infoIcon} />
+              <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
+                Diplôme : {coach.niveau_diplome}
+              </Text>
+            </View>
+          )}
+
+          {coach?.experience && (
+            <View style={styles.infoRow}>
+              <Ionicons name="trophy-outline" size={isMobile ? 16 : 14} color={GREEN} style={styles.infoIcon} />
+              <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
+                Expérience : {coach.experience}
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
 
-      {/* --- ÉQUIPES --- */}
+      {/* Équipes */}
       <Text style={styles.subtitle}>📌 Vos équipes</Text>
       {equipes && equipes.length > 0 ? (
         equipes.map((eq) => (
@@ -273,7 +574,7 @@ export default function CoachDashboard() {
         </Text>
       )}
 
-      {/* --- BOUTON EVENEMENTS --- */}
+      {/* Bouton événements */}
       <TouchableOpacity
         style={styles.clubEventsButton}
         onPress={() => router.push('/coach/evenements-club')}
@@ -283,7 +584,7 @@ export default function CoachDashboard() {
         </Text>
       </TouchableOpacity>
 
-      {/* --- PROCHAIN ÉVÉNEMENT --- */}
+      {/* Prochain événement */}
       <Text style={styles.subtitle}>📋 Prochain événement</Text>
       {evenement ? (
         <TouchableOpacity style={styles.cardGreen} onPress={() => router.push(`/coach/convocation/${evenement.id}`)}>
@@ -313,7 +614,7 @@ export default function CoachDashboard() {
         <Text style={styles.eventInfo}>Aucun événement à venir.</Text>
       )}
 
-      {/* --- CONVOCATIONS / EVENEMENTS --- */}
+      {/* Convocations */}
       <TouchableOpacity
         style={styles.allConvocationsButton}
         onPress={() => router.push('/coach/convocation')}
@@ -323,7 +624,7 @@ export default function CoachDashboard() {
         </Text>
       </TouchableOpacity>
 
-      {/* --- ACTIONS RAPIDES RESPONSIVE --- */}
+      {/* Actions rapides */}
       <Text style={styles.subtitle}>⚙️ Actions rapides</Text>
       <View style={styles.actionsContainer}>
         {actionsData.map((action, index) => (
@@ -336,7 +637,7 @@ export default function CoachDashboard() {
         ))}
       </View>
 
-      {/* --- SOCIAL LINKS --- */}
+      {/* Réseaux sociaux */}
       {club && (
         <View style={styles.socialLinks}>
           {club.facebook_url && (
@@ -371,7 +672,7 @@ export default function CoachDashboard() {
         </View>
       )}
 
-      {/* --- LOGOUT --- */}
+      {/* Déconnexion */}
       <TouchableOpacity
         style={styles.logoutButton}
         onPress={async () => {
@@ -381,6 +682,81 @@ export default function CoachDashboard() {
       >
         <Text style={styles.logoutButtonText}>🚪 Se déconnecter</Text>
       </TouchableOpacity>
+
+      {/* Modal modification */}
+      <Modal
+        visible={showEditModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Modifier mes informations</Text>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editData.email}
+                onChangeText={(text) => setEditData(prev => ({ ...prev, email: text }))}
+                placeholder="email@exemple.com"
+                placeholderTextColor="#666"
+                keyboardType="email-address"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Téléphone</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editData.telephone}
+                onChangeText={(text) => setEditData(prev => ({ ...prev, telephone: text }))}
+                placeholder="06 12 34 56 78"
+                placeholderTextColor="#666"
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Niveau diplôme</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editData.niveau_diplome}
+                onChangeText={(text) => setEditData(prev => ({ ...prev, niveau_diplome: text }))}
+                placeholder="Brevet, CFF1, etc."
+                placeholderTextColor="#666"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Expérience</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editData.experience}
+                onChangeText={(text) => setEditData(prev => ({ ...prev, experience: text }))}
+                placeholder="5 ans, débutant, etc."
+                placeholderTextColor="#666"
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: '#333' }]}
+                onPress={() => setShowEditModal(false)}
+              >
+                <Text style={styles.modalButtonText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: GREEN }]}
+                onPress={handleSaveChanges}
+              >
+                <Text style={[styles.modalButtonText, { color: '#000' }]}>Sauvegarder</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -417,49 +793,198 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  // Header avec logos
-  headerSection: {
-    marginBottom: 20,
-  },
-  logoContainer: {
+  // Header row
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
-    paddingHorizontal: 10,
+    marginBottom: 20,
+    marginTop: 20,
   },
-  logoWrapper: {
+  welcomeTitle: {
+    color: GREEN,
+    fontSize: 22,
+    fontWeight: 'bold',
+    textAlign: 'center',
     flex: 1,
   },
-  clubLogo: {
+  profilePhotoWrapper: {
+    position: 'relative',
+  },
+  profilePhoto: {
     width: 50,
     height: 50,
     borderRadius: 25,
     borderWidth: 2,
-    borderColor: '#00ff88',
-  },
-  placeholderLogo: {
-    backgroundColor: '#1e1e1e',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profilePhotoWrapper: {
-    marginLeft: 'auto',
-  },
-  profilePhoto: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#00ff88',
+    borderColor: GREEN,
   },
   placeholderPhoto: {
     backgroundColor: '#1e1e1e',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  logoWrapper: {
+    alignItems: 'center',
+  },
+  clubLogo: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: GREEN,
+  },
+  placeholderLogo: {
+    backgroundColor: '#1e1e1e',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: GREEN,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#121212'
+  },
 
-  // Actions responsive
+  // Encadré infos
+  headerCard: {
+    marginBottom: 16,
+    backgroundColor: '#161b20',
+    borderRadius: 22,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: GREEN,
+    shadowColor: GREEN,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+    width: '92%',
+    alignSelf: 'center'
+  },
+  nameAndEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  headerName: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    letterSpacing: 0.4,
+    flex: 1,
+    marginRight: 8,
+  },
+  headerCat: { 
+    color: GREEN, 
+    fontSize: 14, 
+    fontWeight: '700', 
+    marginBottom: 16,
+  },
+  editButton: {
+    backgroundColor: '#232b28',
+    borderRadius: 15,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: GREEN
+  },
+
+  // Infos
+  infoContainerMobile: {
+    gap: 12,
+  },
+  infoContainerDesktop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoIcon: {
+    marginRight: 8,
+    width: 20,
+  },
+  infoTextMobile: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  infoTextDesktop: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20
+  },
+  modalContent: {
+    backgroundColor: '#161b20',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 2,
+    borderColor: GREEN
+  },
+  modalTitle: {
+    color: GREEN,
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 24
+  },
+  inputContainer: {
+    marginBottom: 20
+  },
+  inputLabel: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8
+  },
+  textInput: {
+    backgroundColor: '#232b28',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: GREEN,
+    padding: 12,
+    color: '#fff',
+    fontSize: 16
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 20
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center'
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700'
+  },
+
+  // Actions
   actionsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -477,22 +1002,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 10,
     minHeight: Platform.OS === 'web' ? 100 : 85,
-    
-    // Responsive width
     width: Platform.OS === 'web' 
-      ? `${100 / 3 - 1}%`  // Web: 3 colonnes (33% - margin)
-      : `${100 / 2 - 1}%`, // Mobile: 2 colonnes (50% - margin)
-    
-    // Hover effect sur web
+      ? `${100 / 3 - 1}%`
+      : `${100 / 2 - 1}%`,
     ...(Platform.OS === 'web' && {
       cursor: 'pointer',
       transition: 'all 0.2s ease',
     }),
   },
 
-  // Styles existants
-  title: { fontSize: 26, color: '#00ff88', fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
-  titleSub: { color: '#aaa', fontWeight: '400' },
+  // Autres styles
   subtitle: { color: '#aaa', fontSize: 16, marginTop: 20, marginBottom: 10 },
   cardGreen: {
     backgroundColor: '#1e1e1e',

@@ -1,7 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, ScrollView,
-  Pressable, ActivityIndicator, TouchableOpacity
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  TouchableOpacity,
+  Image,
+  Dimensions,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
@@ -10,9 +19,12 @@ import useCacheData from '../../../lib/cache';
 export default function EquipeDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-
   const [equipeNom, setEquipeNom] = useState('');
   const [joueurs, setJoueurs] = useState([]);
+
+  // Responsive params
+  const screenWidth = Dimensions.get('window').width;
+  const isMobile = screenWidth < 700 || Platform.OS !== 'web';
 
   // Utilise le cache, TTL 10 min
   const fetchEquipe = async () => {
@@ -67,19 +79,37 @@ export default function EquipeDetail() {
       <FlatList
         data={joueurs}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingBottom: 32 }}
         renderItem={({ item }) => (
-          <View style={styles.playerCard}>
-            <View style={{ flex: 1 }}>
+          <View style={[
+            styles.playerCard,
+            isMobile ? styles.playerCardMobile : styles.playerCardWeb
+          ]}>
+            <Image
+              source={{
+                uri: item.photo_profil_url && item.photo_profil_url.trim() !== ''
+                  ? item.photo_profil_url
+                  : 'https://ui-avatars.com/api/?name=' +
+                    encodeURIComponent(`${item.prenom || ''} ${item.nom || ''}`) +
+                    '&background=222&color=fff&rounded=true'
+              }}
+              style={styles.avatar}
+            />
+            <View style={styles.playerInfoContainer}>
               <Text style={styles.playerName}>{item.prenom} {item.nom}</Text>
               <Text style={styles.playerInfo}>Date naissance : {item.date_naissance || '—'}</Text>
               <Text style={styles.playerInfo}>Poste : {item.poste || '—'}</Text>
               <Text style={styles.playerInfo}>Licence : {item.numero_licence || '—'}</Text>
               <Text style={styles.playerInfo}>Visite médicale : {item.visite_medicale_valide ? '✅ OK' : '❌'}</Text>
-              <Text style={styles.playerInfo}>Équipement : {item.equipement_ok ? '✅ OK' : '❌'}</Text>
+              <Text style={styles.playerInfo}>Équipement : {item.equipement ? '✅ OK' : '❌'}</Text>
             </View>
             <Pressable
               onPress={() => router.push(`/coach/joueur/${item.id}`)}
-              style={({ pressed }) => [styles.button, pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [
+                styles.button,
+                pressed && { opacity: 0.6 },
+                isMobile && { alignSelf: 'flex-start', marginLeft: 10 },
+              ]}
             >
               <Text style={styles.buttonText}>Fiche</Text>
             </Pressable>
@@ -120,36 +150,70 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginVertical: 20,
   },
+  // Carte responsive : row everywhere, wrap/align depending on screen
   playerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#1e1e1e',
     padding: 14,
-    borderRadius: 10,
-    marginBottom: 12,
+    borderRadius: 13,
+    marginBottom: 13,
     borderLeftWidth: 4,
     borderLeftColor: '#00ff88',
-    flexDirection: 'row',
+    width: '100%',
+    minHeight: 82,
+    shadowColor: '#00ff8844',
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  playerCardMobile: {
+    // Sur mobile : stack le bouton sous l'avatar pour éviter d'être trop serré si la largeur est faible
+    flexWrap: 'wrap',
     alignItems: 'flex-start',
+  },
+  playerCardWeb: {
+    // Sur web ou grand écran : aligné en ligne, tout sur la même rangée
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginRight: 15,
+    borderWidth: 2,
+    borderColor: '#00ff88',
+    backgroundColor: '#222',
+  },
+  playerInfoContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    minWidth: 120,
+    marginRight: 8,
   },
   playerName: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
+    marginBottom: 3,
   },
   playerInfo: {
     color: '#ccc',
     fontSize: 14,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   button: {
     backgroundColor: '#00ff88',
-    paddingVertical: 6,
-    paddingHorizontal: 14,
+    paddingVertical: 7,
+    paddingHorizontal: 16,
     borderRadius: 8,
-    marginLeft: 10,
+    marginLeft: 5,
     alignSelf: 'center',
+    minWidth: 64,
   },
   buttonText: {
     color: '#111',
     fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
