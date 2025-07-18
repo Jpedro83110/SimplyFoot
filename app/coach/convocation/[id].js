@@ -21,76 +21,145 @@ export default function ConvocationDetail() {
   const [lieuRdv, setLieuRdv] = useState('');
   const [heureRdv, setHeureRdv] = useState('');
 
-  // ✅ CORRIGÉ : Un seul useEffect avec la fonction async à l'intérieur
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
+      
+      console.log('🏆 COACH: Début fetchData pour événement:', id);
 
       try {
-        // 1. Récup événement (équipe etc)
-        const { data: evt } = await supabase
+        // 1. Récupérer l'événement
+        const { data: evt, error: eventError } = await supabase
           .from('evenements')
           .select('*')
           .eq('id', id)
           .single();
-        if (!evt) { setLoading(false); return; }
+          
+        console.log('🏆 COACH: Événement récupéré:', evt);
+        console.log('🏆 COACH: Erreur événement:', eventError);
+        
+        if (eventError || !evt) { 
+          console.log('🏆 COACH: Aucun événement trouvé');
+          setLoading(false); 
+          return; 
+        }
         setEvent(evt);
 
-        // 2. Récup tous les joueurs de l'équipe (clé: id)
+        // 2. Récupérer tous les joueurs de l'équipe
         const { data: joueurs, error: joueursError } = await supabase
           .from('joueurs')
           .select('id, nom, prenom, poste, equipe_id')
           .eq('equipe_id', evt.equipe_id);
-        if (joueursError) console.log("Erreur joueurs:", joueursError);
+          
+        console.log('🏆 COACH: Joueurs de l\'équipe récupérés:', joueurs?.length || 0);
+        console.log('🏆 COACH: Erreur joueurs:', joueursError);
 
-        // 3. Récup participations à cet événement
+        if (joueursError) {
+          console.log("🏆 COACH: Erreur joueurs:", joueursError);
+        }
+
+        // 3. Récupérer toutes les participations à cet événement
         const { data: participations, error: participationsError } = await supabase
           .from('participations_evenement')
           .select('*')
           .eq('evenement_id', id);
-        if (participationsError) console.log("Erreur participations:", participationsError);
+          
+        console.log('🏆 COACH: Participations récupérées:', participations?.length || 0);
+        console.log('🏆 COACH: Participations détails:', participations);
+        console.log('🏆 COACH: Erreur participations:', participationsError);
 
-        // 4. Récup utilisateurs correspondant à ces joueurs (jointure sur joueur_id)
+        if (participationsError) {
+          console.log("🏆 COACH: Erreur participations:", participationsError);
+        }
+
+        // 4. 🎯 CORRECTION : Récupérer les utilisateurs correctement
+        // participations contient des joueur_id qui sont des IDs d'utilisateurs
+        const participationUserIds = (participations || []).map(p => p.joueur_id);
+        console.log('🏆 COACH: IDs utilisateurs des participations:', participationUserIds);
+
+        // Récupérer tous les utilisateurs joueurs de cette équipe
         const joueursIds = (joueurs || []).map(j => j.id);
+        console.log('🏆 COACH: IDs joueurs de l\'équipe:', joueursIds);
+
         let utilisateursMap = {};
+        let utilisateursParJoueurId = {};
+        
         if (joueursIds.length) {
           const { data: utilisateurs, error: utilisateursError } = await supabase
             .from('utilisateurs')
-            .select('joueur_id, numero_licence, tel, nom, prenom')
+            .select('id, joueur_id, nom, prenom, email, telephone')
+            .eq('role', 'joueur')
             .in('joueur_id', joueursIds);
-          if (utilisateursError) console.log("Erreur utilisateurs:", utilisateursError);
+            
+          console.log('🏆 COACH: Utilisateurs récupérés:', utilisateurs?.length || 0);
+          console.log('🏆 COACH: Utilisateurs détails:', utilisateurs);
+          console.log('🏆 COACH: Erreur utilisateurs:', utilisateursError);
 
-          (utilisateurs || []).forEach(u => { utilisateursMap[u.joueur_id] = u; });
+          if (utilisateursError) {
+            console.log("🏆 COACH: Erreur utilisateurs:", utilisateursError);
+          }
+
+          // Créer les maps pour les liaisons
+          (utilisateurs || []).forEach(u => { 
+            utilisateursMap[u.id] = u;  // Map par ID utilisateur
+            utilisateursParJoueurId[u.joueur_id] = u;  // Map par joueur_id
+          });
         }
 
-        // 5. Construction des listes pour l'affichage
+        console.log('🏆 COACH: Map utilisateurs par ID:', Object.keys(utilisateursMap));
+        console.log('🏆 COACH: Map utilisateurs par joueur_id:', Object.keys(utilisateursParJoueurId));
+
+        // 5. 🎯 CORRECTION : Construction des listes avec la bonne logique
         const presentsArr = [];
         const absentsArr = [];
         const sansReponseArr = [];
 
         for (const joueur of (joueurs || [])) {
-          const userData = utilisateursMap[joueur.id] || {};
+          console.log(`🏆 COACH: Traitement joueur ${joueur.nom} ${joueur.prenom} (ID: ${joueur.id})`);
+          
+          // Récupérer les données utilisateur via joueur_id
+          const userData = utilisateursParJoueurId[joueur.id] || {};
           const joueurComplet = { ...joueur, utilisateur: userData };
+          
+          console.log(`🏆 COACH: Données utilisateur pour ${joueur.nom}:`, userData);
 
-          const part = (participations || []).find(p => String(p.joueur_id) === String(joueur.id));
+          // 🎯 CORRECTION : Chercher la participation par ID utilisateur
+          const part = (participations || []).find(p => {
+            // participations.joueur_id = ID utilisateur
+            // userData.id = ID utilisateur
+            const match = userData.id && String(p.joueur_id) === String(userData.id);
+            console.log(`🏆 COACH: Vérification participation pour ${joueur.nom}: p.joueur_id=${p.joueur_id} vs userData.id=${userData.id} => ${match}`);
+            return match;
+          });
+
+          console.log(`🏆 COACH: Participation trouvée pour ${joueur.nom}:`, part);
 
           if (!part) {
+            console.log(`🏆 COACH: ${joueur.nom} => SANS RÉPONSE`);
             sansReponseArr.push(joueurComplet);
           } else {
             switch (part.reponse) {
               case 'present':
+                console.log(`🏆 COACH: ${joueur.nom} => PRÉSENT`);
                 presentsArr.push({ ...joueurComplet, ...part });
                 break;
               case 'absent':
+                console.log(`🏆 COACH: ${joueur.nom} => ABSENT`);
                 absentsArr.push({ ...joueurComplet, ...part });
                 break;
               case null:
               case undefined:
               default:
+                console.log(`🏆 COACH: ${joueur.nom} => SANS RÉPONSE (null/undefined)`);
                 sansReponseArr.push({ ...joueurComplet, ...part });
             }
           }
         }
+
+        console.log('🏆 COACH: Résultat final:');
+        console.log('🏆 COACH: Présents:', presentsArr.length, presentsArr.map(p => p.nom));
+        console.log('🏆 COACH: Absents:', absentsArr.length, absentsArr.map(p => p.nom));
+        console.log('🏆 COACH: Sans réponse:', sansReponseArr.length, sansReponseArr.map(p => p.nom));
 
         // Stats transport
         const nbBesoinTransport = presentsArr.filter(j => j.besoin_transport).length;
@@ -102,15 +171,14 @@ export default function ConvocationDetail() {
         setStats({ nbBesoinTransport, nbPrisEnCharge });
         
       } catch (error) {
-        console.error('Erreur lors du chargement des données:', error);
+        console.error('🏆 COACH: Erreur lors du chargement des données:', error);
       } finally {
         setLoading(false);
       }
     }
 
-    // ✅ CORRIGÉ : Appel de la fonction ici, à l'intérieur du même useEffect
     fetchData();
-  }, [id, showModal]); // ✅ CORRIGÉ : Dépendances correctes
+  }, [id, showModal]);
 
   // Modal Transport
   const openModal = (joueur) => {
@@ -127,6 +195,8 @@ export default function ConvocationDetail() {
     }
     const session = await supabase.auth.getSession();
     const coachId = session.data.session.user.id;
+    
+    // 🎯 CORRECTION : Utiliser l'ID utilisateur pour la mise à jour
     const { error } = await supabase
       .from('participations_evenement')
       .update({
@@ -134,14 +204,27 @@ export default function ConvocationDetail() {
         lieu_rdv: lieuRdv,
         heure_rdv: heureRdv,
       })
-      .eq('joueur_id', modalJoueur.id)
+      .eq('joueur_id', modalJoueur.utilisateur.id)  // ID utilisateur
       .eq('evenement_id', id);
-    if (error) alert(error.message);
+      
+    if (error) {
+      console.error('🏆 COACH: Erreur mise à jour transport:', error);
+      alert(error.message);
+    } else {
+      console.log('🏆 COACH: Transport mis à jour avec succès');
+    }
     setShowModal(false);
   };
 
   if (loading)
-    return <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#121212', justifyContent: 'center' }}>
+        <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />
+        <Text style={{ color: '#ccc', textAlign: 'center', marginTop: 10 }}>
+          Chargement des réponses...
+        </Text>
+      </View>
+    );
 
   return (
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
@@ -194,6 +277,9 @@ export default function ConvocationDetail() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>🚗 Proposer un transport</Text>
+            <Text style={styles.modalInfo}>
+              Pour : {modalJoueur?.utilisateur?.prenom} {modalJoueur?.utilisateur?.nom}
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="Lieu de RDV"
@@ -245,7 +331,7 @@ function Section({ title, data, showTransport = false, onTransport, router }) {
               Email : {j.utilisateur?.email || '-'}
             </Text>
             <Text style={{ color: '#fff', fontSize: 12 }}>
-              Tél : {j.utilisateur?.tel || '-'}
+              Tél : {j.utilisateur?.telephone || '-'}
             </Text>
             {showTransport && j.besoin_transport && !j.conducteur_id && (
               <View style={styles.transportInfo}>
@@ -279,7 +365,6 @@ const styles = StyleSheet.create({
     flex: 1, 
     backgroundColor: '#121212', 
     padding: Platform.OS === 'web' ? 24 : 20,
-    // Responsive sur web
     ...(Platform.OS === 'web' && {
       maxWidth: 800,
       alignSelf: 'center',
@@ -297,7 +382,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderLeftWidth: 4,
     borderLeftColor: '#00ff88',
-    // Responsive width sur web
     ...(Platform.OS === 'web' && {
       maxWidth: '100%',
       minWidth: 300,
@@ -320,6 +404,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderLeftWidth: 3,
     borderLeftColor: '#ff8c00'
+  },
+  transportButton: {
+    backgroundColor: '#ff8c00',
+    padding: 6,
+    borderRadius: 4,
+    marginTop: 4,
+    alignItems: 'center',
+  },
+  transportButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   transportSuccess: {
     backgroundColor: '#00ff88',
@@ -386,7 +482,8 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 8,
   },
-  modalTitle: { color: '#00ff88', fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+  modalTitle: { color: '#00ff88', fontSize: 20, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
+  modalInfo: { color: '#ccc', fontSize: 14, marginBottom: 15, textAlign: 'center' },
   input: {
     backgroundColor: '#1e1e1e',
     color: '#fff',

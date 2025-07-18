@@ -14,6 +14,31 @@ import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 import useCacheData, { saveToCache } from '../../lib/cache';
 
+// Fonction utilitaire pour générer un code équipe unique
+function generateCodeEquipe(length = 6) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < length; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// Génère et vérifie l’unicité du code équipe
+async function generateUniqueCodeEquipe() {
+  let code, exists;
+  do {
+    code = generateCodeEquipe();
+    const { data } = await supabase
+      .from('equipes')
+      .select('id')
+      .eq('code_equipe', code)
+      .maybeSingle();
+    exists = !!data;
+  } while (exists);
+  return code;
+}
+
 export default function CreationEquipe() {
   const router = useRouter();
   const [nom, setNom] = useState('');
@@ -21,6 +46,8 @@ export default function CreationEquipe() {
   const [description, setDescription] = useState('');
   const [coachId, setCoachId] = useState(null);
   const [clubId, setClubId] = useState(null);
+  const [codeEquipe, setCodeEquipe] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // Ajout du cache : on tente d'abord cache, puis fallback Supabase si rien trouvé
   const [userInfo, refreshUserInfo, loadingUserInfo] = useCacheData(
@@ -55,26 +82,42 @@ export default function CreationEquipe() {
       Alert.alert('Erreur', 'Merci de remplir au minimum le nom et la catégorie.');
       return;
     }
-
     if (!coachId || !clubId) {
       Alert.alert('Erreur', 'Informations utilisateur incomplètes.');
       return;
     }
 
-    const { error } = await supabase.from('equipes').insert({
-      nom,
-      categorie,
-      description: description.trim() !== '' ? description : null, // facultatif
-      coach_id: coachId,
-      club_id: clubId,
-    });
+    setLoading(true);
 
-    if (error) {
-      console.error('[EQUIPE] ❌ Erreur création :', error);
-      Alert.alert('Erreur', 'Création de l’équipe échouée.');
-    } else {
-      Alert.alert('Succès', 'Équipe créée avec succès !');
-      router.replace('/coach/dashboard');
+    try {
+      // Génère un code équipe unique
+      const codeEquipeGen = await generateUniqueCodeEquipe();
+
+      const { data, error } = await supabase.from('equipes').insert({
+        nom,
+        categorie,
+        description: description.trim() !== '' ? description : null,
+        coach_id: coachId,
+        club_id: clubId,
+        code_equipe: codeEquipeGen, // On ajoute le code ici !
+      }).select().single();
+
+      if (error) {
+        console.error('[EQUIPE] ❌ Erreur création :', error);
+        Alert.alert('Erreur', 'Création de l’équipe échouée.');
+      } else {
+        setCodeEquipe(codeEquipeGen);
+        Alert.alert(
+          'Succès',
+          `Équipe créée avec succès !\n\nCode équipe : ${codeEquipeGen}\n\nPartage ce code avec les joueurs/parents pour les rattacher à cette équipe.`,
+          [{ text: 'OK', onPress: () => router.replace('/coach/dashboard') }]
+        );
+        // Tu peux aussi garder le coach sur la page pour copier le code
+      }
+    } catch (e) {
+      Alert.alert('Erreur', 'Erreur inattendue lors de la création.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -105,11 +148,22 @@ export default function CreationEquipe() {
         onChangeText={setDescription}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleCreate} disabled={loadingUserInfo}>
+      <TouchableOpacity style={styles.button} onPress={handleCreate} disabled={loadingUserInfo || loading}>
         <Text style={styles.buttonText}>
-          {loadingUserInfo ? 'Chargement...' : "Créer l'équipe"}
+          {(loadingUserInfo || loading) ? 'Chargement...' : "Créer l'équipe"}
         </Text>
       </TouchableOpacity>
+
+      {/* Affichage du code équipe une fois créé */}
+      {codeEquipe ? (
+        <View style={styles.codeEquipeBox}>
+          <Text style={styles.codeEquipeLabel}>Code équipe généré :</Text>
+          <Text selectable style={styles.codeEquipe}>{codeEquipe}</Text>
+          <Text style={styles.codeEquipeInfo}>
+            Ce code permet aux joueurs/parents de s'inscrire directement dans cette équipe.
+          </Text>
+        </View>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -151,5 +205,33 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '700',
     fontSize: 16,
+  },
+  codeEquipeBox: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#00ff88',
+    marginTop: 32,
+    padding: 18,
+    alignItems: 'center',
+  },
+  codeEquipeLabel: {
+    color: '#00ff88',
+    fontWeight: '700',
+    marginBottom: 8,
+    fontSize: 16,
+  },
+  codeEquipe: {
+    color: '#00ff88',
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 2,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    marginBottom: 8,
+  },
+  codeEquipeInfo: {
+    color: '#aaa',
+    fontSize: 12,
+    textAlign: 'center',
   },
 });

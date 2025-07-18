@@ -1,138 +1,197 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  Platform,
+  Dimensions,
+  Alert,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MotiView } from 'moti';
 import { supabase } from '../../../lib/supabase';
+import * as Clipboard from 'expo-clipboard';
+import { Ionicons } from '@expo/vector-icons';
 import useCacheData from '../../../lib/cache';
 
-export default function ListeEquipes() {
+export default function ListeEquipesCoach() {
   const router = useRouter();
+  const [equipes, setEquipes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Utilise le cache pour les équipes
-  const fetchEquipes = async () => {
-    const { data: equipesData, error } = await supabase.from('equipes').select('*');
-    if (error) return [];
-    const equipesWithCounts = await Promise.all(
-      equipesData.map(async (eq) => {
-        const { count } = await supabase
-          .from('utilisateurs')
-          .select('*', { count: 'exact', head: true })
-          .eq('equipe_id', eq.id);
-        return {
-          id: eq.id,
-          nom: eq.nom,
-          categorie: eq.categorie,
-          nbJoueurs: count,
-          presence: 'À calculer',
-        };
-      })
-    );
-    return equipesWithCounts;
+  // Responsive :
+  const screenWidth = Dimensions.get('window').width;
+  const isMobile = screenWidth < 700 || Platform.OS !== 'web';
+
+  // Chargement des équipes du coach connecté
+  useEffect(() => {
+    let mounted = true;
+    async function fetchEquipes() {
+      setLoading(true);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const coachId = sessionData?.session?.user?.id;
+        if (!coachId) return setEquipes([]);
+
+        // Récupère toutes les équipes où le coach est owner
+        const { data, error } = await supabase
+          .from('equipes')
+          .select('id, nom, categorie, code_equipe')
+          .eq('coach_id', coachId)
+          .order('categorie', { ascending: true });
+        if (error) throw error;
+
+        if (mounted) setEquipes(data || []);
+      } catch (e) {
+        if (mounted) setEquipes([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    fetchEquipes();
+    return () => { mounted = false; };
+  }, []);
+
+  // Copie du code équipe dans le presse-papier
+  const copierCode = (code) => {
+    if (!code) return;
+    Clipboard.setStringAsync(code);
+    Alert.alert('Copié !', 'Le code équipe a été copié.');
   };
 
-  const [equipes, refresh, loading] = useCacheData(
-    'coach_liste_equipes',
-    fetchEquipes,
-    600 // 10 minutes
-  );
-
-  if (loading) return <ActivityIndicator style={{ marginTop: 50 }} color="#00ff88" />;
+  if (loading) {
+    return <ActivityIndicator style={{ marginTop: 50 }} color="#00ff88" />;
+  }
 
   return (
-    <LinearGradient colors={["#0a0a0a", "#0f0f0f"]} style={styles.container}>
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
-        <TouchableOpacity onPress={refresh} style={{ marginBottom: 10, alignSelf: 'flex-end' }}>
-          <Text style={{ color: '#00ff88', fontSize: 14 }}>🔄 Rafraîchir</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>MES ÉQUIPES</Text>
-        {equipes.map((equipe, index) => (
-          <MotiView
-            key={equipe.id}
-            from={{ opacity: 0, translateY: 20 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ delay: index * 150 }}
-            style={styles.card}
+    <View style={styles.container}>
+      <Text style={styles.title}>📋 Mes équipes</Text>
+      <FlatList
+        data={equipes}
+        keyExtractor={(item) => item.id}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>Aucune équipe trouvée.</Text>
+        }
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={[styles.card, isMobile && styles.cardMobile]}
+            onPress={() => router.push(`/coach/equipe/${item.id}`)}
+            activeOpacity={0.8}
           >
-            <Pressable onPress={() => router.push(`/coach/equipe/${equipe.id}`)}>
-              <View style={styles.row}>
-                <Ionicons name="people" size={24} color="#00ff88" style={{ marginRight: 10 }} />
-                <View>
-                  <Text style={styles.cardTitle}>{equipe.nom}</Text>
-                  <Text style={styles.cardSub}>Catégorie : {equipe.categorie}</Text>
-                  <Text style={styles.cardSub}>Joueurs : {equipe.nbJoueurs}</Text>
-                  <Text style={styles.cardStat}>Présence : {equipe.presence}</Text>
+            <View style={styles.cardContent}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.nomEquipe}>{item.nom}</Text>
+                <Text style={styles.categorieEquipe}>{item.categorie}</Text>
+                <View style={styles.codeRow}>
+                  <Ionicons name="key-outline" size={18} color="#00ff88" />
+                  <Text selectable style={styles.codeEquipe}>{item.code_equipe}</Text>
+                  <TouchableOpacity
+                    style={styles.copyButton}
+                    onPress={(e) => {
+                      e.stopPropagation && e.stopPropagation();
+                      copierCode(item.code_equipe);
+                    }}
+                  >
+                    <Ionicons name="copy-outline" size={18} color="#00ff88" />
+                    <Text style={styles.copyButtonText}>Copier</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-            </Pressable>
-          </MotiView>
-        ))}
-
-        <Pressable
-          onPress={() => router.push('/coach/creation-equipe')}
-          style={({ pressed }) => [styles.addButton, pressed && { opacity: 0.6 }]}
-        >
-          <Ionicons name="add-circle" size={24} color="#fff" />
-          <Text style={styles.addText}>Créer une équipe</Text>
-        </Pressable>
-      </ScrollView>
-    </LinearGradient>
+              <Ionicons name="chevron-forward" size={26} color="#aaa" />
+            </View>
+          </TouchableOpacity>
+        )}
+        contentContainerStyle={{ paddingBottom: 28 }}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#121212',
+    padding: 20,
+    paddingTop: 40,
   },
   title: {
+    fontSize: 28,
     color: '#00ff88',
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    fontWeight: '700',
+    marginBottom: 28,
     textAlign: 'center',
   },
   card: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#00ff88',
-  },
-  row: {
+    backgroundColor: '#181818',
+    borderRadius: 14,
+    marginBottom: 18,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    elevation: 3,
+    borderWidth: 1.5,
+    borderColor: '#222',
     flexDirection: 'row',
     alignItems: 'center',
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#00ff88',
+  cardMobile: {
+    padding: 12,
   },
-  cardSub: {
-    color: '#ccc',
-    fontSize: 14,
-    marginTop: 2,
-  },
-  cardStat: {
-    color: '#00ff88',
-    marginTop: 6,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  addButton: {
-    marginTop: 30,
-    backgroundColor: '#00ff88',
-    borderRadius: 10,
-    paddingVertical: 12,
+  cardContent: {
+    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: 10,
+    gap: 18,
   },
-  addText: {
-    color: '#111',
+  nomEquipe: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  categorieEquipe: {
+    color: '#aaa',
     fontSize: 16,
-    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  codeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  codeEquipe: {
+    color: '#00ff88',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 2,
+    marginHorizontal: 6,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#202b20',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginLeft: 6,
+    gap: 2,
+  },
+  copyButtonText: {
+    color: '#00ff88',
+    fontWeight: '600',
+    fontSize: 13,
+    marginLeft: 2,
+  },
+  emptyText: {
+    color: '#aaa',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 40,
   },
 });

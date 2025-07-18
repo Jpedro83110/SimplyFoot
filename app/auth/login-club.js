@@ -14,7 +14,6 @@ export default function LoginClub() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // GESTION OUBLI MOT DE PASSE
   const handleForgotPassword = async () => {
     if (!email) {
       Alert.alert('Erreur', 'Entrez d’abord votre email pour recevoir un lien de réinitialisation.');
@@ -32,55 +31,66 @@ export default function LoginClub() {
     if (loading) return;
     setLoading(true);
 
-    const trimmedEmail = email.trim().toLowerCase();
-    const trimmedPassword = password.trim();
+    try {
+      const trimmedEmail = email.trim().toLowerCase();
+      const trimmedPassword = password.trim();
 
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: trimmedEmail,
-      password: trimmedPassword,
-    });
+      // Authentification Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password: trimmedPassword,
+      });
 
-    if (authError || !authData?.user) {
-      setLoading(false);
-      Alert.alert('Erreur', authError?.message === 'Invalid login credentials' ? 'Email ou mot de passe incorrect.' : `Erreur : ${authError?.message || 'Connexion impossible.'}`);
-      return;
-    }
-
-    const { data: userData, error: userError } = await supabase
-      .from('utilisateurs')
-      .select('role')
-      .eq('id', authData.user.id)
-      .single();
-
-    if (userError || !userData?.role) {
-      setLoading(false);
-      Alert.alert('Erreur', 'Impossible de récupérer le rôle utilisateur.');
-      return;
-    }
-
-    const role = userData.role;
-
-    switch (role) {
-      case 'admin':
-        router.replace('/admin/dashboard');
-        break;
-      case 'president':
-        router.replace('/president/dashboard');
-        break;
-      case 'coach':
-      case 'staff':
-        router.replace('/coach/dashboard');
-        break;
-      case 'joueur':
-      case 'parent':
-        router.replace('/joueur/dashboard');
-        break;
-      default:
+      if (authError || !authData?.user) {
+        Alert.alert('Erreur', authError?.message === 'Invalid login credentials'
+          ? 'Email ou mot de passe incorrect.'
+          : `Erreur : ${authError?.message || 'Connexion impossible.'}`);
         setLoading(false);
-        Alert.alert('Erreur', `Rôle non reconnu : ${role}`);
         return;
+      }
+
+      // Récupération du rôle utilisateur
+      const { data: userData, error: userError } = await supabase
+        .from('utilisateurs')
+        .select('role')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (userError || !userData?.role) {
+        console.log('Erreur récupération rôle:', userError, userData);
+        Alert.alert('Erreur', 'Impossible de récupérer le rôle utilisateur.');
+        setLoading(false);
+        return;
+      }
+
+      const role = userData.role;
+
+      switch (role) {
+        case 'admin':
+          router.replace('/admin/dashboard');
+          break;
+        case 'president':
+          router.replace('/president/dashboard');
+          break;
+        case 'coach':
+        case 'staff':
+          router.replace('/coach/dashboard');
+          break;
+        case 'joueur':
+        case 'parent':
+          router.replace('/joueur/dashboard');
+          break;
+        default:
+          Alert.alert('Erreur', `Rôle non reconnu : ${role}`);
+          setLoading(false);
+          return;
+      }
+    } catch (err) {
+      console.log('Erreur générale', err);
+      Alert.alert('Erreur', 'Problème de connexion, réessaie plus tard.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

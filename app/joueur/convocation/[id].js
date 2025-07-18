@@ -19,6 +19,7 @@ export default function ConvocationReponse() {
   const [besoinTransport, setBesoinTransport] = useState(false);
   const [reponse, setReponse] = useState(null);
   const [reponseLoading, setReponseLoading] = useState(false);
+  const [utilisateurId, setUtilisateurId] = useState(null);
   const [joueurId, setJoueurId] = useState(null);
   const [showTransportModal, setShowTransportModal] = useState(false);
 
@@ -33,44 +34,94 @@ export default function ConvocationReponse() {
       try {
         setLoading(true);
         const session = await supabase.auth.getSession();
-        const utilisateurId = session.data.session?.user?.id;
-        if (!utilisateurId) throw new Error('Utilisateur non trouvé.');
+        const userId = session.data.session?.user?.id;
+        
+        console.log('🔐 Utilisateur connecté:', userId);
+        console.log('📅 ID événement:', id);
+        
+        if (!userId) throw new Error('Utilisateur non trouvé.');
+        
+        setUtilisateurId(userId);
 
+        // Récupérer les infos utilisateur
         const { data: utilisateur, error: userErr } = await supabase
           .from('utilisateurs')
-          .select('joueur_id, nom, prenom')
-          .eq('id', utilisateurId)
+          .select('id, joueur_id, nom, prenom, role')
+          .eq('id', userId)
           .single();
-        if (userErr || !utilisateur || !utilisateur.joueur_id) throw userErr || new Error('joueur_id manquant');
+          
+        console.log('👤 Données utilisateur:', utilisateur);
+        
+        if (userErr || !utilisateur) {
+          console.error('❌ Erreur utilisateur:', userErr);
+          throw userErr || new Error('Utilisateur non trouvé');
+        }
+        
+        if (utilisateur.role !== 'joueur') {
+          throw new Error('Utilisateur non joueur');
+        }
+        
         setJoueurId(utilisateur.joueur_id);
 
+        // Récupérer l'événement
         const { data: evt, error: evtErr } = await supabase
           .from('evenements')
           .select('titre, date, heure, lieu, lieu_complement, meteo, latitude, longitude')
           .eq('id', id)
           .single();
-        if (evtErr || !evt) throw evtErr;
+          
+        console.log('📅 Données événement:', evt);
+        
+        if (evtErr || !evt) {
+          console.error('❌ Erreur événement:', evtErr);
+          throw evtErr;
+        }
         setEvent(evt);
 
-        const { data: decharge } = await supabase
-          .from('decharges_generales')
-          .select('accepte_transport')
-          .eq('joueur_id', utilisateur.joueur_id)
-          .single();
-        setAccepteTransport(decharge?.accepte_transport || false);
+        // Récupérer la décharge de transport
+        // ⚠️ ATTENTION : decharges_generales utilise l'ID de la table joueurs
+        if (utilisateur.joueur_id) {
+          console.log('🚗 Recherche décharge pour joueur_id:', utilisateur.joueur_id);
+          
+          const { data: decharge, error: dechargeErr } = await supabase
+            .from('decharges_generales')
+            .select('accepte_transport')
+            .eq('joueur_id', utilisateur.joueur_id)  // ID table joueurs
+            .single();
+            
+          console.log('🚗 Décharge trouvée:', decharge);
+          
+          setAccepteTransport(decharge?.accepte_transport || false);
+        } else {
+          console.log('🚗 Pas de joueur_id, pas de décharge transport');
+          setAccepteTransport(false);
+        }
 
-        const { data: participation } = await supabase
+        // 🎯 CORRECTION : Utiliser l'ID utilisateur directement
+        const { data: participation, error: partErr } = await supabase
           .from('participations_evenement')
-          .select('reponse, besoin_transport')
-          .eq('joueur_id', utilisateur.joueur_id)
+          .select('reponse, besoin_transport, joueur_id')
+          .eq('joueur_id', userId)  // Utiliser l'ID utilisateur
           .eq('evenement_id', id)
           .single();
-        setReponse(participation?.reponse ?? null);
-        setBesoinTransport(participation?.besoin_transport ?? false);
+          
+        console.log('🎯 Participation trouvée:', participation);
+        console.log('🎯 Erreur participation:', partErr);
+        
+        if (participation) {
+          setReponse(participation.reponse);
+          setBesoinTransport(participation.besoin_transport || false);
+        } else {
+          // Pas de participation trouvée, c'est normal pour un nouvel événement
+          setReponse(null);
+          setBesoinTransport(false);
+        }
 
         await fetchTransportMessages();
+        
       } catch (err) {
-        Alert.alert('Erreur', 'Impossible de charger la convocation.');
+        console.error('💥 Erreur fetchData:', err);
+        Alert.alert('Erreur', `Impossible de charger la convocation: ${err.message}`);
       } finally {
         setLoading(false);
       }
@@ -91,6 +142,7 @@ export default function ConvocationReponse() {
       if (error) throw error;
       setMessages(data || []);
     } catch (err) {
+      console.error('❌ Erreur messages transport:', err);
       setMessages([]);
     }
   };
@@ -99,26 +151,40 @@ export default function ConvocationReponse() {
   const envoyerReponse = async (valeur) => {
     try {
       setReponseLoading(true);
-      if (!joueurId || !id || !valeur) {
-        Alert.alert('Erreur', 'Données manquantes (joueur ou événement).');
+      
+      console.log('📤 Envoi réponse:', {
+        valeur,
+        utilisateurId,
+        evenementId: id,
+        besoinTransport
+      });
+      
+      if (!utilisateurId || !id || !valeur) {
+        Alert.alert('Erreur', 'Données manquantes (utilisateur ou événement).');
         setReponseLoading(false);
         return;
       }
+      
       const besoinTransportFinal = accepteTransport && besoinTransport && valeur === 'present';
-      const { error } = await supabase
+      
+      // 🎯 CORRECTION : Utiliser l'ID utilisateur
+      const { data, error } = await supabase
         .from('participations_evenement')
         .upsert(
           [{
-            joueur_id: joueurId,
+            joueur_id: utilisateurId,  // ID utilisateur au lieu de joueur_id
             evenement_id: id,
             reponse: valeur,
             besoin_transport: besoinTransportFinal,
           }],
-          { onConflict: ['joueur_id', 'evenement_id'] }
+          { onConflict: 'joueur_id,evenement_id' }  // Correction syntaxe
         );
 
+      console.log('✅ Réponse envoyée:', data);
+      console.log('❌ Erreur réponse:', error);
+
       if (error) {
-        Alert.alert('Erreur', error.message || 'Erreur lors de l’envoi.');
+        Alert.alert('Erreur', error.message || 'Erreur lors de l\'envoi.');
         setReponseLoading(false);
         return;
       }
@@ -128,9 +194,11 @@ export default function ConvocationReponse() {
       setReponseLoading(false);
       await fetchTransportMessages();
       Alert.alert('✅ Réponse enregistrée !');
+      
     } catch (err) {
+      console.error('💥 Erreur envoyerReponse:', err);
       setReponseLoading(false);
-      Alert.alert('Erreur', 'Erreur critique dans l’envoi.');
+      Alert.alert('Erreur', `Erreur critique dans l'envoi: ${err.message}`);
     }
   };
 
@@ -142,17 +210,22 @@ export default function ConvocationReponse() {
     }
     try {
       setSendingProposition(true);
+      
+      // 🚗 messages_besoin_transport utilise les IDs UTILISATEURS
       const { error } = await supabase
         .from('messages_besoin_transport')
         .insert({
           evenement_id: id,
-          joueur_id: joueurId,
-          auteur_id: joueurId,
-          adresse_demande: nouvelleAdresse,   // <-- MAPPING OK
+          joueur_id: utilisateurId,     // ID utilisateur
+          auteur_id: utilisateurId,     // ID utilisateur
+          adresse_demande: nouvelleAdresse,
           heure_demande: nouvelleHeure,
-          etat: 'en_attente',                 // <-- MAPPING OK
+          etat: 'en_attente',
           created_at: new Date()
         });
+        
+      console.log('🚗 Résultat insertion transport:', { error });
+        
       if (error) {
         Alert.alert("Erreur", "Insertion échouée : " + error.message);
       } else {
@@ -162,6 +235,9 @@ export default function ConvocationReponse() {
         Alert.alert('✅ Demande envoyée à la messagerie transport !');
         await fetchTransportMessages();
       }
+    } catch (err) {
+      console.error('💥 Erreur envoyerDemandeTransport:', err);
+      Alert.alert("Erreur", err.message);
     } finally {
       setSendingProposition(false);
     }
@@ -218,7 +294,14 @@ export default function ConvocationReponse() {
     }
   };
 
-  if (loading || !event) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+  if (loading || !event) return (
+    <View style={styles.container}>
+      <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />
+      <Text style={{ color: '#ccc', textAlign: 'center', marginTop: 10 }}>
+        Chargement de l'événement...
+      </Text>
+    </View>
+  );
 
   return (
     <ScrollView style={styles.container}>
@@ -236,6 +319,11 @@ export default function ConvocationReponse() {
           <Ionicons name="cloud-outline" size={16} color="#62d4ff" /> {event.meteo}
         </Text>
       )}
+
+      {/* Debug info */}
+      <Text style={styles.debugText}>
+        Réponse actuelle: {reponse || 'Aucune'} | Transport: {besoinTransport ? 'Oui' : 'Non'}
+      </Text>
 
       {(event?.latitude && event?.longitude) && (
         <TouchableOpacity
@@ -263,7 +351,9 @@ export default function ConvocationReponse() {
           }}
           disabled={reponseLoading}
         >
-          <Text style={[styles.buttonText, reponse === 'present' && { color: '#111' }]}>✅ Présent</Text>
+          <Text style={[styles.buttonText, reponse === 'present' && { color: '#111' }]}>
+            {reponseLoading ? '...' : '✅ Présent'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -274,7 +364,9 @@ export default function ConvocationReponse() {
           }}
           disabled={reponseLoading}
         >
-          <Text style={[styles.buttonText, reponse === 'absent' && { color: '#111' }]}>❌ Absent</Text>
+          <Text style={[styles.buttonText, reponse === 'absent' && { color: '#111' }]}>
+            {reponseLoading ? '...' : '❌ Absent'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -384,7 +476,7 @@ export default function ConvocationReponse() {
               disabled={sendingProposition}
             >
               <Text style={{ color: '#111', fontWeight: 'bold' }}>
-                Envoyer la demande
+                {sendingProposition ? 'Envoi...' : 'Envoyer la demande'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -404,6 +496,13 @@ const styles = StyleSheet.create({
   container: { backgroundColor: '#121212', flex: 1, padding: 20 },
   title: { fontSize: 22, fontWeight: 'bold', color: '#00ff88', textAlign: 'center', marginBottom: 10 },
   info: { color: '#ccc', textAlign: 'center', marginBottom: 6 },
+  debugText: {
+    color: '#666',
+    fontSize: 12,
+    textAlign: 'center',
+    marginVertical: 10,
+    fontStyle: 'italic'
+  },
   section: { marginTop: 30, fontSize: 18, color: '#00ff88', fontWeight: 'bold', marginBottom: 10 },
   buttons: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 30 },
   button: { backgroundColor: '#1e1e1e', borderColor: '#00ff88', borderWidth: 2, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 24 },

@@ -22,86 +22,146 @@ export default function FeuilleMatch() {
   const [signDate, setSignDate] = useState('');
 
   const fetchFeuilleAll = async () => {
-    const { data: compos } = await supabase
-      .from('compositions')
-      .select('*')
-      .eq('evenement_id', id)
-      .limit(1);
-    if (!compos || compos.length === 0) {
-      return { error: "Aucune composition validée pour cet événement." };
-    }
-    const compo = compos[0];
-    let joueursRaw = compo.joueurs;
-    if (typeof joueursRaw === "string") {
-      try { joueursRaw = JSON.parse(joueursRaw); } catch { joueursRaw = {}; }
-    }
-    const { data: evt } = await supabase
-      .from('evenements')
-      .select('*')
-      .eq('id', id)
-      .single();
-    if (!evt) return { error: "Événement introuvable." };
-    let nomEquipe = 'NC', nomCategorie = 'NC';
-    if (evt.equipe_id) {
-      const { data: eq } = await supabase
-        .from('equipes')
-        .select('nom, categorie')
-        .eq('id', evt.equipe_id)
-        .single();
-      if (eq) { nomEquipe = eq.nom; nomCategorie = eq.categorie; }
-    }
-    let coachName = "NC", coachPrenom = "";
-    if (evt.coach_id) {
-      const { data: coach } = await supabase
-        .from('utilisateurs')
-        .select('nom, prenom')
-        .eq('id', evt.coach_id)
-        .single();
-      if (coach) { coachName = coach.nom; coachPrenom = coach.prenom; }
-    }
-    const { data: participations } = await supabase
-      .from('participations_evenement')
-      .select('joueur_id')
-      .eq('evenement_id', id)
-      .eq('reponse', 'present');
-    const presentsIds = participations.map(p => p.joueur_id);
-    const joueursInfos = await Promise.all(
-      presentsIds.map(async (jid) => {
-        const { data: j } = await supabase
-          .from('joueurs')
-          .select('nom, prenom, numero_licence, date_naissance')
-          .eq('id', jid)
-          .single();
-        let age = '';
-        if (j?.date_naissance) {
-          const birth = new Date(j.date_naissance);
-          const now = new Date();
-          age = now.getFullYear() - birth.getFullYear();
-        }
-        return {
-          prenom: j?.prenom || '',
-          nom: j?.nom || '',
-          licence: j?.numero_licence || '',
-          age: age || '',
-        };
-      })
-    );
-    joueursInfos.sort((a, b) =>
-      (a.nom + a.prenom).localeCompare(b.nom + b.prenom)
-    );
-    const joueursA = joueursInfos.slice(0, 12);
-    return {
-      joueurs: joueursA,
-      infoMatch: {
-        titre: evt.titre,
-        date: evt.date,
-        lieu: evt.lieu,
-        equipe: nomEquipe,
-        categorie: nomCategorie,
-        coach: `${coachPrenom} ${coachName}`,
-        adversaire: evt.adversaire || "",
+    try {
+      // 1. Vérifier qu'il y a une composition validée
+      const { data: compos, error: composError } = await supabase
+        .from('compositions')
+        .select('*')
+        .eq('evenement_id', id)
+        .limit(1);
+      
+      if (composError) {
+        console.error('Erreur compositions:', composError);
       }
-    };
+      
+      if (!compos || compos.length === 0) {
+        return { error: "Aucune composition validée pour cet événement." };
+      }
+
+      const compo = compos[0];
+      let joueursComposition = compo.joueurs;
+      if (typeof joueursComposition === "string") {
+        try { 
+          joueursComposition = JSON.parse(joueursComposition); 
+        } catch { 
+          joueursComposition = {}; 
+        }
+      }
+      
+      // 🎯 CORRECTION PRINCIPALE : Récupérer les IDs des joueurs de la composition
+      const joueursCompoIds = Object.keys(joueursComposition || {});
+
+      if (joueursCompoIds.length === 0) {
+        return { error: "Aucun joueur trouvé dans la composition validée." };
+      }
+
+      // 2. Récupérer l'événement
+      const { data: evt, error: evtError } = await supabase
+        .from('evenements')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (evtError || !evt) {
+        console.error('Erreur événement:', evtError);
+        return { error: "Événement introuvable." };
+      }
+
+      // 3. Récupérer infos équipe
+      let nomEquipe = 'NC', nomCategorie = 'NC';
+      if (evt.equipe_id) {
+        const { data: eq } = await supabase
+          .from('equipes')
+          .select('nom, categorie')
+          .eq('id', evt.equipe_id)
+          .single();
+        if (eq) { 
+          nomEquipe = eq.nom || 'NC'; 
+          nomCategorie = eq.categorie || 'NC'; 
+        }
+      }
+
+      // 4. Récupérer infos coach
+      let coachName = "NC", coachPrenom = "";
+      if (evt.coach_id) {
+        const { data: coach } = await supabase
+          .from('utilisateurs')
+          .select('nom, prenom')
+          .eq('id', evt.coach_id)
+          .single();
+        if (coach) { 
+          coachName = coach.nom || "NC"; 
+          coachPrenom = coach.prenom || ""; 
+        }
+      }
+
+      // 5. 🎯 NOUVELLE LOGIQUE : Récupérer directement les joueurs de la composition
+      const joueursInfos = await Promise.all(
+        joueursCompoIds.map(async (joueurId) => {
+          const { data: j, error: joueurError } = await supabase
+            .from('joueurs')
+            .select('id, nom, prenom, numero_licence, date_naissance')
+            .eq('id', joueurId)
+            .single();
+          
+          if (joueurError) {
+            console.error(`Erreur joueur ${joueurId}:`, joueurError);
+            return null; // Ignorer les joueurs introuvables
+          }
+
+          if (!j) {
+            return null;
+          }
+
+          let age = '';
+          if (j.date_naissance) {
+            const birth = new Date(j.date_naissance);
+            const now = new Date();
+            age = (now.getFullYear() - birth.getFullYear()).toString();
+          }
+
+          const joueurFinal = {
+            id: j.id || '',
+            prenom: j.prenom || '',
+            nom: j.nom || '',
+            licence: j.numero_licence || '',
+            age: age || '',
+          };
+          
+          return joueurFinal;
+        })
+      );
+
+      // Filtrer les joueurs null (introuvables)
+      const joueursValides = joueursInfos.filter(j => j !== null);
+
+      // Tri alphabétique
+      joueursValides.sort((a, b) =>
+        (a.nom + a.prenom).localeCompare(b.nom + b.prenom)
+      );
+
+      // Limiter à 12 joueurs
+      const joueursA = joueursValides.slice(0, 12);
+
+      const result = {
+        joueurs: joueursA,
+        infoMatch: {
+          titre: evt.titre || '',
+          date: evt.date || '',
+          lieu: evt.lieu || '',
+          equipe: nomEquipe,
+          categorie: nomCategorie,
+          coach: `${coachPrenom} ${coachName}`,
+          adversaire: evt.adversaire || "",
+        }
+      };
+      
+      return result;
+
+    } catch (error) {
+      console.error('Erreur générale:', error);
+      return { error: `Erreur lors du chargement: ${error.message}` };
+    }
   };
 
   const [data, refresh, loading] = useCacheData(`feuille-match-${id}`, fetchFeuilleAll, 1800);
@@ -113,11 +173,23 @@ export default function FeuilleMatch() {
   const MAX_J = 12;
   const isMobile = width < 700;
 
-  // Pour l'affichage du format date correct
+  // 🔧 CORRECTION : Protection pour formatDateFR
+  const safeFormatDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const formatted = formatDateFR(dateStr);
+      return formatted || '';
+    } catch (e) {
+      console.error('Erreur formatDateFR:', e);
+      return dateStr;
+    }
+  };
+
+  // Pour l'affichage du format date correct - 🔧 CORRECTION
   const displayDate = customDate
-    ? formatDateFR(customDate)
+    ? safeFormatDate(customDate)
     : infoMatch?.date
-    ? formatDateFR(infoMatch.date)
+    ? safeFormatDate(infoMatch.date)
     : '';
   const displayLieu = customLieu || infoMatch?.lieu || '';
   const displayAdversaire = customAdversaire || infoMatch?.adversaire || '';
@@ -172,21 +244,21 @@ export default function FeuilleMatch() {
       <div class="infoswrap">
         <div class="infos">
           <b>Date :</b> ${displayDate} &nbsp; | &nbsp; <b>Lieu :</b> ${displayLieu}<br>
-          <b>Équipe :</b> ${infoMatch.equipe} &nbsp; | &nbsp; <b>Catégorie :</b> ${infoMatch.categorie}<br>
-          <b>Coach :</b> ${infoMatch.coach}<br>
+          <b>Équipe :</b> ${infoMatch.equipe || ''} &nbsp; | &nbsp; <b>Catégorie :</b> ${infoMatch.categorie || ''}<br>
+          <b>Coach :</b> ${infoMatch.coach || ''}<br>
           <b>Adversaire :</b> ${displayAdversaire || "_________________"}
         </div>
         <div class="signatures">
-          <div class="signLabel">Coach : <span class="signBox">${signCoach}</span></div><br>
-          <div class="signLabel">Arbitre : <span class="signBox">${signArbitre}</span></div><br>
-          <div class="signLabel">Représentant club adverse : <span class="signBox">${signClubAdv}</span></div><br>
-          <div class="signLabel">Date : <span class="signBox">${signDate}</span></div>
+          <div class="signLabel">Coach : <span class="signBox">${signCoach || ''}</span></div><br>
+          <div class="signLabel">Arbitre : <span class="signBox">${signArbitre || ''}</span></div><br>
+          <div class="signLabel">Représentant club adverse : <span class="signBox">${signClubAdv || ''}</span></div><br>
+          <div class="signLabel">Date : <span class="signBox">${signDate || ''}</span></div>
         </div>
       </div>
       <div class="double">
         <div class="tableBlock">
           <table>
-            <tr><th colspan="4">${infoMatch.equipe}</th></tr>
+            <tr><th colspan="4">${infoMatch.equipe || ''}</th></tr>
             <tr>${columns.map(c => `<th>${c}</th>`).join('')}</tr>
             ${myRows.join("")}
           </table>
@@ -203,10 +275,20 @@ export default function FeuilleMatch() {
     try {
       const { uri } = await Print.printToFileAsync({ html });
       await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-    } catch (e) { }
+    } catch (e) { 
+      console.error('Erreur impression:', e);
+    }
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+  if (loading) return (
+    <View style={styles.container}>
+      <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />
+      <Text style={{ color: '#ccc', textAlign: 'center', marginTop: 10 }}>
+        Chargement de la feuille de match...
+      </Text>
+    </View>
+  );
+  
   if (error) return (
     <View style={styles.container}>
       <Text style={styles.empty}>{error}</Text>
@@ -219,6 +301,11 @@ export default function FeuilleMatch() {
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>📝 Feuille de match</Text>
+      
+      {/* Debug info */}
+      <Text style={styles.debug}>
+        {joueurs.length} joueur(s) de la composition | Équipe: {infoMatch?.equipe || ''} | Coach: {infoMatch?.coach || ''}
+      </Text>
 
       {/* EN-TÊTE */}
       <View style={[styles.headerWrap, isMobile ? styles.mobileHeaderWrap : null]}>
@@ -229,7 +316,7 @@ export default function FeuilleMatch() {
             <TextInput
               value={customDate}
               onChangeText={txt => setCustomDate(txt)}
-              placeholder={infoMatch?.date ? formatDateFR(infoMatch.date) : "JJ/MM/AAAA"}
+              placeholder={infoMatch?.date ? safeFormatDate(infoMatch.date) || "JJ/MM/AAAA" : "JJ/MM/AAAA"}
               style={[
                 isMobile ? styles.mobileInput : styles.input,
                 { color: '#fff', backgroundColor: isMobile ? "#333" : "#161616" }
@@ -253,9 +340,15 @@ export default function FeuilleMatch() {
               placeholderTextColor="#fff"
             />
           </View>
-          <Text style={isMobile ? styles.mobileDetail : styles.detail}>Équipe : {infoMatch?.equipe}</Text>
-          <Text style={isMobile ? styles.mobileDetail : styles.detail}>Catégorie : {infoMatch?.categorie}</Text>
-          <Text style={isMobile ? styles.mobileDetail : styles.detail}>Coach : {infoMatch?.coach}</Text>
+          <Text style={isMobile ? styles.mobileDetail : styles.detail}>
+            Équipe : {infoMatch?.equipe || ''}
+          </Text>
+          <Text style={isMobile ? styles.mobileDetail : styles.detail}>
+            Catégorie : {infoMatch?.categorie || ''}
+          </Text>
+          <Text style={isMobile ? styles.mobileDetail : styles.detail}>
+            Coach : {infoMatch?.coach || ''}
+          </Text>
           {/* Adversaire */}
           <View style={isMobile ? styles.mobileField : styles.row}>
             <Text style={isMobile ? styles.mobileDetail : styles.detail}>Adversaire :</Text>
@@ -333,7 +426,7 @@ export default function FeuilleMatch() {
               styles.headerCell,
               isMobile ? styles.mobileHeaderCell : null
             ]}>
-              {infoMatch.equipe}
+              {infoMatch.equipe || ''}
             </Text>
           </View>
           <View style={styles.subHeaderRow}>
@@ -421,6 +514,13 @@ export default function FeuilleMatch() {
 const styles = StyleSheet.create({
   container: { backgroundColor: '#121212', flex: 1, padding: 20 },
   title: { fontSize: 24, color: '#00ff88', fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
+  debug: { 
+    color: '#666', 
+    fontSize: 12, 
+    textAlign: 'center', 
+    marginBottom: 15,
+    fontStyle: 'italic' 
+  },
 
   // En-tête responsive
   headerWrap: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },

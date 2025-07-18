@@ -11,15 +11,19 @@ import {
   Image,
   Dimensions,
   Platform,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
+import * as Clipboard from 'expo-clipboard';
+import { Ionicons } from '@expo/vector-icons';
 import useCacheData from '../../../lib/cache';
 
 export default function EquipeDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [equipeNom, setEquipeNom] = useState('');
+  const [codeEquipe, setCodeEquipe] = useState('');
   const [joueurs, setJoueurs] = useState([]);
 
   // Responsive params
@@ -30,7 +34,7 @@ export default function EquipeDetail() {
   const fetchEquipe = async () => {
     const { data: equipe, error: err1 } = await supabase
       .from('equipes')
-      .select('nom')
+      .select('nom, code_equipe')
       .eq('id', id)
       .single();
 
@@ -40,10 +44,11 @@ export default function EquipeDetail() {
       .eq('equipe_id', id);
 
     if (err1 || err2) {
-      return { equipeNom: 'Erreur de chargement', joueurs: [] };
+      return { equipeNom: 'Erreur de chargement', codeEquipe: '', joueurs: [] };
     } else {
       return {
         equipeNom: equipe?.nom || 'Équipe',
+        codeEquipe: equipe?.code_equipe || '',
         joueurs: joueursEquipe || [],
       };
     }
@@ -58,9 +63,18 @@ export default function EquipeDetail() {
   useEffect(() => {
     if (cacheData) {
       setEquipeNom(cacheData.equipeNom);
+      setCodeEquipe(cacheData.codeEquipe);
       setJoueurs(cacheData.joueurs);
     }
   }, [cacheData]);
+
+  // Copier code équipe
+  const copierCodeEquipe = async () => {
+    if (codeEquipe) {
+      await Clipboard.setStringAsync(codeEquipe);
+      Alert.alert('Copié !', 'Le code équipe a été copié.');
+    }
+  };
 
   if (loading) return <ActivityIndicator style={{ marginTop: 50 }} color="#00ff88" />;
 
@@ -70,6 +84,23 @@ export default function EquipeDetail() {
         <Text style={{ color: '#00ff88', fontSize: 14 }}>🔄 Rafraîchir</Text>
       </TouchableOpacity>
       <Text style={styles.title}>⚽ {equipeNom}</Text>
+
+      {/* Code équipe affiché avec bouton copier */}
+      {codeEquipe ? (
+        <View style={styles.codeBlock}>
+          <Ionicons name="key-outline" size={20} color="#00ff88" />
+          <Text selectable style={styles.codeEquipe}>{codeEquipe}</Text>
+          <TouchableOpacity
+            style={styles.copyButton}
+            onPress={copierCodeEquipe}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="copy-outline" size={18} color="#00ff88" />
+            <Text style={styles.copyButtonText}>Copier</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       <View style={styles.block}>
         <Text style={styles.label}>Nom de l'équipe :</Text>
         <Text style={styles.value}>{equipeNom}</Text>
@@ -132,6 +163,41 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
   },
+  codeBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#192c21',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 9,
+    marginBottom: 18,
+    gap: 10,
+    alignSelf: 'flex-start',
+  },
+  codeEquipe: {
+    color: '#00ff88',
+    fontWeight: '700',
+    fontSize: 17,
+    letterSpacing: 2,
+    marginHorizontal: 2,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#202b20',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginLeft: 8,
+    gap: 2,
+  },
+  copyButtonText: {
+    color: '#00ff88',
+    fontWeight: '600',
+    fontSize: 13,
+    marginLeft: 2,
+  },
   block: {
     marginBottom: 15,
   },
@@ -150,7 +216,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginVertical: 20,
   },
-  // Carte responsive : row everywhere, wrap/align depending on screen
   playerCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -168,12 +233,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   playerCardMobile: {
-    // Sur mobile : stack le bouton sous l'avatar pour éviter d'être trop serré si la largeur est faible
     flexWrap: 'wrap',
     alignItems: 'flex-start',
   },
   playerCardWeb: {
-    // Sur web ou grand écran : aligné en ligne, tout sur la même rangée
     alignItems: 'center',
   },
   avatar: {

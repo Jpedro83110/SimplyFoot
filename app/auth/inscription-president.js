@@ -271,6 +271,7 @@ export default function InscriptionPresident() {
       if (token) return token;
       return null;
     } catch (error) {
+      console.error('🔔 Erreur notifications:', error);
       return null;
     } finally {
       setNotificationsInitializing(false);
@@ -282,48 +283,92 @@ export default function InscriptionPresident() {
     if (!validateForm()) return;
     setLoading(true);
     try {
+      console.log('🚀 Début de l\'inscription président...');
+
       // 1. Création du compte Auth
+      console.log('📧 Tentative de création du compte Auth...');
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password: password.trim(),
       });
+      
       if (signUpError || !signUpData?.user) {
+        console.error('❌ Erreur Auth SignUp:', signUpError);
         Alert.alert('Erreur', `Inscription échouée : ${signUpError?.message || 'Erreur inconnue.'}`);
         return;
       }
+      
       const userId = signUpData.user.id;
+      console.log('✅ Compte Auth créé, userId:', userId);
+
+      // Après signUp, vérifier la session
+      console.log('🔐 Vérification de la session...');
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        console.log('⚠️ Pas de session, tentative de login...');
+        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password: password.trim(),
+        });
+        if (loginError) {
+          console.error('❌ Erreur Login:', loginError);
+          Alert.alert('Erreur', 'Problème d\'authentification après inscription.');
+          setLoading(false);
+          return;
+        }
+        console.log('✅ Login réussi');
+      } else {
+        console.log('✅ Session active');
+      }
 
       // 2. Générer le token de notification
+      console.log('🔔 Configuration des notifications...');
       const expoPushToken = await setupNotifications();
+      console.log('📱 Token expo:', expoPushToken ? 'Généré' : 'Non disponible');
 
       // 3. Générer le code club unique
       const generatedCode = genererCodeClub();
+      console.log('🔑 Code club généré:', generatedCode);
 
       // 4. Création du club avec informations essentielles
+      console.log('🏆 Tentative de création du club...');
       const adresseComplete = `${adresse.trim()}, ${codePostal.trim()} ${ville.trim()}`;
+      
+      const clubDataToInsert = {
+        nom: clubNom.trim(),
+        adresse: adresseComplete,
+        ville: ville.trim(),
+        code_postal: codePostal.trim(),
+        code_acces: generatedCode,
+        created_by: userId,
+        email: emailClub.trim().toLowerCase(),
+        telephone: telephoneClub.trim(),
+        date_creation: new Date().toISOString(),
+      };
+      
+      console.log('📋 Données club à insérer:', clubDataToInsert);
+      
       const { data: clubData, error: clubError } = await supabase
         .from('clubs')
-        .insert({
-          nom: clubNom.trim(),
-          adresse: adresseComplete,
-          ville: ville.trim(),
-          code_postal: codePostal.trim(),
-          code_acces: generatedCode,
-          created_by: userId,
-          email: emailClub.trim().toLowerCase(),
-          telephone: telephoneClub.trim(),
-          date_creation: new Date().toISOString(),
-        })
+        .insert(clubDataToInsert)
         .select()
         .single();
 
+      console.log('🏆 Réponse création club:', { clubData, clubError });
+
       if (clubError || !clubData) {
-        Alert.alert('Erreur', 'Erreur lors de la création du club.');
+        console.error('❌ Erreur création club:', clubError);
+        Alert.alert('Erreur', `Erreur lors de la création du club: ${clubError?.message || 'Erreur inconnue'}`);
         return;
       }
 
+      console.log('✅ Club créé avec succès:', clubData);
+      console.log('🔑 Club ID:', clubData.id, 'Type:', typeof clubData.id);
+
       // 5. Insertion dans la table utilisateurs
-      const { error: insertUserError } = await supabase.from('utilisateurs').insert({
+      console.log('👤 Tentative de création de l\'utilisateur...');
+      
+      const userDataToInsert = {
         id: userId,
         email: email.trim().toLowerCase(),
         nom: nom.trim(),
@@ -332,14 +377,22 @@ export default function InscriptionPresident() {
         role: 'president',
         expo_push_token: expoPushToken,
         date_creation: new Date().toISOString(),
-      });
+      };
+      
+      console.log('📋 Données utilisateur à insérer:', userDataToInsert);
+
+      const { error: insertUserError } = await supabase.from('utilisateurs').insert(userDataToInsert);
 
       if (insertUserError) {
-        Alert.alert('Erreur', 'Club créé mais profil utilisateur incomplet.');
+        console.error('❌ Erreur création utilisateur:', insertUserError);
+        Alert.alert('Erreur', `Club créé mais profil utilisateur incomplet: ${insertUserError.message}`);
         return;
       }
 
+      console.log('✅ Utilisateur créé avec succès');
+
       // 6. Lien dans clubs_admins
+      console.log('🔗 Création du lien administrateur...');
       const { error: adminError } = await supabase.from('clubs_admins').insert({
         club_id: clubData.id,
         user_id: userId,
@@ -349,17 +402,23 @@ export default function InscriptionPresident() {
       });
 
       if (adminError) {
+        console.error('⚠️ Erreur lien admin:', adminError);
         Alert.alert('Attention', 'Club et utilisateur créés, mais lien administrateur incomplet.');
+      } else {
+        console.log('✅ Lien administrateur créé');
       }
 
-      // 8. Finaliser les notifications
+      // 7. Finaliser les notifications
       if (expoPushToken) {
+        console.log('🔔 Finalisation des notifications...');
         await initializeNotifications(userId);
       }
 
-      // 9. Succès !
+      // 8. Succès !
       setClubCode(generatedCode);
       setClubCreated(true);
+
+      console.log('🎉 Inscription complète avec succès !');
 
       Alert.alert(
         'Félicitations ! 🎉',
@@ -379,7 +438,8 @@ export default function InscriptionPresident() {
       );
 
     } catch (error) {
-      Alert.alert('Erreur', 'Une erreur inattendue s\'est produite. Veuillez réessayer.');
+      console.error('💥 Erreur générale:', error);
+      Alert.alert('Erreur', `Une erreur inattendue s'est produite: ${error.message}`);
     } finally {
       setLoading(false);
     }
