@@ -1,0 +1,24 @@
+{
+  "name": "simplyfoot-traffic-simulator",
+  "version": "1.0.0",
+  "description": "Script de simulation de trafic pour l'application SimplyFoot",
+  "type": "module",
+  "main": "traffic-simulator.js",
+  "scripts": {
+    "simulate": "node traffic-simulator.js",
+    "simulate:light": "node traffic-simulator.js 5 30000 5000",
+    "simulate:medium": "node traffic-simulator.js 20 120000 15000",
+    "simulate:heavy": "node traffic-simulator.js 50 300000 30000",
+    "simulate:stress": "node traffic-simulator.js 100 600000 60000"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  },
+  "keywords": [
+    "supabase",
+    "performance",
+    "testing",
+    "simulation"
+  ],
+  "author": "SimplyFoot Team"
+}

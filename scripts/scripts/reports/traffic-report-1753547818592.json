@@ -1,0 +1,36 @@
+{
+  "simulation": {
+    "users": 5,
+    "duration": 30.693,
+    "scenarios": [
+      "joueur",
+      "coach"
+    ]
+  },
+  "performance": {
+    "totalRequests": 44,
+    "requestsPerSecond": 1.4335516241488286,
+    "errorCount": 0,
+    "errorRate": 0,
+    "responseTime": {
+      "average": 101.61363636363636,
+      "min": 0,
+      "max": 345
+    }
+  },
+  "endpoints": {
+    "equipe": 3,
+    "update-composition": 4,
+    "convocations": 4,
+    "create-message": 4,
+    "evenements-coach": 5,
+    "dashboard-joueur": 5,
+    "evaluations": 5,
+    "dashboard-coach": 1,
+    "update-participation": 4,
+    "messages": 4,
+    "joueurs-coach": 3,
+    "equipes-coach": 2
+  },
+  "errors": {}
+}
