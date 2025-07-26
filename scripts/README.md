@@ -207,12 +207,105 @@ async simulateNouveauScenario(userClient) {
 const userType = ["joueur", "coach", "admin"][i % 3]; // 33% chaque type
 ```
 
-## 🚨 Précautions
+# 🏟️ Génération de Clubs de Test
 
-1. **Ne pas surcharger** votre environnement de production
-2. **Utilisez des données de test** pour éviter la pollution
-3. **Surveillez vos quotas** Supabase pendant les tests
-4. **Commencez petit** puis augmentez progressivement
+### Création de clubs réalistes
+
+Créez des clubs complets avec joueurs, coaches, événements et données pour un mois :
+
+```bash
+# Club petit (3 équipes, 60 joueurs, 3 coaches)
+npm run create:club:small
+
+# Club moyen (6 équipes, 150 joueurs, 6 coaches)
+npm run create:club:medium
+
+# Club grand (10 équipes, 250 joueurs, 10 coaches)
+npm run create:club:large
+
+# Très grand club (15 équipes, 400 joueurs, 15 coaches)
+npm run create:club:huge
+```
+
+### Création manuelle
+
+```bash
+node create-test-club.js create [small|medium|large|huge]
+```
+
+### Suppression d'un club de test
+
+```bash
+node create-test-club.js delete [CLUB_ID]
+```
+
+### 📊 Données générées par club
+
+- **Club** avec code d'accès unique
+- **Coaches** avec comptes authentifiés
+- **Équipes** avec codes équipe
+- **Joueurs** (70% mineurs) avec comptes
+- **Événements** (matchs + entraînements) pour 1 mois
+- **Participations** aux événements (85% de réponses)
+- **Compositions** pour tous les matchs
+- **Messages** privés et de groupe
+- **Évaluations** mentales et techniques
+- **Décharges parentales** pour mineurs
+
+## 🔧 Installation complète
+
+```bash
+cd scripts
+npm install
+```
+
+Installe :
+
+- `@supabase/supabase-js` pour les requêtes
+- `@faker-js/faker` pour la génération de données
+
+## 📈 Simulation avec clubs réels
+
+1. **Créez d'abord un club de test** :
+
+   ```bash
+   npm run create:club:medium
+   ```
+
+2. **Récupérez les identifiants** dans le rapport généré
+
+3. **Lancez la simulation** avec de vrais utilisateurs :
+   ```bash
+   npm run simulate:medium
+   ```
+
+Le simulateur utilisera automatiquement les comptes créés avec le générateur de clubs !
+
+## 🎯 Comptes de test générés
+
+### Format des emails
+
+- **Coaches** : `coach-[prenom].[nom]@test.simplyfoot.com`
+- **Joueurs** : `joueur-[prenom].[nom]@test.simplyfoot.com`
+
+### Mot de passe universel
+
+- **Tous les comptes** : `TestPassword123!`
+
+### Codes d'accès
+
+- **Club** : `CLUB` + 6 caractères aléatoires
+- **Équipes** : `EQ` + 6 caractères aléatoires
+
+## 📁 Rapports de génération
+
+Les rapports sont sauvegardés dans `scripts/reports/` :
+
+```
+test-club-[taille]-[timestamp].json
+```
+
+Contient toutes les informations du club créé pour référence.
 
 ---
 
