@@ -1,20 +1,27 @@
-# Expo Router Example
+# 📱 SimplyFoot
 
-Use [`expo-router`](https://docs.expo.dev/router/introduction/) to build native navigation using files in the `app/` directory.
+Bienvenue sur **SimplyFoot**, une application de gestion pour clubs de football amateur !  
+Ce projet a pour objectif de faciliter l'organisation des équipes, des matchs et des membres.
 
-## 🚀 How to use
+## 🚀 Démarrage rapide
 
-```sh
-npx create-expo-app -e with-router
+Pour commencer à travailler sur le projet en local :
+
+### 1. Cloner le dépôt
+
+```bash
+git clone https://github.com/Jpedro83110/SimplyFoot.git
+cd simplyfoot
 ```
 
-## Deploy
+### 2. Installer les dépendances
+```bash
+npm install
+```
 
-Deploy on all platforms with Expo Application Services (EAS).
+### 3. Lancer l'application
+```bash
+npm run start
+```
 
-- Deploy the website: `npx eas-cli deploy` — [Learn more](https://docs.expo.dev/eas/hosting/get-started/)
-- Deploy on iOS and Android using: `npx eas-cli build` — [Learn more](https://expo.dev/eas)
-
-## 📝 Notes
-
-- [Expo Router: Docs](https://docs.expo.dev/router/introduction/)
+L'application sera alors accessible à l'adresse : http://localhost:8081/.
