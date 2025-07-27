@@ -707,7 +707,7 @@ export default function InscriptionCoach() {
 
           {/* Lien retour connexion */}
           <TouchableOpacity 
-            onPress={() => router.push('/auth/login-coach')}
+            onPress={() => router.push('/auth/login-club')}
             disabled={loading || notificationsInitializing}
             style={styles.backLink}
           >
