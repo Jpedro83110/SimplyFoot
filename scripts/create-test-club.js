@@ -47,6 +47,9 @@ class TestClubGenerator {
       messages: []
     }
     
+    // Track created emails to avoid duplicates
+    this.usedEmails = new Set()
+    
     // Configuration de faker supprimée - utilise la locale par défaut
   }
 
@@ -109,6 +112,31 @@ class TestClubGenerator {
     return club
   }
 
+  // Nouvelle méthode pour générer un email unique
+  generateUniqueEmail(firstName, lastName, type = 'joueur', maxAttempts = 10) {
+    let baseEmail = `${type}-${firstName.toLowerCase()}.${lastName.toLowerCase()}@test.simplyfoot.com`
+    
+    // Si l'email n'est pas utilisé, on le retourne
+    if (!this.usedEmails.has(baseEmail)) {
+      this.usedEmails.add(baseEmail)
+      return baseEmail
+    }
+    
+    // Sinon, on essaie avec des suffixes numériques
+    for (let i = 1; i <= maxAttempts; i++) {
+      const emailWithSuffix = `${type}-${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@test.simplyfoot.com`
+      if (!this.usedEmails.has(emailWithSuffix)) {
+        this.usedEmails.add(emailWithSuffix)
+        return emailWithSuffix
+      }
+    }
+    
+    // En dernier recours, utiliser un timestamp
+    const uniqueEmail = `${type}-${firstName.toLowerCase()}.${lastName.toLowerCase()}.${Date.now()}@test.simplyfoot.com`
+    this.usedEmails.add(uniqueEmail)
+    return uniqueEmail
+  }
+
   // Création des coaches/staff
   async createCoaches(clubId, count) {
     console.log(`👨‍💼 Création de ${count} coaches...`)
@@ -117,7 +145,7 @@ class TestClubGenerator {
     for (let i = 0; i < count; i++) {
       const firstName = faker.person.firstName('male')
       const lastName = faker.person.lastName()
-      const email = `coach-${firstName.toLowerCase()}.${lastName.toLowerCase()}@test.simplyfoot.com`
+      const email = this.generateUniqueEmail(firstName, lastName, 'coach')
       
       // Création compte Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -126,7 +154,7 @@ class TestClubGenerator {
       })
 
       if (authError) {
-        console.warn(`⚠️ Coach ${email} existe déjà, skip création auth`)
+        console.warn(`⚠️ Erreur auth pour coach ${email}:`, authError.message)
         continue
       }
 
@@ -221,7 +249,7 @@ class TestClubGenerator {
         const isMinor = Math.random() > 0.3 // 70% de mineurs
         const firstName = faker.person.firstName()
         const lastName = faker.person.lastName()
-        const email = `joueur-${firstName.toLowerCase()}.${lastName.toLowerCase()}@test.simplyfoot.com`
+        const email = this.generateUniqueEmail(firstName, lastName, 'joueur')
         
         // Création compte Auth
         const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -230,7 +258,7 @@ class TestClubGenerator {
         })
 
         if (authError) {
-          console.warn(`⚠️ Joueur ${email} existe déjà, skip`)
+          console.warn(`⚠️ Erreur auth pour joueur ${email}:`, authError.message)
           continue
         }
 
