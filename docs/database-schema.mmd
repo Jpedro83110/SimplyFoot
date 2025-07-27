@@ -1,0 +1,290 @@
+erDiagram
+    %% Entités principales
+    UTILISATEURS {
+        uuid id PK
+        string email UK
+        string mot_de_passe
+        enum role "president|coach|joueur"
+        string nom
+        string prenom
+        date date_naissance
+        string telephone
+        string adresse
+        boolean actif
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CLUBS {
+        uuid id PK
+        string nom
+        string adresse
+        string telephone
+        string email
+        string logo_url
+        decimal budget_total
+        uuid president_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    EQUIPES {
+        uuid id PK
+        string nom
+        string categorie "U13|U15|U17|Senior"
+        string niveau "District|Regional|National"
+        uuid club_id FK
+        uuid coach_principal_id FK
+        integer max_joueurs
+        boolean active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    JOUEURS {
+        uuid id PK
+        uuid utilisateur_id FK
+        uuid equipe_id FK
+        string poste "Gardien|Defenseur|Milieu|Attaquant"
+        integer numero_maillot
+        decimal poids
+        decimal taille
+        string pied_fort "Gauche|Droit|Ambidextre"
+        string statut "Actif|Blesse|Suspendu"
+        date date_inscription
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    STAFF {
+        uuid id PK
+        uuid utilisateur_id FK
+        uuid club_id FK
+        enum role "coach|assistant|preparateur|medecin"
+        string specialite
+        string diplomes
+        date date_embauche
+        decimal salaire
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    EQUIPE_STAFF {
+        uuid id PK
+        uuid equipe_id FK
+        uuid staff_id FK
+        enum role "principal|assistant"
+        date date_debut
+        date date_fin
+        timestamp created_at
+    }
+
+    EVENEMENTS {
+        uuid id PK
+        string titre
+        text description
+        enum type "match|entrainement|stage|reunion|anniversaire"
+        datetime date_debut
+        datetime date_fin
+        string lieu
+        uuid equipe_id FK
+        uuid organisateur_id FK
+        boolean obligatoire
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CONVOCATIONS {
+        uuid id PK
+        uuid evenement_id FK
+        uuid joueur_id FK
+        enum statut "convoque|present|absent|excuse"
+        text commentaire
+        datetime date_convocation
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    EVALUATIONS_MENTALES {
+        uuid id PK
+        uuid joueur_id FK
+        uuid coach_id FK
+        integer motivation
+        integer concentration
+        integer gestion_stress
+        integer leadership
+        integer esprit_equipe
+        text commentaire
+        date date_evaluation
+        timestamp created_at
+    }
+
+    EVALUATIONS_TECHNIQUES {
+        uuid id PK
+        uuid joueur_id FK
+        uuid coach_id FK
+        integer technique_balle
+        integer vitesse
+        integer endurance
+        integer force
+        integer precision_tir
+        integer jeu_tete
+        text commentaire
+        date date_evaluation
+        timestamp created_at
+    }
+
+    COMPOSITIONS {
+        uuid id PK
+        uuid evenement_id FK
+        string formation "4-4-2|4-3-3|3-5-2"
+        json titulaires
+        json remplacants
+        text tactique
+        uuid coach_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    FEUILLES_MATCH {
+        uuid id PK
+        uuid evenement_id FK
+        uuid equipe_adversaire
+        integer score_domicile
+        integer score_exterieur
+        json buteurs
+        json cartons_jaunes
+        json cartons_rouges
+        json remplacements
+        text resume_match
+        uuid arbitre_principal
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    BUDGETS {
+        uuid id PK
+        uuid club_id FK
+        enum categorie "materiel|transport|inscription|salaire|autre"
+        string libelle
+        decimal montant
+        enum type "recette|depense"
+        date date_operation
+        string facture_url
+        uuid createur_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    ABONNEMENTS {
+        uuid id PK
+        uuid club_id FK
+        enum plan "basic|premium|pro"
+        date date_debut
+        date date_fin
+        decimal prix
+        enum statut "actif|expire|suspendu"
+        json fonctionnalites
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    NOTIFICATIONS {
+        uuid id PK
+        uuid destinataire_id FK
+        string titre
+        text message
+        enum type "info|alerte|rappel|urgent"
+        boolean lu
+        datetime date_envoi
+        json metadata
+        timestamp created_at
+    }
+
+    PROGRAMMES_STAGES {
+        uuid id PK
+        string nom
+        text description
+        date date_debut
+        date date_fin
+        string lieu
+        uuid equipe_id FK
+        uuid responsable_id FK
+        json planning
+        decimal cout
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    NUTRITION_SCANS {
+        uuid id PK
+        uuid joueur_id FK
+        string produit_nom
+        string code_barres
+        json informations_nutritionnelles
+        datetime date_scan
+        string image_url
+        timestamp created_at
+    }
+
+    STORAGE_FILES {
+        uuid id PK
+        string nom_fichier
+        string chemin
+        string type_mime
+        integer taille
+        enum categorie "avatar|logo|document|photo"
+        uuid proprietaire_id FK
+        timestamp created_at
+    }
+
+    %% Relations
+    CLUBS ||--|| UTILISATEURS : "president_id"
+    CLUBS ||--o{ EQUIPES : "club_id"
+    CLUBS ||--o{ STAFF : "club_id"
+    CLUBS ||--o{ BUDGETS : "club_id"
+    CLUBS ||--|| ABONNEMENTS : "club_id"
+
+    EQUIPES ||--|| STAFF : "coach_principal_id"
+    EQUIPES ||--o{ JOUEURS : "equipe_id"
+    EQUIPES ||--o{ EVENEMENTS : "equipe_id"
+    EQUIPES ||--o{ EQUIPE_STAFF : "equipe_id"
+    EQUIPES ||--o{ PROGRAMMES_STAGES : "equipe_id"
+
+    UTILISATEURS ||--o{ JOUEURS : "utilisateur_id"
+    UTILISATEURS ||--o{ STAFF : "utilisateur_id"
+    UTILISATEURS ||--o{ NOTIFICATIONS : "destinataire_id"
+    UTILISATEURS ||--o{ STORAGE_FILES : "proprietaire_id"
+
+    JOUEURS ||--o{ CONVOCATIONS : "joueur_id"
+    JOUEURS ||--o{ EVALUATIONS_MENTALES : "joueur_id"
+    JOUEURS ||--o{ EVALUATIONS_TECHNIQUES : "joueur_id"
+    JOUEURS ||--o{ NUTRITION_SCANS : "joueur_id"
+
+    STAFF ||--o{ EQUIPE_STAFF : "staff_id"
+    STAFF ||--o{ EVALUATIONS_MENTALES : "coach_id"
+    STAFF ||--o{ EVALUATIONS_TECHNIQUES : "coach_id"
+    STAFF ||--o{ COMPOSITIONS : "coach_id"
+    STAFF ||--o{ PROGRAMMES_STAGES : "responsable_id"
+
+    EVENEMENTS ||--o{ CONVOCATIONS : "evenement_id"
+    EVENEMENTS ||--|| COMPOSITIONS : "evenement_id"
+    EVENEMENTS ||--|| FEUILLES_MATCH : "evenement_id"
+    EVENEMENTS ||--|| UTILISATEURS : "organisateur_id"
+
+    BUDGETS ||--|| UTILISATEURS : "createur_id"
+
+    %% Contraintes d'integrité
+    %% - Un club ne peut avoir qu'un seul président
+    %% - Un joueur ne peut être dans qu'une seule équipe à la fois
+    %% - Les numéros de maillot sont uniques par équipe
+    %% - Les évaluations ne peuvent être faites que par le staff de l'équipe
+    %% - Les convocations sont liées à des événements d'équipe
+
+    %% Règles métier
+    %% - Les joueurs U13 ne peuvent pas dépasser 13 ans
+    %% - Maximum 25 joueurs par équipe senior
+    %% - Les évaluations sont notées de 1 à 10
+    %% - Les budgets doivent être équilibrés (recettes >= dépenses)
+    %% - Les abonnements expirent automatiquement
+    %% - Les notifications sont supprimées après 30 jours si lues
