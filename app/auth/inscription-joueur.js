@@ -298,6 +298,7 @@ export default function InscriptionJoueur() {
     } catch (error) {
       Alert.alert('Erreur', 'Une erreur inattendue s\'est produite. Veuillez réessayer.');
     } finally {
+      router.push('/auth/login-joueur')
       setLoading(false);
     }
   };
