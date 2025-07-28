@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, Linking, Image, Platform, Dimensions,
@@ -11,22 +11,27 @@ import TeamCard from '../../components/TeamCard';
 import useCacheData from '../../lib/cache';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
+import { Club } from '@/types/club';
+import { Staff } from '@/types/staff';
+import { EquipeWithJoueurs } from '@/types/equipe';
+import { Stage } from '@/types/stage';
+import { Evenement } from '@/types/evenement';
+import { ParticipationEvenement } from '@/types/ParticipationEvenement';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GREEN = '#00ff88';
 
 export default function CoachDashboard() {
-  const [userId, setUserId] = useState(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
-  const [error, setError] = useState(null);
-  const [club, setClub] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(Date.now());
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [userId, setUserId] = useState<string>();
+  const [loadingAuth, setLoadingAuth] = useState<boolean>(true);
+  const [club, setClub] = useState<Club>();
+  const [refreshKey, setRefreshKey] = useState<number>(Date.now());
+  const [uploadingPhoto, setUploadingPhoto] = useState<boolean>(false);
+  const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const router = useRouter();
 
   // États pour la modification
-  const [editData, setEditData] = useState({
+  const [editData, setEditData] = useState<Required<Pick<Staff, 'telephone' | 'email' | 'niveau_diplome' | 'experience'>>>({
     telephone: '',
     email: '',
     niveau_diplome: '',
@@ -34,7 +39,7 @@ export default function CoachDashboard() {
   });
 
   // Fonction helper pour ajouter un cache-buster à l'affichage
-  const getImageUrlWithCacheBuster = (url) => {
+  const getImageUrlWithCacheBuster = (url?: string): string | undefined => {
     if (!url) return url;
     
     // Si l'URL contient déjà un paramètre, ajouter avec &, sinon avec ?
@@ -44,34 +49,34 @@ export default function CoachDashboard() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: sessionData }) => {
-      const id = sessionData?.session?.user?.id ?? null;
+      const id = sessionData?.session?.user?.id;
       setUserId(id);
       setLoadingAuth(false);
 
       if (id) {
-        const { data: coachData } = await supabase
+        const { data: coachData }: { data: Staff | null } = await supabase
           .from('utilisateurs')
           .select('club_id')
           .eq('id', id)
           .single();
         
         if (coachData?.club_id) {
-          const { data: clubData } = await supabase
+            const { data: clubData }: { data: Club | null } = await supabase
             .from('clubs')
             .select('id, nom, facebook_url, instagram_url, boutique_url, logo_url')
             .eq('id', coachData.club_id)
             .single();
           
-          setClub(clubData);
+          setClub(clubData || undefined);
         }
       }
     });
   }, []);
 
   // Fetch coach depuis staff avec URI stable + refreshKey pour forcer le refresh
-  const [coach, setCoach, loadingCoach] = useCacheData(
+  const [coach, setCoach, loadingCoach] = useCacheData<Staff>(
     userId ? `coach_${userId}_${refreshKey}` : null,
-    async () => {
+    async (): Promise<Staff> => {
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
         .select('*')
@@ -86,7 +91,7 @@ export default function CoachDashboard() {
           .single();
         
         if (userError) throw userError;
-        return userData;
+        return userData as Staff;
       }
       
       // Nettoyer l'URL photo pour éviter les cache-busters
@@ -101,7 +106,7 @@ export default function CoachDashboard() {
         refreshKey: refreshKey
       });
       
-      return staffData;
+      return staffData as Staff;
     },
     12 * 3600
   );
@@ -120,18 +125,20 @@ export default function CoachDashboard() {
   const clubId = coach?.club_id;
 
   // Fetch équipes
-  async function fetchEquipesByClub(clubId) {
-    if (!clubId) return [];
+  const fetchEquipesByCoach = useCallback(async(): Promise<EquipeWithJoueurs[] | null> => {
+    if (!userId) return null;
     
     const { data, error } = await supabase
       .from('equipes')
       .select('*')
-      .eq('club_id', clubId);
+      .eq('coach_id', userId);
     
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
     
     const equipesAvecJoueurs = await Promise.all(
-      (data || []).map(async (equipe) => {
+      (data || []).map(async (equipe): Promise<EquipeWithJoueurs> => {
         const { data: joueurs } = await supabase
           .from('joueurs')
           .select('id')
@@ -142,11 +149,11 @@ export default function CoachDashboard() {
     );
     
     return equipesAvecJoueurs;
-  }
+  }, [userId]);
 
-  const [equipes, , loadingEquipes] = useCacheData(
-    clubId ? `equipes_${clubId}_${refreshKey}` : null,
-    () => fetchEquipesByClub(clubId),
+  const [equipes, , loadingEquipes] = useCacheData<EquipeWithJoueurs[]>(
+    userId ? `equipes_has_coach_${userId}_${refreshKey}` : null,
+    () => fetchEquipesByCoach(),
     3 * 3600
   );
 
@@ -228,7 +235,7 @@ export default function CoachDashboard() {
           // 3. Nom de fichier avec timestamp
           const fileName = `photos_profils_coachs/${userId}_${Date.now()}.${fileExt}`;
           console.log('📁 Tentative upload:', fileName);
-          console.log('📦 Taille fichier:', fileData.size || fileData.byteLength || 'inconnue');
+          console.log('📦 Taille fichier:', (fileData as Blob).size || (fileData as ArrayBuffer).byteLength || 'inconnue');
 
           // 4. Upload avec gestion d'erreur améliorée
           const { data: uploadData, error: uploadError } = await supabase.storage
@@ -271,7 +278,7 @@ export default function CoachDashboard() {
           console.log('✅ Sauvegarde en base réussie');
 
           // 7. Mettre à jour l'état local et forcer le refresh complet
-          setCoach(prev => ({ ...prev, photo_url: basePhotoUrl }));
+          (setCoach as any)((prev: Staff) => ({ ...prev, photo_url: basePhotoUrl })); // FIXME: really works ?
           
           // IMPORTANT : Forcer un nouveau refreshKey pour synchroniser toutes les plateformes
           const newRefreshKey = Date.now();
@@ -287,9 +294,9 @@ export default function CoachDashboard() {
           
           Alert.alert('Succès ! 📸', 'Photo de profil mise à jour sur toutes les plateformes !');
           
-        } catch (error) {
+        } catch (error) { // FIXME: try catch de l'enfer
           console.error('❌ Erreur complète:', error);
-          Alert.alert('Erreur', `Impossible de mettre à jour la photo:\n${error.message}`);
+          Alert.alert('Erreur', `Impossible de mettre à jour la photo:\n${(error as Error).message}`);
         } finally {
           setUploadingPhoto(false);
         }
@@ -318,7 +325,7 @@ export default function CoachDashboard() {
 
       if (error) throw error;
 
-      setCoach(prev => ({ ...prev, ...updateData }));
+      (setCoach as any)((prev: Staff) => ({ ...prev, ...updateData }));
       setShowEditModal(false);
       
       Alert.alert('Succès', 'Informations mises à jour !');
@@ -329,7 +336,7 @@ export default function CoachDashboard() {
   };
 
   // Supprimer équipe
-  const handleDeleteEquipe = (equipeId, nomEquipe) => {
+  const handleDeleteEquipe = (equipeId: string, nomEquipe: string) => {
     Alert.alert(
       "Suppression",
       `Supprimer l'équipe "${nomEquipe}" ? Cette action est irréversible.`,
@@ -347,7 +354,7 @@ export default function CoachDashboard() {
   };
 
   // Calculer âge
-  const calculAge = (date) => {
+  const calculAge = (date?: string): string | null => {
     if (!date) return null;
     const birth = new Date(date);
     const today = new Date();
@@ -358,18 +365,18 @@ export default function CoachDashboard() {
   };
 
   // Hooks pour autres données
-  const [stage] = useCacheData(
+  const [stage] = useCacheData<Stage | null>(
     clubId ? `stage_${clubId}` : null,
-    async () => {
-      const { data } = await supabase.from('stages').select('id').eq('club_id', clubId).maybeSingle();
+    async (): Promise<Stage | null> => {
+      const { data } = await supabase.from('stages').select('*').eq('club_id', clubId).maybeSingle();
       return data;
     },
     12 * 3600
   );
 
-  const [evenements] = useCacheData(
+  const [evenements] = useCacheData<Evenement[]>(
     userId ? `evenements_${userId}` : null,
-    async () => {
+    async (): Promise<Evenement[]> => {
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
@@ -380,18 +387,20 @@ export default function CoachDashboard() {
         .gte('date', filterDate)
         .order('date', { ascending: true });
       if (error) throw error;
-      return data;
+      return data || [];
     },
     1 * 3600
   );
-  const evenement = evenements?.[0] || null;
+  const evenement: Evenement | null = evenements?.[0] || null;
 
-  const [participations] = useCacheData(
+  const [participations] = useCacheData<ParticipationEvenement[]>(
     evenement?.id ? `participations_${evenement.id}` : null,
-    async () => {
+    async (): Promise<ParticipationEvenement[]> => {
+      if(!evenement?.id) return [];
+
       const { data } = await supabase.from('participations_evenement')
         .select('*').eq('evenement_id', evenement.id);
-      return data;
+      return data || [];
     },
     300
   );
@@ -400,8 +409,7 @@ export default function CoachDashboard() {
     present: participations?.filter(p => p.reponse === 'present').length ?? 0,
     absent: participations?.filter(p => p.reponse === 'absent').length ?? 0,
     transport: participations?.filter(
-      p => p.besoin_transport === true || p.besoin_transport === "true" || p.besoin_transport === 1 || p.besoin_transport === "1"
-    ).length ?? 0,
+      participation => participation.besoin_transport === true).length ?? 0,
   };
 
   const loading = loadingAuth || loadingCoach || loadingEquipes;
@@ -410,18 +418,6 @@ export default function CoachDashboard() {
     <View style={styles.loadingContainer}>
       <ActivityIndicator color="#00ff88" size="large" />
       <Text style={styles.loadingText}>Chargement...</Text>
-    </View>
-  );
-  
-  if (error) return (
-    <View style={styles.loadingContainer}>
-      <Text style={{ color: '#ff4444', marginBottom: 20 }}>{error}</Text>
-      <TouchableOpacity
-        style={{ backgroundColor: '#00ff88', padding: 14, borderRadius: 12, width: 180 }}
-        onPress={() => router.replace('/auth/login-club')}
-      >
-        <Text style={{ color: '#111', fontWeight: '700', textAlign: 'center' }}>Reconnexion</Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -526,7 +522,7 @@ export default function CoachDashboard() {
             <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={isMobile ? 16 : 14} color={GREEN} style={styles.infoIcon} />
               <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
-                {calculAge(coach.date_naissance)}
+                {calculAge(coach?.date_naissance)}
               </Text>
             </View>
           )}
@@ -646,7 +642,12 @@ export default function CoachDashboard() {
                 const url = club.facebook_url;
                 const app = `fb://facewebmodal/f?href=${url}`;
                 const supported = await Linking.canOpenURL(app);
-                Linking.openURL(supported ? app : url);
+                const urlToOpen = supported ? app : url;
+                if(urlToOpen) {
+                  Linking.openURL(urlToOpen);
+                } else {
+                  Alert.alert('Erreur', 'Impossible d\'ouvrir le lien Facebook.'); // FIXME: toast
+                }
               }}
             >
               <Image source={require('../../assets/minilogo/facebook.png')} style={styles.iconSocial} />
@@ -655,17 +656,27 @@ export default function CoachDashboard() {
           {club.instagram_url && (
             <TouchableOpacity
               onPress={async () => {
+                if(club.instagram_url) {
                 const username = club.instagram_url.split('/').pop();
                 const app = `instagram://user?username=${username}`;
                 const supported = await Linking.canOpenURL(app);
                 Linking.openURL(supported ? app : club.instagram_url);
+                } else {
+                  Alert.alert('Erreur', 'Impossible d\'ouvrir le lien Instagram.'); // FIXME: toast
+                }
               }}
             >
               <Image source={require('../../assets/minilogo/instagram.png')} style={styles.iconSocial} />
             </TouchableOpacity>
           )}
           {club.boutique_url && (
-            <TouchableOpacity onPress={() => Linking.openURL(club.boutique_url)}>
+            <TouchableOpacity onPress={() => {
+              if(club.boutique_url) {
+              Linking.openURL(club.boutique_url)
+              } else {
+                Alert.alert('Erreur', 'Impossible d\'ouvrir le lien de la boutique.');
+              }}
+            }>
               <Image source={require('../../assets/minilogo/boutique.png')} style={styles.iconSocial} />
             </TouchableOpacity>
           )}
@@ -761,7 +772,13 @@ export default function CoachDashboard() {
   );
 }
 
-function ActionButton({ label, icon, onPress }) {
+interface ActionButtonProps {
+  label: string;
+  icon: any;
+  onPress: () => void;
+}
+
+function ActionButton({ label, icon, onPress }: ActionButtonProps) {
   return (
     <TouchableOpacity style={styles.actionButton} onPress={onPress}>
       <Ionicons name={icon} size={22} color="#00ff88" style={{ marginBottom: 6 }} />
