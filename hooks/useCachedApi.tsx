@@ -16,7 +16,7 @@ const cache = new Map<string, CacheEntry<any>>();
  * @param ttl - Time To Live in seconds (default: 5 minutes)
  * @returns [data, refreshFunction, loading]
  */
-function useCacheData<T>(
+function useCachedApi<T>(
   key: string | null,
   fetchFunction: () => Promise<T | null>,
   ttl: number = 300
@@ -103,7 +103,4 @@ export function getCacheStats(): { size: number; keys: string[] } {
   };
 }
 
-/**
- * @deprecated use useCachedApi instead
- */
-export default useCacheData;
+export { useCachedApi };

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, Linking, Image, Platform, Dimensions,
@@ -8,7 +8,6 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import TeamCard from '../../components/TeamCard';
-import useCacheData from '../../lib/cache';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
 import { Club } from '@/types/club';
@@ -17,6 +16,7 @@ import { EquipeWithJoueurs } from '@/types/equipe';
 import { Stage } from '@/types/stage';
 import { Evenement } from '@/types/evenement';
 import { ParticipationEvenement } from '@/types/ParticipationEvenement';
+import { useCachedApi } from '@/hooks/useCachedApi';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GREEN = '#00ff88';
@@ -74,8 +74,8 @@ export default function CoachDashboard() {
   }, []);
 
   // Fetch coach depuis staff avec URI stable + refreshKey pour forcer le refresh
-  const [coach, setCoach, loadingCoach] = useCacheData<Staff>(
-    userId ? `coach_${userId}_${refreshKey}` : null,
+  const [coach, setCoach, loadingCoach] = useCachedApi<Staff>(
+    userId ? `coach_${userId}` : null,
     async (): Promise<Staff> => {
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
@@ -151,8 +151,8 @@ export default function CoachDashboard() {
     return equipesAvecJoueurs;
   }, [userId]);
 
-  const [equipes, , loadingEquipes] = useCacheData<EquipeWithJoueurs[]>(
-    userId ? `equipes_has_coach_${userId}_${refreshKey}` : null,
+  const [equipes, , loadingEquipes] = useCachedApi<EquipeWithJoueurs[] | null>(
+    userId ? `equipes_has_coach_${userId}` : null,
     () => fetchEquipesByCoach(),
     3 * 3600
   );
@@ -365,7 +365,7 @@ export default function CoachDashboard() {
   };
 
   // Hooks pour autres données
-  const [stage] = useCacheData<Stage | null>(
+  const [stage] = useCachedApi<Stage | null>(
     clubId ? `stage_${clubId}` : null,
     async (): Promise<Stage | null> => {
       const { data } = await supabase.from('stages').select('*').eq('club_id', clubId).maybeSingle();
@@ -374,7 +374,7 @@ export default function CoachDashboard() {
     12 * 3600
   );
 
-  const [evenements] = useCacheData<Evenement[]>(
+  const [evenements] = useCachedApi<Evenement[]>(
     userId ? `evenements_${userId}` : null,
     async (): Promise<Evenement[]> => {
       const today = new Date();
@@ -393,7 +393,7 @@ export default function CoachDashboard() {
   );
   const evenement: Evenement | null = evenements?.[0] || null;
 
-  const [participations] = useCacheData<ParticipationEvenement[]>(
+  const [participations] = useCachedApi<ParticipationEvenement[]>(
     evenement?.id ? `participations_${evenement.id}` : null,
     async (): Promise<ParticipationEvenement[]> => {
       if(!evenement?.id) return [];
