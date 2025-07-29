@@ -32,22 +32,22 @@ export default function Accueil() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      {loggedIn && (
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>🔓 Se déconnecter</Text>
-        </TouchableOpacity>
-      )}
-
       <Image source={require('../assets/logo.png')} style={styles.logoImage} />
       <Text style={styles.title}>Bienvenue sur</Text>
       <Text style={styles.logo}>⚽ SimplyFoot</Text>
       <Text style={styles.subtitle}>L'application des clubs de foot amateur</Text>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.push('/auth/login-club')}
-        accessible accessibilityLabel="Connexion Club"
-      >
+      {loggedIn ? (
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>🔓 Se déconnecter</Text>
+        </TouchableOpacity>
+      ) : (
+        <>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => router.push('/auth/login-club')}
+            accessible accessibilityLabel="Connexion Club"
+          >
         <Text style={styles.buttonText}>Connexion Club (Président / Coach)</Text>
       </TouchableOpacity>
 
@@ -58,6 +58,8 @@ export default function Accueil() {
       >
         <Text style={styles.buttonTextOutline}>Connexion Parent / Joueur</Text>
       </TouchableOpacity>
+      </>
+      )}
     </View>
   );
 }
@@ -98,6 +100,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 20,
     width: '100%',
+    maxWidth: 400,
     alignItems: 'center',
   },
   buttonText: {
@@ -113,6 +116,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 15,
     width: '100%',
+    maxWidth: 400,
     alignItems: 'center',
   },
   buttonTextOutline: {
