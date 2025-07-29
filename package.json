@@ -12,6 +12,7 @@
     "build:ios": "expo export -p ios",
     "ios": "expo run:ios"
   },
+  "prettier": "./.prettierrc.json",
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/datetimepicker": "^8.3.0",
@@ -59,6 +60,7 @@
     "metro": "^0.82.0",
     "metro-config": "^0.82.0",
     "metro-resolver": "^0.82.0",
+    "prettier": "^3.6.2",
     "typescript": "^5.3.0"
   }
 }
