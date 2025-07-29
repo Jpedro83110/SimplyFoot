@@ -50,26 +50,51 @@ export default function Staff() {
   );
 
   // --- Ajout coach
-  const handleAddCoach = async () => {
-    if (!nom || !prenom) {
-      Alert.alert("Champs manquants", "Merci de remplir le nom et le prénom.");
-      return;
-    }
-    const { error } = await supabase.from('staff').insert({
-      nom,
-      prenom,
-      club_id: clubId,
-    });
-    if (error) {
-      Alert.alert("Erreur", "Impossible de créer le coach.");
-      console.error("Erreur insertion coach :", error);
-    } else {
-      Alert.alert("✅ Coach ajouté", `${prenom} ${nom} a été ajouté au staff.`);
-      setNom('');
-      setPrenom('');
-      refreshStaff();
-    }
-  };
+  // const handleAddCoach = async () => {
+  //     if (!clubId) {
+  //     Alert.alert("Erreur", "Le club n'est pas encore chargé. Réessaie dans un instant.");
+  //     return;
+  //   }
+
+  //   if (!prenom || !nom) {
+  //     Alert.alert("Champs manquants", "Merci de remplir le nom et le prénom.");
+  //     return;
+  //   }
+  //   // Vérification si le coach existe déjà
+  //   const { data: existingCoach, error: existingError } = await supabase
+  //     .from('staff')
+  //     .select('id') 
+  //     .eq('club_id', clubId)
+  //     .eq('nom', nom)
+  //     .eq('prenom', prenom)
+  //     .maybeSingle();
+  //   if (existingError) {
+  //     Alert.alert("Erreur", "Impossible de vérifier l'existence du coach.");
+  //     console.error("Erreur vérification coach :", existingError);
+  //     return;
+  //   }
+  //   if (existingCoach) {
+  //     Alert.alert("Coach déjà existant", `${prenom} ${nom} est déjà dans le staff.`);
+  //     return;
+  //   }
+  //   // Insertion du nouveau coach
+  //   console.log("Ajout du coach :", prenom, nom);
+
+  //   const { error } = await supabase.from('staff').insert({
+  //     nom,
+  //     prenom,
+  //     club_id: clubId,
+  //   });
+  //   if (error) {
+  //     Alert.alert("Erreur", "Impossible de créer le coach.");
+  //     console.error("Erreur insertion coach :", error);
+  //   } else {
+  //     Alert.alert("✅ Coach ajouté", `${prenom} ${nom} a été ajouté au staff.`);
+  //     setNom('');
+  //     setPrenom('');
+  //     refreshStaff();
+  //   }
+  // };
 
   // --- Suppression coach
   const handleDeleteCoach = async (coachId) => {
@@ -134,7 +159,8 @@ export default function Staff() {
           ))
         )}
 
-        <View style={styles.form}>
+{/* Formulaire d'ajout d'un coach */}
+        {/* <View style={styles.form}>
           <Text style={styles.subtitle}>➕ Ajouter un coach</Text>
           <TextInput
             style={styles.input}
@@ -154,7 +180,7 @@ export default function Staff() {
             <Ionicons name="add-circle" size={20} color="#111" />
             <Text style={styles.buttonText}>Créer le coach</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
       </ScrollView>
     </LinearGradient>
   );
