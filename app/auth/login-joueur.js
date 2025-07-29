@@ -121,8 +121,6 @@ export default function LoginJoueur() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
-        <Text style={styles.welcome}>Bienvenue sur SimplyFoot</Text>
 
         <View style={styles.form}>
           <Text style={styles.title}>Connexion Joueur / Parent</Text>
