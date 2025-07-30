@@ -25,7 +25,7 @@ export const TeamCard: FC<TeamCardProps> = ({ equipe }) => {
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: '#1a1a1a',
+        backgroundColor: '#161b20',
         borderRadius: 12,
         padding: 12,
         marginBottom: 12,

@@ -234,6 +234,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#121212',
     padding: 18,
     flex: 1,
+    maxWidth: 800,
+    alignSelf: 'center',
   },
   title: {
     fontSize: 22,

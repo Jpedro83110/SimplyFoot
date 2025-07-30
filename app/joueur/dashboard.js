@@ -408,7 +408,7 @@ export default function JoueurDashboard() {
           <Text style={styles.headerCat}>{user?.role === 'parent' ? 'Parent' : 'Joueur'} · {joueurFusionne?.equipe} · {joueurFusionne?.categorie}</Text>
           <View style={styles.rowWrap}>
             <View style={styles.statusItem}>
-              <Ionicons name="card-outline" size={14} color={GREEN} style={{ marginRight: 5 }} />
+              <Ionicons name="card-outline" style={styles.infoIcon} />
               <Text style={styles.headerInfo}>
                 Licence {joueurFusionne?.numero_licence || 'Non renseignée'}
               </Text>
@@ -417,7 +417,7 @@ export default function JoueurDashboard() {
               )}
             </View>
             <View style={styles.statusItem}>
-              <Ionicons name="medkit-outline" size={14} color={GREEN} style={{ marginRight: 5 }} />
+              <Ionicons name="medkit-outline" style={styles.infoIcon} />
               <Text style={styles.headerInfo}>
                 Visite médicale {joueurFusionne?.visite_medicale_valide ? 'Validée' : 'En attente'}
               </Text>
@@ -426,7 +426,7 @@ export default function JoueurDashboard() {
               )}
             </View>
             <View style={styles.statusItem}>
-              <Ionicons name="shirt-outline" size={14} color={GREEN} style={{ marginRight: 5 }} />
+              <Ionicons name="shirt-outline" style={styles.infoIcon} />
               <Text style={styles.headerInfo}>
                 Équipement {joueurFusionne?.equipement || 'En attente'}
               </Text>
@@ -435,7 +435,7 @@ export default function JoueurDashboard() {
               )}
             </View>
             <View style={styles.statusItem}>
-              <Ionicons name="walk-outline" size={14} color={GREEN} style={{ marginRight: 5 }} />
+              <Ionicons name="walk-outline" style={styles.infoIcon} />
               <Text style={styles.headerInfo}>Poste : {joueurFusionne?.poste || 'Non renseigné'}</Text>
             </View>
           </View>
@@ -463,9 +463,9 @@ export default function JoueurDashboard() {
         </View>
       )}
       {/* Jauge présence */}
-      <View style={{ width: '92%', alignSelf: 'center', marginBottom: 12 }}>
+      <View style={{ width: '92%', alignSelf: 'center', marginBottom: 14, maxWidth: 790 }}>
         <Text style={{ color: '#aaa', fontSize: 13, marginBottom: 4 }}>
-          Taux de présence : <Text style={{ color: GREEN, fontWeight: 'bold' }}>{tauxPresence}%</Text>
+          Taux de présence : <Text style={styles.attendanceTracker}>{tauxPresence}%</Text>
           {total > 0 ? ` (${present} / ${total})` : ''}
         </Text>
         <View style={{ height: 9, backgroundColor: '#232b28', borderRadius: 8, overflow: 'hidden' }}>
@@ -564,6 +564,7 @@ export default function JoueurDashboard() {
           alignItems: 'center',
           width: '92%',
           alignSelf: 'center',
+          maxWidth: 790
         }}
         onPress={async () => {
           await supabase.auth.signOut();
@@ -645,7 +646,8 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 4,
     width: '92%',
-    alignSelf: 'center'
+    alignSelf: 'center',
+    maxWidth: 790,
   },
   rowBetween: {
     flexDirection: 'row',
@@ -672,8 +674,11 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   infoSection: {
-    flex: 1,
-    marginLeft: 16,
+    flex: 1
+  },
+  attendanceTracker: {
+    color: GREEN,
+    fontWeight: 'bold'
   },
   nameAndEditRow: {
     flexDirection: 'row',
@@ -693,7 +698,8 @@ const styles = StyleSheet.create({
     color: GREEN,
     fontSize: 13,
     fontWeight: '700',
-    marginTop: 1
+    marginTop: 1,
+    marginBottom: 10
   },
   editButton: {
     backgroundColor: '#232b28',
@@ -709,8 +715,12 @@ const styles = StyleSheet.create({
   statusItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 8,
-    marginBottom: 4
+    marginRight: 20
+  },
+  infoIcon: {
+    
+      width: 20,
+      color: GREEN,
   },
   headerInfo: {
     color: '#fff',
@@ -757,13 +767,15 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 16,
     width: '92%',
-    alignSelf: 'center'
+    alignSelf: 'center',
+    maxWidth: 790,
   },
   deadlineTitle: {
     color: '#fc2b3a',
     fontWeight: '700',
     fontSize: 14,
-    marginBottom: 4
+    marginBottom: 4,
+    maxWidth: 790,
   },
   deadlineTime: {
     color: '#fff',
@@ -778,7 +790,8 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 20,
     width: '92%',
-    alignSelf: 'center'
+    alignSelf: 'center',
+    maxWidth: 790,
   },
   eventTitle: {
     color: GREEN,
@@ -798,7 +811,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
     width: '92%',
     alignSelf: 'center',
-    rowGap: 12
+    rowGap: 12,
+    maxWidth: 790,
   },
   btnMini: {
     backgroundColor: '#181f22',
@@ -832,7 +846,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     width: '92%',
     alignSelf: 'center',
-    gap: 10
+    gap: 10,
+    maxWidth: 790,
   },
   evalBtn: {
     flex: 1,
