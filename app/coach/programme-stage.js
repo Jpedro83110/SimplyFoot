@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, useWindowDimensions, Platform
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { supabase } from '../../lib/supabase';
-import useCacheData from '../../lib/cache'; // <-- Ajout du hook de cache
-import { normalizeHour } from '../../lib/formatDate'; // AJOUT ICI
+import { normalizeHour } from '../../lib/formatDate';
+
+const GREEN = '#00ff88';
+const DARK = '#101415';
+const DARK_LIGHT = '#161b20';
 
 function downloadCSVWeb(filename, csv) {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -29,34 +31,38 @@ function formatDateFR(dateStr) {
 }
 const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
 
-// ------- Hook principal -------
 export default function ProgrammeStage() {
   const { width } = useWindowDimensions();
+  const [stages, setStages] = useState([]);
   const [openedStageId, setOpenedStageId] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [confirmation, setConfirmation] = useState('');
 
-  // Utilise le cache pour tous les stages du club
-  const [stages, refreshStages, loading] = useCacheData(
-    'programme_stages',
-    async () => {
+  useEffect(() => {
+    const fetchStages = async () => {
       const { data: session } = await supabase.auth.getSession();
       const userId = session?.session?.user?.id;
-      if (!userId) return [];
+      if (!userId) return;
+
       const { data: user } = await supabase
         .from('utilisateurs')
         .select('club_id')
         .eq('id', userId)
         .single();
-      if (!user) return [];
+
+      if (!user) return;
+
       const { data: stagesList } = await supabase
         .from('stages')
         .select('*')
         .eq('club_id', user.club_id)
         .order('date_debut', { ascending: false });
-      return stagesList || [];
-    },
-    3600 // TTL 1h
-  );
+
+      setStages(stagesList || []);
+      setLoading(false);
+    };
+    fetchStages();
+  }, []);
 
   const imprimerStage = async (stage) => {
     try {
@@ -134,18 +140,13 @@ export default function ProgrammeStage() {
   if (loading)
     return <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />;
 
-  if (!stages || !stages.length)
+  if (!stages.length)
     return <Text style={{ color: '#ccc', textAlign: 'center', marginTop: 40 }}>Aucun stage trouvé.</Text>;
 
   return (
-    <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>
+    <ScrollView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>📘 Programmes des Stages</Text>
-        <TouchableOpacity onPress={refreshStages} style={{ marginBottom: 16 }}>
-          <Text style={{ color: '#00ff88', textAlign: 'center', fontWeight: 'bold' }}>
-            🔄 Rafraîchir la liste des stages
-          </Text>
-        </TouchableOpacity>
 
         {stages.map((stage) => (
           <View key={stage.id} style={{ width: '100%', maxWidth: 600, alignSelf: 'center' }}>
@@ -158,10 +159,10 @@ export default function ProgrammeStage() {
             >
               <Text style={styles.stageTitle}>{stage.titre}</Text>
               <Text style={styles.stageDate}>
-                Du {formatDateFR(stage.date_debut)} au {formatDateFR(stage.date_fin)}
+                🗓️ Du {formatDateFR(stage.date_debut)} au {formatDateFR(stage.date_fin)}
               </Text>
               {stage.age_min && stage.age_max &&
-                <Text style={styles.stageAge}>Âge : {stage.age_min} à {stage.age_max} ans</Text>
+                <Text style={styles.stageAge}>Âge : De {stage.age_min} à {stage.age_max} ans</Text>
               }
               <Text style={styles.openCloseBtn}>{openedStageId === stage.id ? '▲' : '▼'}</Text>
             </TouchableOpacity>
@@ -176,18 +177,32 @@ export default function ProgrammeStage() {
                   let heureFin = prog.heureFin || stage.heure_fin || '17:00';
                   return (
                     <View key={day} style={styles.dayBlock}>
-                      <Text style={styles.dayTitle}>{day.charAt(0).toUpperCase() + day.slice(1)}</Text>
-                      <Text style={styles.labelField}>Lieu :</Text>
-                      <Text style={styles.fieldValue}>{prog.lieu || '—'}</Text>
-                      <Text style={styles.labelField}>Horaires :</Text>
-                      <Text style={styles.fieldValue}>
-                        {normalizeHour(heureDebut)} - {normalizeHour(heureFin)}
-                      </Text>
-                      <Text style={styles.labelField}>Matin :</Text>
-                      <Text style={styles.fieldValue}>{prog.matin || '—'}</Text>
-                      <Text style={styles.labelField}>Après-midi :</Text>
-                      <Text style={styles.fieldValue}>{prog.apresMidi || '—'}</Text>
-                    </View>
+  <Text style={styles.dayTitle}>
+    {day.charAt(0).toUpperCase() + day.slice(1)}
+  </Text>
+
+    <View style={styles.fieldRow}>
+      <Text style={styles.labelField}>📍 Lieu :</Text>
+      <Text style={styles.fieldValue}>{prog.lieu || '—'}</Text>
+    </View>
+
+    <View style={styles.fieldRow}>
+      <Text style={styles.labelField}>⌚ Horaires :</Text>
+      <Text style={styles.fieldValue}>
+        {normalizeHour(heureDebut)} - {normalizeHour(heureFin)}
+      </Text>
+    </View>
+
+    <View style={styles.fieldRow}>
+      <Text style={styles.labelField}>🌅 Matin :</Text>
+      <Text style={styles.fieldValue}>{prog.matin || '—'}</Text>
+    </View>
+
+    <View style={styles.fieldRow}>
+      <Text style={styles.labelField}>🌇 Après-midi :</Text>
+      <Text style={[styles.fieldValue, { marginLeft: -10 }]}>{prog.apresMidi || '—'}</Text>
+    </View>
+  </View>
                   );
                 })}
 
@@ -219,16 +234,22 @@ export default function ProgrammeStage() {
           </TouchableOpacity>
         )}
       </ScrollView>
-    </LinearGradient>
+    </ScrollView>
   );
 }
 
-// ... styles identiques (conserve les tiens)
-
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { padding: 18, alignItems: 'center', width: '100%' },
-  title: { fontSize: 22, color: '#00ff88', fontWeight: 'bold', marginBottom: 18, marginTop: 6 },
+
+  container: {
+    backgroundColor: DARK,
+    flex: 1,
+  },
+  scroll: { padding: 20,
+    alignSelf: 'center',
+    maxWidth: 790,
+    width: '92%',
+  },
+  title: { fontSize: 22, color: GREEN, fontWeight: 'bold', marginBottom: 18, alignSelf: 'center', marginTop: 6 },
   stageCard: {
     backgroundColor: '#222',
     borderRadius: 12,
@@ -240,69 +261,74 @@ const styles = StyleSheet.create({
     maxWidth: 600,
     alignSelf: 'center',
     alignItems: 'center',
-    flexDirection: 'column',
+    position: 'relative',
   },
-  stageTitle: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  stageDate: { color: '#00ff88', fontSize: 13, marginTop: 4 },
-  stageAge: { color: '#facc15', fontSize: 13, marginTop: 2 },
+  stageTitle: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  stageDate: { color: '#00ff88', fontSize: 14, marginTop: 6 },
+  stageAge: { color: '#facc15', fontSize: 14, marginTop: 4 },
   openCloseBtn: {
-    color: '#00ff88',
+    color: GREEN,
     fontWeight: 'bold',
     fontSize: 20,
     textAlign: 'center',
     marginTop: 2,
   },
-  formBlock: { marginBottom: 24, alignItems: 'center' },
-  dayBlock: {
-    width: '100%',
-    marginBottom: 10,
-    backgroundColor: '#161a1a',
-    borderRadius: 12,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#252c2c',
+
+  formBlock: {
+    backgroundColor: DARK_LIGHT,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+    marginTop: 12,
   },
-  dayTitle: { color: '#00ff88', fontWeight: 'bold', fontSize: 15, marginBottom: 3, textAlign: 'center' },
+
+  dayBlock: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#444',
+    paddingVertical: 8,
+    marginBottom: 6,
+  },
+
+  dayTitle: {
+    fontWeight: '600',
+    fontSize: 16,
+    color: GREEN,
+    marginBottom: 10,
+  },
+
+  fieldRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
   labelField: {
-    color: '#bbb',
-    marginBottom: 3,
-    marginTop: 3,
-    fontWeight: 'bold',
-    fontSize: 13,
-    marginLeft: 2,
+    fontWeight: '600',
+    color: '#aaa',
+    minWidth: 90,
+    marginRight: 28,
   },
   fieldValue: {
-    color: '#fff',
-    fontSize: 14,
-    marginBottom: 2,
-    marginLeft: 6,
+    flex: 1,
+    color: '#eee',
   },
+
   rowActions: {
-    marginTop: 18,
-    width: '100%',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
+    marginTop: 14,
   },
+
   actionBtn: {
-    borderRadius: 8,
+    paddingVertical: 10,
+    borderRadius: 10,
     alignItems: 'center',
-    marginVertical: 4,
-    paddingVertical: 15,
-    paddingHorizontal: 0,
-    minWidth: 120,
-    marginHorizontal: 0,
   },
-  buttonText: { color: '#000', fontSize: 16, fontWeight: '700' },
+
+  buttonText: {
+    fontWeight: '600',
+  },
+
   confirmationMsg: {
-    color: '#00ff88',
-    marginTop: 20,
-    fontWeight: 'bold',
     textAlign: 'center',
-    backgroundColor: '#181c1c',
-    borderRadius: 8,
-    padding: 8,
-    fontSize: 16,
-  },
+    color: '#00ff88',
+    marginTop: 12,
+    marginBottom: 20,
+  }
 });

@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, useWindowDimensions, Platform
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
@@ -145,7 +144,7 @@ export default function ProgrammeStage() {
     return <Text style={{ color: '#ccc', textAlign: 'center', marginTop: 40 }}>Aucun stage trouvé.</Text>;
 
   return (
-    <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>
+    <ScrollView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>📘 Programmes des Stages</Text>
 
@@ -235,7 +234,7 @@ export default function ProgrammeStage() {
           </TouchableOpacity>
         )}
       </ScrollView>
-    </LinearGradient>
+    </ScrollView>
   );
 }
 
