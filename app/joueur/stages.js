@@ -8,8 +8,11 @@ import {
   ImageBackground,
   ActivityIndicator
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
+
+const GREEN = '#00ff88';
+const DARK = '#101415';
+const DARK_LIGHT = '#161b20';
 
 export default function LectureStage() {
   const [stage, setStage] = useState(null);
@@ -51,7 +54,7 @@ export default function LectureStage() {
   }
 
   return (
-    <LinearGradient colors={["#0a0a0a", "#0f0f0f"]} style={styles.container}>
+    <ScrollView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>📘 {stage.titre}</Text>
         <Text style={styles.detail}>📍 {stage.lieu}</Text>
@@ -70,17 +73,24 @@ export default function LectureStage() {
           ))}
         </ImageBackground>
       </ScrollView>
-    </LinearGradient>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { padding: 20 },
+  container: {
+    backgroundColor: DARK,
+    flex: 1,
+  },
+  scroll: { padding: 20,
+    alignSelf: 'center',
+    maxWidth: 790,
+    width: '92%',
+    },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#00ff88',
+    color: GREEN,
     textAlign: 'center',
     marginBottom: 10,
   },

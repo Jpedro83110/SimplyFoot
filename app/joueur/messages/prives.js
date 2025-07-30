@@ -6,6 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
 
+const GREEN = '#00ff88';
+const DARK = '#101415';
+const DARK_LIGHT = '#161b20';
+
 export default function MessagesPrivesJoueur() {
   const [joueurId, setJoueurId] = useState(null);
   const [coachId, setCoachId] = useState(null);
@@ -79,7 +83,7 @@ export default function MessagesPrivesJoueur() {
     >
       <LinearGradient colors={['#0a0a0acc', '#0f0f0fcc']} style={styles.container}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Text style={styles.title}>📩 Message privé avec ton coach</Text>
+          <Text style={styles.title}>📩 Messages privés avec ton coach</Text>
           <View style={styles.filContainer}>
             {filMessages.map((msg) => (
               <View
@@ -113,8 +117,15 @@ export default function MessagesPrivesJoueur() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { padding: 20 },
+  container: {
+    backgroundColor: DARK,
+    flex: 1,
+  },
+  scroll: { padding: 20,
+    alignSelf: 'center',
+    maxWidth: 790,
+    width: '92%',
+   },
   title: { fontSize: 22, color: '#00ff88', textAlign: 'center', marginBottom: 20 },
   filContainer: { marginVertical: 20 },
   bulle: {

@@ -6,6 +6,10 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
 
+const GREEN = '#00ff88';
+const DARK = '#101415';
+const DARK_LIGHT = '#161b20';
+
 export default function MessagesGroupesJoueur() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -106,13 +110,20 @@ export default function MessagesGroupesJoueur() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { padding: 20 },
+  container: {
+    backgroundColor: DARK,
+    flex: 1,
+  },
+  scroll: { padding: 20,
+    alignSelf: 'center',
+    maxWidth: 790,
+    width: '92%',
+    },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#00ff88',
+    color: GREEN,
     textAlign: 'center',
     marginBottom: 20,
   },

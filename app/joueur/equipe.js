@@ -3,6 +3,10 @@ import { View, Text, StyleSheet, ActivityIndicator, FlatList, ScrollView, Image 
 import { supabase } from '../../lib/supabase';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
+const GREEN = '#00ff88';
+const DARK = '#101415';
+const DARK_LIGHT = '#161b20';
+
 export default function Equipe() {
   const [players, setPlayers] = useState([]);
   const [coach, setCoach] = useState(null);
@@ -142,6 +146,7 @@ export default function Equipe() {
 
   return (
     <ScrollView style={styles.container}>
+      <ScrollView style={styles.scroll}>
       <Text style={styles.title}>
         <Ionicons name="people-circle-outline" size={22} color="#00ff88" /> Mon Équipe
       </Text>
@@ -226,17 +231,19 @@ export default function Equipe() {
         />
       )}
     </ScrollView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#121212',
-    padding: 18,
-    flex: 1,
-    maxWidth: 800,
-    alignSelf: 'center',
+    backgroundColor: DARK,
   },
+    scroll: { padding: 20,
+    alignSelf: 'center',
+    maxWidth: 790,
+    width: '92%',
+   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
@@ -246,8 +253,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   coachCard: {
-    backgroundColor: '#18251a',
+    backgroundColor: DARK_LIGHT,
     padding: 14,
+    border: '2px solid #00ff88',
     borderRadius: 12,
     marginBottom: 20,
     shadowColor: '#00ff8855',
@@ -262,7 +270,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 2,
     borderColor: '#00ff88',
-    backgroundColor: '#232b28',
+    backgroundColor: DARK_LIGHT,
     marginRight: 10,
   },
   coachTitle: {
@@ -304,7 +312,7 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   playerCard: {
-    backgroundColor: '#191a1f',
+    backgroundColor: DARK_LIGHT,
     padding: 10,
     borderRadius: 8,
     marginBottom: 12,
@@ -322,7 +330,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
     borderWidth: 2,
     borderColor: '#00ff88',
-    backgroundColor: '#232b28',
+    backgroundColor: DARK_LIGHT,
   },
   cardTitle: {
     color: '#fff',
