@@ -99,7 +99,7 @@ export default function Infos() {
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
 
   return (
-    <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>
+    <ScrollView style={{ flex: 1, backgroundColor: '#101415' }} contentContainerStyle={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>🏟️ Informations du Club</Text>
 
@@ -148,12 +148,16 @@ export default function Infos() {
           </TouchableOpacity>
         )}
       </ScrollView>
-    </LinearGradient>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: {
+    alignSelf: 'center',
+    maxWidth: 790,
+    width: '92%',
+  },
   scroll: { padding: 20 },
   title: {
     fontSize: 24,
@@ -169,6 +173,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderLeftWidth: 4,
     borderLeftColor: '#00ff88',
+    maxWidth: 790,
   },
   icon: {
     marginBottom: 6,
@@ -195,6 +200,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
+    maxWidth: 790
   },
   buttonText: {
     color: '#000',

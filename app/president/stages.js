@@ -12,6 +12,10 @@ import useCacheData from '../../lib/cache';
 import { formatDateFR, normalizeHour } from '../../lib/formatDate'; // <-- AJOUT ICI
 import Header from '../../components/Header';
 
+const GREEN = '#00ff88';
+const DARK = '#101415';
+const DARK_LIGHT = '#161b20';
+
 const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
 
 function downloadCSVWeb(filename, csv) {
@@ -304,8 +308,7 @@ export default function Stages() {
 
   // ---- AFFICHAGE
   return (
-    <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>
-      <Header title="Gestion des Stages" />
+    <ScrollView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>📘 Gestion des Stages</Text>
@@ -347,14 +350,16 @@ export default function Stages() {
                       <TextInput style={[styles.input, { flex: 1 }]} placeholder="Date fin (YYYY-MM-DD)" value={dateFin} onChangeText={setDateFin} placeholderTextColor="#aaa" />
                     </View>
                     <View style={{ flexDirection: 'row', gap: 10 }}>
-                      <TextInput style={[styles.input, { flex: 1 }]} placeholder="Âge min" value={ageMin} onChangeText={setAgeMin} keyboardType="numeric" placeholderTextColor="#aaa" />
-                      <Text style={{ color: '#fff', alignSelf: 'center' }}>ans</Text>
-                      <TextInput style={[styles.input, { flex: 1 }]} placeholder="Âge max" value={ageMax} onChangeText={setAgeMax} keyboardType="numeric" placeholderTextColor="#aaa" />
+                      <Text style={{ color: '#fff', alignSelf: 'center' }}>Âge :</Text>
+                      <Text style={{ color: '#fff', alignSelf: 'center' }}>De</Text>
+                      <TextInput style={[styles.miniInput, { flex: 1 }]} placeholder="Âge min" value={ageMin} onChangeText={setAgeMin} keyboardType="numeric" placeholderTextColor="#aaa" />
+                      <Text style={{ color: '#fff', alignSelf: 'center' }}>ans à</Text>
+                      <TextInput style={[styles.miniInput, { flex: 1 }]} placeholder="Âge max" value={ageMax} onChangeText={setAgeMax} keyboardType="numeric" placeholderTextColor="#aaa" />
                       <Text style={{ color: '#fff', alignSelf: 'center' }}>ans</Text>
                     </View>
                     <View style={{ flexDirection: 'row', gap: 10 }}>
-                      <TextInput style={[styles.input, { flex: 1 }]} placeholder="Heure début (ex: 09:00 ou 9h00)" value={heureDebut} onChangeText={setHeureDebut} placeholderTextColor="#aaa" />
-                      <TextInput style={[styles.input, { flex: 1 }]} placeholder="Heure fin (ex: 17:00 ou 17h00)" value={heureFin} onChangeText={setHeureFin} placeholderTextColor="#aaa" />
+                      <TextInput style={[styles.miniInput, { flex: 1 }]} placeholder="Heure début (ex: 09:00 ou 9h00)" value={heureDebut} onChangeText={setHeureDebut} placeholderTextColor="#aaa" />
+                      <TextInput style={[styles.miniInput, { flex: 1 }]} placeholder="Heure fin (ex: 17:00 ou 17h00)" value={heureFin} onChangeText={setHeureFin} placeholderTextColor="#aaa" />
                     </View>
                     <Text style={styles.subtitle}>Programme journalier</Text>
                     {jours.map(day => (
@@ -392,7 +397,7 @@ export default function Stages() {
                           onChangeText={text => handleChangeProgramme(day, 'matin', text)}
                           placeholderTextColor="#bbb"
                         />
-                        <Text style={styles.labelField}>{`${day.charAt(0).toUpperCase() + day.slice(1)} aprem`}</Text>
+                        <Text style={styles.labelField}>{`${day.charAt(0).toUpperCase() + day.slice(1)} après-midi`}</Text>
                         <TextInput
                           multiline
                           style={styles.textarea}
@@ -495,7 +500,7 @@ export default function Stages() {
                     onChangeText={text => handleChangeProgramme(day, 'matin', text)}
                     placeholderTextColor="#bbb"
                   />
-                  <Text style={styles.labelField}>{`${day.charAt(0).toUpperCase() + day.slice(1)} aprem`}</Text>
+                  <Text style={styles.labelField}>{`${day.charAt(0).toUpperCase() + day.slice(1)} après-midi`}</Text>
                   <TextInput
                     multiline
                     style={styles.textarea}
@@ -521,16 +526,26 @@ export default function Stages() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </ScrollView>
   );
 }
 
-// ... styles (identiques)
-
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { padding: 18, alignItems: 'center', width: '100%' },
-  title: { fontSize: 22, color: '#00ff88', fontWeight: 'bold', marginBottom: 18, marginTop: 6 },
+  container: {
+    backgroundColor: DARK,
+  },
+  scroll: { padding: 20,
+    alignSelf: 'center',
+    maxWidth: 790,
+    width: '92%',
+   },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: GREEN,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
   button: {
     backgroundColor: '#00ff88',
     paddingVertical: 14,
@@ -557,9 +572,21 @@ const styles = StyleSheet.create({
     borderColor: '#222',
     width: '100%',
   },
+  miniInput: {
+    backgroundColor: '#1e1e1e',
+    color: '#fff',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 15,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#222',
+    width: '50%',
+    maxWidth: 80,
+  },
   labelField: {
     color: '#bbb',
-    marginBottom: 3,
+    marginBottom: 5,
     marginTop: 3,
     fontWeight: 'bold',
     fontSize: 13,
@@ -581,7 +608,7 @@ const styles = StyleSheet.create({
   subtitle: {
     color: '#aaa',
     fontSize: 16,
-    marginVertical: 8,
+    marginVertical: 15,
     fontWeight: 'bold'
   },
   dayBlock: {

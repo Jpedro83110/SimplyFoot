@@ -3,10 +3,13 @@ import {
   View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView,
   Alert, ActivityIndicator, Image
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import useCacheData from '../../lib/cache';
+
+const GREEN = '#00ff88';
+const DARK = '#101415';
+const DARK_LIGHT = '#161b20';
 
 export default function Staff() {
   const [nom, setNom] = useState('');
@@ -123,11 +126,11 @@ export default function Staff() {
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
 
   return (
-    <LinearGradient colors={["#0a0a0a", "#0f0f0f"]} style={styles.container}>
+    <ScrollView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>👥 Membres du Staff</Text>
 
-        {staff.length === 0 ? (
+        {(!staff || staff.length === 0) ? (
           <Text style={{ color: '#ccc', marginBottom: 20 }}>Aucun coach encore créé.</Text>
         ) : (
           staff.map((membre) => (
@@ -182,13 +185,19 @@ export default function Staff() {
           </TouchableOpacity>
         </View> */}
       </ScrollView>
-    </LinearGradient>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { padding: 20 },
+  container: {
+    backgroundColor: DARK,
+  },
+  scroll: { padding: 20,
+    alignSelf: 'center',
+    maxWidth: 790,
+    width: '92%',
+   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',

@@ -9,11 +9,14 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { supabase } from '../../lib/supabase';
 import * as Notifications from 'expo-notifications';
+
+const GREEN = '#00ff88';
+const DARK = '#101415';
+const DARK_LIGHT = '#161b20';
 
 export default function Evenements() {
   const [events, setEvents] = useState([]);
@@ -155,7 +158,7 @@ export default function Evenements() {
   };
 
   return (
-    <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>
+    <ScrollView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>📆 Organisation Club</Text>
 
@@ -235,22 +238,28 @@ export default function Evenements() {
           ))
         )}
       </ScrollView>
-    </LinearGradient>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { padding: 20 },
+  container: {
+    backgroundColor: DARK,
+  },
+  scroll: { padding: 20,
+    alignSelf: 'center',
+    maxWidth: 790,
+    width: '92%',
+   },
   title: {
-    fontSize: 24,
-    color: '#00ff88',
+    fontSize: 22,
     fontWeight: 'bold',
+    color: GREEN,
     marginBottom: 20,
     textAlign: 'center',
   },
   form: {
-    backgroundColor: '#1e1e1e',
+    backgroundColor: DARK,
     padding: 16,
     borderRadius: 12,
     marginBottom: 30,
@@ -258,16 +267,18 @@ const styles = StyleSheet.create({
     borderLeftColor: '#00ff88',
   },
   input: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: DARK_LIGHT,
     color: '#fff',
     padding: 12,
     borderRadius: 8,
     marginBottom: 12,
   },
   picker: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: DARK_LIGHT,
     color: '#fff',
     marginBottom: 12,
+    paddingVertical: 15,
+    paddingLeft: 10,
     borderRadius: 8,
   },
   createButton: {

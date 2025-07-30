@@ -1269,6 +1269,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: '92%',
         maxWidth: 790,
+        backgroundColor: '#161b20',
     },
     logoutButtonText: {
         color: '#00ff88',
