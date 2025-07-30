@@ -27,13 +27,18 @@ export default function LoginJoueur() {
   const handleForgotPassword = async () => {
     if (!email) {
       Alert.alert('Erreur', 'Entrez d’abord votre email pour recevoir un lien de réinitialisation.');
+      console.log('Erreur', 'Entrez d’abord votre email pour recevoir un lien de réinitialisation.');
       return;
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+                                redirectTo: 'http://localhost:8081/auth/reset-password',
+                                });
     if (error) {
       Alert.alert('Erreur', error.message);
+      console.log('Erreur', error.message);
     } else {
       Alert.alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
+      console.log('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
     }
   };
 
@@ -121,11 +126,7 @@ export default function LoginJoueur() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-
-        <View style={styles.form}>
           <Text style={styles.title}>Connexion Joueur / Parent</Text>
-
-          <View style={styles.inputGroup}>
             <TextInput
               style={styles.input}
               placeholder="Email"
@@ -137,9 +138,8 @@ export default function LoginJoueur() {
               autoCorrect={false}
               textContentType="username"
             />
-          </View>
 
-          <View style={styles.inputGroup}>
+          <View style={{ width: '100%', position: 'relative', marginBottom: 15 }}>
             <TextInput
               style={[styles.input, { paddingRight: 44 }]}
               placeholder="Mot de passe"
@@ -184,7 +184,6 @@ export default function LoginJoueur() {
           <TouchableOpacity onPress={() => router.push('/auth/inscription-joueur')}>
             <Text style={styles.switchText}>Pas encore de compte ? Créer un compte Joueur</Text>
           </TouchableOpacity>
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -192,40 +191,14 @@ export default function LoginJoueur() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#121212',
-  },
-  scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 24,
+  },
+  scrollContent: {
+    marginTop: 30,
+    justifyContent: 'center',
     alignItems: 'center',
-  },
-  logo: {
-    width: 90,
-    height: 90,
-    marginBottom: 8,
-  },
-  welcome: {
-    fontSize: 20,
-    color: '#00ff88',
-    fontWeight: '700',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  form: {
-    width: '100%',
-    maxWidth: 380,
-    alignSelf: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(30,30,30,0.85)',
-    borderRadius: 18,
-    padding: 26,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 2,
   },
   title: {
     fontSize: 24,
@@ -233,11 +206,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 30,
     textAlign: 'center',
-  },
-  inputGroup: {
-    width: '100%',
-    marginBottom: 14,
-    position: 'relative',
   },
   input: {
     width: '100%',
@@ -247,13 +215,15 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 18,
     fontSize: 16,
+    marginBottom: 15,
     borderWidth: 1,
     borderColor: '#333',
+    minWidth: 300,
   },
   eyeButton: {
     position: 'absolute',
     right: 12,
-    top: 13,
+    top: 10,
     padding: 5,
     zIndex: 2,
   },
@@ -264,6 +234,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
     width: '100%',
+    maxWidth: 400,
     elevation: 2,
   },
   buttonText: {

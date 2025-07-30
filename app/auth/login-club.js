@@ -98,10 +98,9 @@ export default function LoginClub() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1 }}
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" />
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Connexion Club</Text>
-
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -110,9 +109,10 @@ export default function LoginClub() {
           autoCapitalize="none"
           value={email}
           onChangeText={setEmail}
+          autoCorrect={false}
+          textContentType="username"
         />
 
-        {/* Champ mot de passe + œil */}
         <View style={{ width: '100%', position: 'relative', marginBottom: 15 }}>
           <TextInput
             style={[styles.input, { paddingRight: 44 }]}
@@ -122,17 +122,13 @@ export default function LoginClub() {
             value={password}
             onChangeText={setPassword}
             autoCapitalize="none"
+            autoCorrect={false}
+            textContentType="password"
           />
           <TouchableOpacity
-            style={{
-              position: 'absolute',
-              right: 18,
-              top: 14,
-              padding: 2,
-              zIndex: 2,
-            }}
-            onPress={() => setShowPassword(prev => !prev)}
-            activeOpacity={0.7}
+            style={styles.eyeButton}
+              onPress={() => setShowPassword(!showPassword)}
+              activeOpacity={0.7}
           >
             <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color="#888" />
           </TouchableOpacity>
@@ -166,7 +162,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#121212',
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 24,
+  },
+  scrollContent: {
+    marginTop: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,
@@ -186,13 +186,24 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 1,
     borderColor: '#333',
+    minWidth: 300,
+  },
+    eyeButton: {
+    position: 'absolute',
+    right: 12,
+    top: 10,
+    padding: 5,
+    zIndex: 2,
   },
   button: {
     backgroundColor: '#00ff88',
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 8,
+    width: '100%',
+    maxWidth: 400,
+    elevation: 2,
   },
   buttonText: {
     color: '#000',

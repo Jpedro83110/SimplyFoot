@@ -4,6 +4,7 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { isAdmin } from '../../lib/authGuard';
 import { useSessionReady } from '../../lib/useSessionReady';
+import * as Linking from 'expo-linking';
 
 export default function AuthLayout() {
   const router = useRouter();
@@ -11,6 +12,43 @@ export default function AuthLayout() {
   const [redirecting, setRedirecting] = useState(false);
   const segments = useSegments();
 
+  // 🔗 Interception des liens Supabase (type=recovery)
+  useEffect(() => {
+    const handleDeepLink = (event) => {
+      let url = event.url;
+
+      if (url.includes('#')) {
+        url = url.replace('#', '?');
+      }
+
+      const parsed = Linking.parse(url);
+      const accessToken = parsed.queryParams?.access_token;
+      const type = parsed.queryParams?.type;
+
+      if (type === 'recovery' && accessToken) {
+        router.replace({
+          pathname: '/auth/reset-password',
+          params: { access_token: accessToken },
+        });
+      }
+    };
+
+    // 🔄 Événement lors du clic sur un lien dans l'email
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // ⚡ Gestion du lien lors du lancement de l'app (appli fermée)
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink({ url });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
+
+  // 🔁 Redirection utilisateur connectés selon leur rôle
   useEffect(() => {
     const shouldRedirect = () => {
       const currentRoute = segments.join('/');
