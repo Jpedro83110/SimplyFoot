@@ -327,12 +327,6 @@ export default function JoueurDashboard() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: DARK }}>
         <ActivityIndicator size="large" color={GREEN} />
-        <TouchableOpacity
-          style={{ marginTop: 22, backgroundColor: GREEN, padding: 9, borderRadius: 7 }}
-          onPress={() => router.replace('/')}
-        >
-          <Text style={{ color: '#111', fontWeight: '700' }}>Retour accueil</Text>
-        </TouchableOpacity>
       </View>
     );
   }
