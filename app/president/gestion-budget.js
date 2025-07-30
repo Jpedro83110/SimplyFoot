@@ -19,7 +19,11 @@ import * as Print from 'expo-print';
 import * as SharingWeb from 'expo-sharing';
 import { PieChart } from 'react-native-chart-kit';
 import useCacheData from '../../lib/cache';
-import { formatDateFR } from '../../lib/formatDate'; // <-- AJOUT
+import { formatDateFR } from '../../lib/formatDate';
+
+const GREEN = '#00ff88';
+const DARK = '#101415';
+const DARK_LIGHT = '#161b20';
 
 export default function GestionBudget() {
   const router = useRouter();
@@ -200,7 +204,8 @@ export default function GestionBudget() {
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.conteneur}>
+    <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.scroll}>
       <Text style={styles.titre}>💰 Gestion du budget</Text>
 
       <View style={styles.graphiqueContainer}>
@@ -319,13 +324,21 @@ export default function GestionBudget() {
               style={{ marginBottom: 40 }}
             />
       }
+      </ScrollView>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  conteneur: { flexGrow: 1, padding: 20, backgroundColor: '#121212' },
-  titre: { fontSize: 22, fontWeight: 'bold', color: '#00ff88', marginBottom: 10, textAlign: 'center' },
+container: {
+    backgroundColor: DARK,
+  },
+  scroll: { padding: 20,
+    alignSelf: 'center',
+    maxWidth: 790,
+    width: '92%',
+   },
+  titre: { fontSize: 22, fontWeight: 'bold', color: '#00ff88', marginBottom: 20, textAlign: 'center' },
   formulaire: { marginBottom: 20 },
   input: { backgroundColor: '#1e1e1e', color: '#fff', padding: 10, borderRadius: 8, marginBottom: 10, fontSize: 15 },
   bouton: { padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 10 },

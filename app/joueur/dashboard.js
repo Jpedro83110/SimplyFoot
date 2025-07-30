@@ -14,6 +14,8 @@ import { decode } from 'base64-arraybuffer';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
+const DARK_LIGHT = '#161b20';
+
 const LAST_MESSAGES_VIEWED = 'last_messages_viewed';
 const DEADLINE_LICENCE = new Date('2025-10-15T23:59:59');
 const { width: screenWidth } = Dimensions.get('window');
@@ -564,14 +566,15 @@ export default function JoueurDashboard() {
           alignItems: 'center',
           width: '92%',
           alignSelf: 'center',
-          maxWidth: 790
+          maxWidth: 790,
+          backgroundColor: DARK_LIGHT,
         }}
         onPress={async () => {
           await supabase.auth.signOut();
           router.replace('/auth/login-joueur');
         }}
       >
-        <Text style={{ color: GREEN, fontSize: 16, fontWeight: '700' }}>🚪 Se déconnecter</Text>
+        <Text style={{ color: GREEN, fontSize: 16, fontWeight: '700', borderRadius: 10 }}>🚪 Se déconnecter</Text>
       </TouchableOpacity>
       {/* Modal de modification */}
       <Modal
@@ -636,7 +639,7 @@ const styles = StyleSheet.create({
   headerCard: {
     marginTop: 28,
     marginBottom: 16,
-    backgroundColor: '#161b20',
+    backgroundColor: DARK_LIGHT,
     borderRadius: 22,
     padding: 20,
     borderWidth: 2,
@@ -757,7 +760,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#161b20'
+    borderColor: DARK_LIGHT
   },
   deadlineCard: {
     backgroundColor: '#2d1b1b',
@@ -883,7 +886,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20
   },
   modalContent: {
-    backgroundColor: '#161b20',
+    backgroundColor: DARK_LIGHT,
     borderRadius: 20,
     padding: 24,
     width: '100%',

@@ -12,13 +12,16 @@ import {
   Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../lib/supabase';
 import useCacheData from '../../lib/cache';
+
+const GREEN = '#00ff88';
+const DARK = '#101415';
+const DARK_LIGHT = '#161b20';
 
 export default function PresidentDashboard() {
   const router = useRouter();
@@ -388,13 +391,14 @@ export default function PresidentDashboard() {
   }
 
   return (
-    <LinearGradient colors={["#0a0a0a", "#0f0f0f"]} style={styles.container}>
+    <ScrollView style={{ flex: 1, backgroundColor: DARK }} contentContainerStyle={styles.container}>
       <ScrollView
-  contentContainerStyle={[styles.scroll, { minHeight: '100vh' }]}
+  contentContainerStyle={[styles.scroll]}
   showsVerticalScrollIndicator={false}
   keyboardShouldPersistTaps="handled"
 >
         {/* Header */}
+        <View style={styles.headerCard}> 
         <View style={styles.header}>
           <TouchableOpacity style={styles.logoContainer} onPress={handleLogoUpload}>
             <LogoComponent />
@@ -417,7 +421,7 @@ export default function PresidentDashboard() {
             <View style={styles.badge}>
               <View style={[
                 styles.statusDot, 
-                { backgroundColor: club?.abonnement_actif ? '#00ff88' : '#ff4444' }
+                { backgroundColor: club?.abonnement_actif ? GREEN : '#ff4444' }
               ]} />
               <Text style={styles.statusText}>
                 {club?.abonnement_actif ? 'Abonnement actif' : 'Abonnement inactif'}
@@ -432,6 +436,7 @@ export default function PresidentDashboard() {
             </TouchableOpacity>
           </View>
         </View>
+</View>
 
         {/* Sections */}
         <Section title="📋 Infos club">
@@ -535,7 +540,7 @@ export default function PresidentDashboard() {
           <Text style={styles.logoutText}>🚪 Se déconnecter</Text>
         </TouchableOpacity>
       </ScrollView>
-    </LinearGradient>
+    </ScrollView>
   );
 }
 
@@ -580,27 +585,45 @@ function Section({ title, children }) {
 // Styles
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    alignSelf: 'center',
+    maxWidth: 790,
+    width: '92%',
+  },
+  headerCard: {
+    marginTop: 28,
+    marginBottom: 16,
+    backgroundColor: DARK_LIGHT,
+    borderRadius: 22,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: GREEN,
+    shadowColor: GREEN,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+    width: '92%',
+    maxWidth: 790,
+
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#0a0a0a',
   },
   loadingText: {
-    color: '#00ff88',
+    color: GREEN,
     marginTop: 10,
     fontSize: 16,
   },
   scroll: {
+    flexGrow: 1,
     padding: 24,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
-    gap: 16,
+    marginBottom: 15,
+    gap: 25,
   },
   logoContainer: {
     position: 'relative',
@@ -628,7 +651,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#00ff88',
+    backgroundColor: GREEN,
     borderRadius: 10,
     width: 20,
     height: 20,
@@ -648,7 +671,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#00ff88',
+    color: GREEN,
     marginBottom: 8,
   },
   badge: {
@@ -667,7 +690,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   logoButtonText: {
-    color: '#00ff88',
+    color: GREEN,
     fontSize: 13,
     textDecorationLine: 'underline',
   },
@@ -675,7 +698,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   sectionTitle: {
-    color: '#00ff88',
+    color: GREEN,
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
@@ -689,32 +712,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#00ff88',
-    borderRadius: 12,
+    borderColor: GREEN,
+    backgroundColor: DARK_LIGHT,
+    borderRadius: 22,
     padding: 16,
-    width: '100%',
+    width: '92%',
+    maxWidth: 790,
   },
   fullBtnFilled: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00ff88',
-    borderRadius: 12,
+    backgroundColor: GREEN,
+    borderRadius: 22,
     padding: 16,
-    width: '100%',
+    width: '92%',
+    maxWidth: 790,
   },
   halfBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#00ff88',
-    borderRadius: 12,
+    borderColor: GREEN,
+    backgroundColor: DARK_LIGHT,
+    borderRadius: 22,
     padding: 16,
-    width: '48%',
+    width: '45.5%',
+    maxWidth: 390,
   },
   fullBtnText: {
-    color: '#00ff88',
+    color: '#fff',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     flexShrink: 1,
   },
   buttonText: {
@@ -738,14 +766,17 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     marginTop: 20,
-    borderColor: '#00ff88',
+    borderColor: GREEN,
+    backgroundColor: DARK_LIGHT,
     borderWidth: 2,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
+    width: '92%',
+    maxWidth: 790,
   },
   logoutText: {
-    color: '#00ff88',
+    color: GREEN,
     fontSize: 16,
     fontWeight: '700',
   },
