@@ -1,21 +1,20 @@
+export type EvenementType = 'match' | 'entrainement' | 'tournoi' | 'plateau' | 'autre';
+
 export interface Evenement {
-  id: string;
-  titre: string;
-  description?: string;
-  date: string;
-  heure: string;
-  lieu: string;
-  lieu_complement?: string;
-  type: 'match' | 'entrainement' | 'reunion' | 'autre';
-  equipe_id?: string;
-  coach_id: string;
-  club_id?: string;
-  adversaire?: string;
-  domicile?: boolean;
-  meteo?: string;
-  latitude?: number;
-  longitude?: number;
-  statut?: 'planifie' | 'confirme' | 'annule' | 'reporte';
-  created_at?: string;
-  updated_at?: string;
+    id: string;
+    equipe_id?: string; // FIXME: can be null
+    coach_id?: string; // FIXME: can be null
+    type?: EvenementType;
+    titre?: string;
+    date?: string;
+    heure?: string;
+    lieu?: string;
+    description?: string;
+    meteo?: string;
+    date_creation?: string;
+    adversaires?: string; // TODO: idée, permettre de cherche et lié un club inscrit sur l'app
+    latitude?: number;
+    longitude?: number;
+    club_id?: string; // FIXME: can be null
+    lieu_complement?: string;
 }

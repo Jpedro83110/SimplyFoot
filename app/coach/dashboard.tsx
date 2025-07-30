@@ -212,7 +212,6 @@ export default function CoachDashboard() {
 
     useEffect(() => {
         if (userId) {
-            console.log('rerender userId ?', userId);
             fetchCoach();
             fetchCoachEquipes();
             fetchCoachEvenements();
@@ -221,7 +220,6 @@ export default function CoachDashboard() {
 
     useEffect(() => {
         if (coach) {
-            console.log('rerender coach ?', coach);
             fetchClubStage();
             setEditData({
                 telephone: coach?.telephone || '',
@@ -234,7 +232,6 @@ export default function CoachDashboard() {
 
     useEffect(() => {
         if (evenement?.id) {
-            console.log('rerender evenement ?', evenement);
             fetchEvenementParticipations();
         }
     }, [evenement]);
@@ -333,8 +330,8 @@ export default function CoachDashboard() {
                     console.log(
                         '📦 Taille fichier:',
                         (fileData as Blob).size ||
-                        (fileData as ArrayBuffer).byteLength ||
-                        'inconnue',
+                            (fileData as ArrayBuffer).byteLength ||
+                            'inconnue',
                     );
 
                     // 4. Upload avec gestion d'erreur améliorée
@@ -489,7 +486,7 @@ export default function CoachDashboard() {
         { label: 'Statistiques', icon: 'bar-chart', route: '/coach/statistiques' },
     ];
 
-    if (stage?.id) {
+    if (stage) {
         actionsData.push({
             label: 'Programme de stage',
             icon: 'book',
@@ -500,7 +497,11 @@ export default function CoachDashboard() {
     const isMobile = screenWidth < 768;
 
     return (
-        <ScrollView style={{ flex: 1, backgroundColor: DARK }} contentContainerStyle={{ alignItems: 'center', paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+            style={{ flex: 1, backgroundColor: DARK }}
+            contentContainerStyle={{ alignItems: 'center', paddingBottom: 48 }}
+            showsVerticalScrollIndicator={false}
+        >
             {/* Header avec photo + titre + logo */}
             <View style={styles.headerRow}>
                 <TouchableOpacity
@@ -539,7 +540,9 @@ export default function CoachDashboard() {
                     )}
                 </TouchableOpacity>
 
-                <Text style={styles.welcomeTitle}>Bienvenue Coach {coach?.prenom} {coach?.nom}</Text>
+                <Text style={styles.welcomeTitle}>
+                    Bienvenue Coach {coach?.prenom} {coach?.nom}
+                </Text>
 
                 <View style={styles.logoWrapper}>
                     {club?.logo_url ? (
@@ -645,9 +648,14 @@ export default function CoachDashboard() {
             <Text style={styles.subtitle}>📌 Vos équipes</Text>
             {equipes && equipes.length > 0 ? (
                 equipes.map((eq) => (
-                    <View key={eq.id} style={{
-                        marginBottom: 12, maxWidth: 790, width: '92%'
-                    }}>
+                    <View
+                        key={eq.id}
+                        style={{
+                            marginBottom: 12,
+                            maxWidth: 790,
+                            width: '92%',
+                        }}
+                    >
                         <TouchableOpacity onPress={() => router.push(`/coach/equipe/${eq.id}`)}>
                             <TeamCard equipe={eq} />
                         </TouchableOpacity>
@@ -656,7 +664,14 @@ export default function CoachDashboard() {
                             onPress={() => handleDeleteEquipe(eq.id, eq.nom)}
                         >
                             <Ionicons name="trash-outline" size={18} color="#ff4444" />
-                            <Text style={{ color: '#ff4444', marginLeft: 6, fontSize: 13, padding: 4 }}>
+                            <Text
+                                style={{
+                                    color: '#ff4444',
+                                    marginLeft: 6,
+                                    fontSize: 13,
+                                    padding: 4,
+                                }}
+                            >
                                 Supprimer
                             </Text>
                         </TouchableOpacity>
@@ -953,7 +968,7 @@ const styles = StyleSheet.create({
         fontSize: 22,
         fontWeight: 'bold',
         textAlign: 'center',
-        flex: 1
+        flex: 1,
     },
     profilePhotoWrapper: {
         position: 'relative',
@@ -1055,7 +1070,7 @@ const styles = StyleSheet.create({
     infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginRight: 5
+        marginRight: 5,
     },
     infoIcon: {
         marginRight: 0,
@@ -1163,7 +1178,14 @@ const styles = StyleSheet.create({
     },
 
     // Autres styles
-    subtitle: { color: '#aaa', fontSize: 16, marginTop: 20, marginBottom: 10, maxWidth: 790, width: '92%' },
+    subtitle: {
+        color: '#aaa',
+        fontSize: 16,
+        marginTop: 20,
+        marginBottom: 10,
+        maxWidth: 790,
+        width: '92%',
+    },
     cardGreen: {
         backgroundColor: '#161b20',
         borderRadius: 12,
@@ -1200,7 +1222,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         marginBottom: 25,
         maxWidth: 790,
-        width: '92%'
+        width: '92%',
     },
     clubEventsButtonText: {
         color: '#000',
@@ -1217,7 +1239,7 @@ const styles = StyleSheet.create({
         marginBottom: 14,
         alignItems: 'center',
         maxWidth: 790,
-        width: '92%'
+        width: '92%',
     },
     allConvocationsButtonText: {
         color: GREEN,
@@ -1251,6 +1273,6 @@ const styles = StyleSheet.create({
     logoutButtonText: {
         color: '#00ff88',
         fontSize: 16,
-        fontWeight: '700'
+        fontWeight: '700',
     },
 });

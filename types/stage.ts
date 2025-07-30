@@ -1,14 +1,18 @@
 export interface Stage {
-  id: string;
-  nom: string;
-  description?: string;
-  date_debut: string;
-  date_fin: string;
-  lieu?: string;
-  club_id: string;
-  prix?: number;
-  places_max?: number;
-  statut?: 'ouvert' | 'complet' | 'annule';
-  created_at?: string;
-  updated_at?: string;
+    id: string;
+    club_id?: string; // FIXME: can be null
+    titre?: string;
+    description?: string;
+    date_debut?: string;
+    date_fin?: string;
+    programme_lundi?: string;
+    programme_mardi?: string;
+    programme_mercredi?: string;
+    programme_jeudi?: string;
+    programme_vendredi?: string;
+    lieu?: string;
+    age_min?: number;
+    age_max?: number;
+    heure_debut?: string;
+    heure_fin?: string;
 }

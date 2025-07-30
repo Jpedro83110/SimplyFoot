@@ -1,15 +1,14 @@
 export interface Equipe {
-  id: string;
-  nom: string;
-  categorie?: string;
-  description?: string;
-  coach_id?: string;
-  club_id: string;
-  code_equipe?: string;
-  created_at?: string;
-  updated_at?: string;
+    id: string;
+    club_id?: string; // FIXME: can be null
+    nom: string;
+    categorie?: string;
+    coach_id?: string; // FIXME: can be null
+    date_creation?: string;
+    description?: string;
+    code_equipe?: string;
 }
 
 export interface EquipeWithJoueurs extends Equipe {
-  joueurs: [{count: number}];
+    joueurs: [{ count: number }];
 }
