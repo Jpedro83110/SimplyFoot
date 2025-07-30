@@ -114,8 +114,7 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
   if (loading) return <ActivityIndicator color={DOT_COLOR} style={{ margin: 40 }} />;
 
   return (
-    <ScrollView contentContainerStyle={{ alignItems: 'center', paddingBottom: 60, backgroundColor: '#111417', minHeight: '100%' }}>
-      <View style={styles.glowBar} />
+    <ScrollView contentContainerStyle={{ alignItems: 'center', paddingTop: 30, paddingBottom: 60, backgroundColor: '#111417', minHeight: '100%' }}>
       <View style={[styles.container, { maxWidth: containerWidth }]}>
         {/* Sélecteur de zone chromé */}
         <View style={styles.zoneRow}>
@@ -241,18 +240,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#111417',
     paddingVertical: 12,
-  },
-  glowBar: {
-    width: '100%',
-    height: 7,
-    backgroundColor: '#00ff88',
-    opacity: 0.72,
-    borderRadius: 12,
-    marginBottom: 4,
-    shadowColor: '#00ff88',
-    shadowOpacity: 0.55,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 2 },
   },
   container: {
     backgroundColor: 'rgba(18,22,27,0.97)',

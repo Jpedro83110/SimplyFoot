@@ -15,6 +15,10 @@ import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 
+const GREEN = '#00ff88';
+const DARK = '#101415';
+const DARK_LIGHT = '#161b20';
+
 export default function Membres() {
   const [equipeFiltre, setEquipeFiltre] = useState('');
   const [clubId, setClubId] = useState(null);
@@ -106,7 +110,7 @@ export default function Membres() {
     : nbTotal;
 
   return (
-    <LinearGradient colors={["#0a0a0a", "#0f0f0f"]} style={styles.container}>
+    <ScrollView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>👥 Joueurs du club</Text>
 
@@ -198,31 +202,38 @@ export default function Membres() {
           })
         )}
       </ScrollView>
-    </LinearGradient>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { padding: 20 },
+  container: {
+    backgroundColor: DARK,
+  },
+  scroll: { padding: 20,
+    alignSelf: 'center',
+    maxWidth: 790,
+    width: '92%',
+   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#00ff88',
+    color: GREEN,
     marginBottom: 20,
     textAlign: 'center',
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: '#00ff88',
+    borderColor: GREEN,
     borderRadius: 8,
     marginBottom: 12,
     overflow: 'hidden',
   },
   picker: {
     height: 50,
-    color: '#00ff88',
-    backgroundColor: '#181818',
+    color: '#bbb',
+    backgroundColor: DARK_LIGHT,
+    paddingHorizontal: 15,
   },
   nbLicencieText: {
     textAlign: 'center',
@@ -232,12 +243,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   card: {
-    backgroundColor: '#1e1e1e',
     padding: 18,
     borderRadius: 12,
     marginBottom: 20,
     borderLeftWidth: 4,
-    borderLeftColor: '#00ff88',
+    borderLeftColor: GREEN,
+    backgroundColor: DARK_LIGHT,
   },
   row: {
     flexDirection: 'row',
@@ -249,7 +260,7 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     marginRight: 12,
     borderWidth: 2,
-    borderColor: '#00ff88',
+    borderColor: GREEN,
     backgroundColor: '#232b28',
   },
   name: {
@@ -278,14 +289,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#00ff88',
+    borderColor: GREEN,
     borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
     marginRight: 10,
   },
   smallButtonText: {
-    color: '#00ff88',
+    color: GREEN,
     fontWeight: '600',
     fontSize: 13,
   },
