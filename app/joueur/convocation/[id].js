@@ -136,8 +136,8 @@ export default function ConvocationReponse() {
         .from('messages_besoin_transport')
         .select(`
           *, 
-          joueurs:joueur_id(nom, prenom, age)
-        `)
+          joueurs:joueur_id(nom, prenom)
+        `) // TODO: vraiment utile ?
         .eq('evenement_id', id);
       if (error) throw error;
       setMessages(data || []);

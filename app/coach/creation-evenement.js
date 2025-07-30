@@ -6,8 +6,8 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 
-const LOCATIONIQ_KEY = 'pk.1bc03891ccd317c6ca47a6d1b87bdbe1';
-const OPENWEATHER_KEY = '1c27efe2712135cb33936abb88a3d28a';
+const LOCATIONIQ_KEY = 'pk.1bc03891ccd317c6ca47a6d1b87bdbe1'; // FIXME: à mettre dans un fichier .env
+const OPENWEATHER_KEY = '1c27efe2712135cb33936abb88a3d28a'; // FIXME: à mettre dans un fichier .env
 
 const TYPE_LABELS = [
   { label: 'Match', value: 'match' },
@@ -87,6 +87,7 @@ export default function CreateEvent() {
         return;
       }
       try {
+        // FIXME: requete appelé à chaque rerender + revoir le fonctionnement
         const meteoUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${coords.lat}&lon=${coords.lon}&units=metric&appid=${OPENWEATHER_KEY}&lang=fr`;
         const res = await fetch(meteoUrl);
         const data = await res.json();
