@@ -157,6 +157,7 @@ const styles = StyleSheet.create({
     width: '100%',
     justifyContent: 'center',
     backgroundColor: '#00000088',
+    maxWidth: 300,
   },
   buttonText: {
     color: GREEN,

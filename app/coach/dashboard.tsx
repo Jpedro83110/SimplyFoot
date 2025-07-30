@@ -30,6 +30,7 @@ import { EquipeWithJoueurs } from '@/types/equipe';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GREEN = '#00ff88';
+const DARK = '#101415';
 
 export default function CoachDashboard() {
     const [userId, setUserId] = useState<string>();
@@ -332,8 +333,8 @@ export default function CoachDashboard() {
                     console.log(
                         '📦 Taille fichier:',
                         (fileData as Blob).size ||
-                            (fileData as ArrayBuffer).byteLength ||
-                            'inconnue',
+                        (fileData as ArrayBuffer).byteLength ||
+                        'inconnue',
                     );
 
                     // 4. Upload avec gestion d'erreur améliorée
@@ -499,7 +500,7 @@ export default function CoachDashboard() {
     const isMobile = screenWidth < 768;
 
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView style={{ flex: 1, backgroundColor: DARK }} contentContainerStyle={{ alignItems: 'center', paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
             {/* Header avec photo + titre + logo */}
             <View style={styles.headerRow}>
                 <TouchableOpacity
@@ -538,7 +539,7 @@ export default function CoachDashboard() {
                     )}
                 </TouchableOpacity>
 
-                <Text style={styles.welcomeTitle}>Bienvenue Coach</Text>
+                <Text style={styles.welcomeTitle}>Bienvenue Coach {coach?.prenom} {coach?.nom}</Text>
 
                 <View style={styles.logoWrapper}>
                     {club?.logo_url ? (
@@ -644,7 +645,9 @@ export default function CoachDashboard() {
             <Text style={styles.subtitle}>📌 Vos équipes</Text>
             {equipes && equipes.length > 0 ? (
                 equipes.map((eq) => (
-                    <View key={eq.id} style={{ marginBottom: 12 }}>
+                    <View key={eq.id} style={{
+                        marginBottom: 12, maxWidth: 790, width: '92%'
+                    }}>
                         <TouchableOpacity onPress={() => router.push(`/coach/equipe/${eq.id}`)}>
                             <TeamCard equipe={eq} />
                         </TouchableOpacity>
@@ -653,7 +656,7 @@ export default function CoachDashboard() {
                             onPress={() => handleDeleteEquipe(eq.id, eq.nom)}
                         >
                             <Ionicons name="trash-outline" size={18} color="#ff4444" />
-                            <Text style={{ color: '#ff4444', marginLeft: 6, fontSize: 13 }}>
+                            <Text style={{ color: '#ff4444', marginLeft: 6, fontSize: 13, padding: 4 }}>
                                 Supprimer
                             </Text>
                         </TouchableOpacity>
@@ -921,22 +924,16 @@ function ActionButton({ label, icon, onPress }: ActionButtonProps) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#121212',
-        padding: Platform.OS === 'web' ? 24 : 20,
-        ...(Platform.OS === 'web' && {
-            maxWidth: 800,
-            alignSelf: 'center',
-            width: '100%',
-        }),
+        backgroundColor: DARK,
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#121212',
+        backgroundColor: DARK,
     },
     loadingText: {
-        color: '#00ff88',
+        color: DARK,
         marginTop: 10,
         fontSize: 16,
     },
@@ -948,13 +945,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
         marginTop: 20,
+        width: '92%',
+        maxWidth: 790,
     },
     welcomeTitle: {
         color: GREEN,
         fontSize: 22,
         fontWeight: 'bold',
         textAlign: 'center',
-        flex: 1,
+        flex: 1
     },
     profilePhotoWrapper: {
         position: 'relative',
@@ -967,7 +966,7 @@ const styles = StyleSheet.create({
         borderColor: GREEN,
     },
     placeholderPhoto: {
-        backgroundColor: '#1e1e1e',
+        backgroundColor: DARK,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -982,7 +981,7 @@ const styles = StyleSheet.create({
         borderColor: GREEN,
     },
     placeholderLogo: {
-        backgroundColor: '#1e1e1e',
+        backgroundColor: DARK,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -997,7 +996,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: '#121212',
+        borderColor: DARK,
     },
 
     // Encadré infos
@@ -1014,6 +1013,7 @@ const styles = StyleSheet.create({
         elevation: 4,
         width: '92%',
         alignSelf: 'center',
+        maxWidth: 790,
     },
     nameAndEditRow: {
         flexDirection: 'row',
@@ -1033,7 +1033,7 @@ const styles = StyleSheet.create({
         color: GREEN,
         fontSize: 14,
         fontWeight: '700',
-        marginBottom: 16,
+        marginBottom: 10,
     },
     editButton: {
         backgroundColor: '#232b28',
@@ -1055,10 +1055,13 @@ const styles = StyleSheet.create({
     infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        marginRight: 5
     },
     infoIcon: {
-        marginRight: 8,
+        marginRight: 0,
+        marginLeft: 0,
         width: 20,
+        color: GREEN,
     },
     infoTextMobile: {
         color: '#fff',
@@ -1138,9 +1141,11 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         justifyContent: 'space-between',
         marginBottom: 20,
+        width: '92%',
+        maxWidth: 790,
     },
     actionButton: {
-        backgroundColor: 'transparent',
+        backgroundColor: '#161b20',
         borderColor: '#00ff88',
         borderWidth: 1,
         borderRadius: 10,
@@ -1158,9 +1163,9 @@ const styles = StyleSheet.create({
     },
 
     // Autres styles
-    subtitle: { color: '#aaa', fontSize: 16, marginTop: 20, marginBottom: 10 },
+    subtitle: { color: '#aaa', fontSize: 16, marginTop: 20, marginBottom: 10, maxWidth: 790, width: '92%' },
     cardGreen: {
-        backgroundColor: '#1e1e1e',
+        backgroundColor: '#161b20',
         borderRadius: 12,
         padding: 16,
         borderLeftColor: '#00ff88',
@@ -1168,10 +1173,10 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     eventTitle: { color: '#00ff88', fontSize: 18, fontWeight: '700', marginBottom: 4 },
-    eventInfo: { color: '#ccc', fontSize: 15, marginBottom: 4 },
+    eventInfo: { color: '#ccc', fontSize: 15, marginBottom: 20 },
     mapLink: { color: '#00ff88', textDecorationLine: 'underline', marginTop: 4 },
     buttonText: {
-        color: '#00ff88',
+        color: '#fff',
         fontSize: Platform.OS === 'web' ? 13 : 12,
         fontWeight: '600',
         textTransform: 'uppercase',
@@ -1194,6 +1199,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         borderRadius: 12,
         marginBottom: 25,
+        maxWidth: 790,
+        width: '92%'
     },
     clubEventsButtonText: {
         color: '#000',
@@ -1202,16 +1209,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     allConvocationsButton: {
-        backgroundColor: '#171e20',
+        backgroundColor: '#161b20',
         borderColor: '#00ff88',
         borderWidth: 1,
         borderRadius: 10,
         paddingVertical: 13,
         marginBottom: 14,
         alignItems: 'center',
+        maxWidth: 790,
+        width: '92%'
     },
     allConvocationsButtonText: {
-        color: '#00ff88',
+        color: GREEN,
         fontWeight: 'bold',
         fontSize: 15,
         textAlign: 'center',
@@ -1236,10 +1245,12 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         borderRadius: 10,
         alignItems: 'center',
+        width: '92%',
+        maxWidth: 790,
     },
     logoutButtonText: {
         color: '#00ff88',
         fontSize: 16,
-        fontWeight: '700',
+        fontWeight: '700'
     },
 });
