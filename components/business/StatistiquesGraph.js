@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 
+// FIXME: seams not used
 export default function StatistiquesGraph({ data, equipe = 'U17', dateMaj = '15 mai 2025' }) {
   const chartConfig = {
     backgroundGradientFrom: '#1a1a1a',

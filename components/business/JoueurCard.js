@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 
+// FIXME: seams not used
 export default function JoueurCard({ nom, poste, stats, avatar, licenceOK, presence, onPress }) {
   const router = useRouter();
 
@@ -12,7 +13,7 @@ export default function JoueurCard({ nom, poste, stats, avatar, licenceOK, prese
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       <Image
-        source={avatar && avatar.startsWith('http') ? { uri: avatar } : require('../assets/avatar.png')}
+        source={avatar && avatar.startsWith('http') ? { uri: avatar } : require('../../assets/avatar.png')}
         style={styles.avatar}
       />
       <View style={styles.infoContainer}>

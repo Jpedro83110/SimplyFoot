@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Platform, Dimensions, ScrollView, Pressable } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
-import vacancesScolaires from '../lib/vacancesScolaires';
+import vacancesScolaires from '../../lib/vacancesScolaires';
 
 LocaleConfig.locales['fr'] = {
   monthNames: [

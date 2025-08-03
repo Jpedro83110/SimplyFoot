@@ -11,7 +11,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -304,7 +304,7 @@ export default function CompositionDragDrop({ evenementId }) {
       <Text style={styles.debug}>{debugInfo}</Text>
 
       <View style={styles.haut}>
-        <Image source={require('../assets/terrain.png')} style={styles.terrain} resizeMode="contain" />
+        <Image source={require('../../assets/terrain.png')} style={styles.terrain} resizeMode="contain" />
         <View style={styles.joueurOverlay}>
           {presents.map((player) => {
             const panResponder = createPanResponder(player.id);
@@ -318,7 +318,7 @@ export default function CompositionDragDrop({ evenementId }) {
                 style={[positions[player.id].getLayout(), { position: 'absolute', alignItems: 'center' }]}
                 {...panResponder.panHandlers}
               >
-                <Image source={require('../assets/maillot.png')} style={styles.maillot} resizeMode="contain" />
+                <Image source={require('../../assets/maillot.png')} style={styles.maillot} resizeMode="contain" />
                 <Text style={styles.joueurNom}>
                   {player.nom} {player.poste ? `(${player.poste})` : ''}
                   {player.besoin_transport && <Text style={{ color: '#00bfff', fontSize: 13 }}> 🚗</Text>}
@@ -339,7 +339,7 @@ export default function CompositionDragDrop({ evenementId }) {
           <Text style={styles.absentTitle}>❌ Absents ({absents.length}) :</Text>
           {absents.map(j => (
             <View key={j.id} style={styles.absentItem}>
-              <Image source={require('../assets/maillot.png')} style={styles.maillotAbs} resizeMode="contain" />
+              <Image source={require('../../assets/maillot.png')} style={styles.maillotAbs} resizeMode="contain" />
               <Text style={styles.absentNom}>
                 {j.nom} {j.prenom} {j.poste ? `(${j.poste})` : ''}
                 {j.besoin_transport && <Text style={{ color: '#00bfff', fontSize: 13 }}> 🚗</Text>}
@@ -355,7 +355,7 @@ export default function CompositionDragDrop({ evenementId }) {
           <Text style={styles.indecisTitle}>❔ Non répondu ({indecis.length}) :</Text>
           {indecis.map(j => (
             <View key={j.id} style={styles.absentItem}>
-              <Image source={require('../assets/maillot.png')} style={styles.maillotAbs} resizeMode="contain" />
+              <Image source={require('../../assets/maillot.png')} style={styles.maillotAbs} resizeMode="contain" />
               <Text style={styles.absentNom}>
                 {j.nom} {j.prenom} {j.poste ? `(${j.poste})` : ''}
               </Text>

@@ -9,6 +9,7 @@ import { View, Text, StyleSheet, ImageBackground, Dimensions, ScrollView } from 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
+// FIXME: seams not used
 export default function CompositionTerrain({ joueurs }) {
   const lignes = {
     gardien: joueurs.filter((j) => j.poste === 'Gardien' && j.present),

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import CalendrierAnniversaires from '../../components/CalendrierAnniversaires';
+import CalendrierAnniversaires from '../../components/business/CalendrierAnniversaires';
 import { ActivityIndicator, View, ScrollView, Alert } from 'react-native';
 
 export default function CoachAnniversaires() {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Slot, useRouter, usePathname } from 'expo-router';
 import { View, ActivityIndicator, Alert } from 'react-native';
 import { supabase } from '../../lib/supabase';
-import Header from '../../components/Header';
+import Header from '../../components/business/Header';
 
 export default function PresidentLayout() {
   const router = useRouter();

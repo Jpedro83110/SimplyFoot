@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 export default function Header({ title, showBack = true }) {
   const router = useRouter();
