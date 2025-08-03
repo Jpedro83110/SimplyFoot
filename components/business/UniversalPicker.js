@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
+// FIXME: seams not used
 export function UniversalPicker({ selectedValue, onValueChange, items, style, ...props }) {
   if (Platform.OS === 'web') {
     return (

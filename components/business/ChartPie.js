@@ -16,6 +16,7 @@ try {
   VictoryPie = null;
 }
 
+// FIXME: seams not used
 export default function ChartPie(props) {
   if (!VictoryPie) {
     return (

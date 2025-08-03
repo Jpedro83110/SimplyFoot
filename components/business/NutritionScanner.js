@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, Pressable, Platform } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
+// FIXME: seams not used
 export default function NutritionScanner() {
   // --- WEB BLOQUÉ ---
   if (Platform.OS === 'web') {

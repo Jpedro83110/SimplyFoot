@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Image, Linking, Platform, Alert } from 'react-native';
 
+// FIXME: seams not used
 export default function ReseauxSociaux({ facebook, instagram, boutique }) {
   const openAppOrURL = async (url, appUrl) => {
     try {
