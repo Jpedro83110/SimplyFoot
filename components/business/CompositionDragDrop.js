@@ -11,7 +11,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;

@@ -4,7 +4,7 @@ import { View, ActivityIndicator, Alert, Platform } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import Header from '../../components/Header';
+import Header from '../../components/business/Header';
 
 export default function JoueurLayout() {
   const router = useRouter();

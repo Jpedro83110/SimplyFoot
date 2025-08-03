@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { adminMode } from '../lib/auth'; // Ton flag admin
+import { adminMode } from '../../lib/auth'; // Ton flag admin
 
 export default function AdminShortcutButton() {
   const router = useRouter();

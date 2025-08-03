@@ -10,7 +10,7 @@ import { shareAsync } from 'expo-sharing';
 import { supabase } from '../../lib/supabase';
 import useCacheData from '../../lib/cache';
 import { formatDateFR, normalizeHour } from '../../lib/formatDate'; // <-- AJOUT ICI
-import Header from '../../components/Header';
+import Header from '../../components/business/Header';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';

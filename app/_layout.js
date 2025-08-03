@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { Slot } from 'expo-router';
-import WebSocketManager from '../components/WebSocketManager';
+import WebSocketManager from '../components/business/WebSocketManager';
 import { supabase } from '../lib/supabase';
 
 import * as Notifications from 'expo-notifications';
