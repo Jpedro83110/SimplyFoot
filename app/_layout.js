@@ -3,6 +3,7 @@ import { View, StyleSheet, ImageBackground, StatusBar, Text, Platform } from 're
 import { Slot } from 'expo-router';
 import WebSocketManager from '../components/business/WebSocketManager';
 import { supabase } from '../lib/supabase';
+import Toast from 'react-native-toast-message';
 
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
@@ -52,6 +53,8 @@ export default function GlobalLayout() {
                     .delete()
                     .lt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
             } catch (e) {
+                // FIXME: seems useless, never called on 4XX errors
+                // FIXME: implements messages_prives real ttl
                 console.warn('Erreur purge automatique messages :', e.message);
             }
         };
@@ -110,6 +113,7 @@ export default function GlobalLayout() {
                 {role === 'admin' && <Text style={styles.badge}>👑 MODE ADMIN</Text>}
                 <Slot />
             </View>
+            <Toast />
         </ImageBackground>
     );
 }
