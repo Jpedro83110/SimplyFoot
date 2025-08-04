@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ReturnButton from '@/components/atoms/ReturnButton';
 
 export default function LoginJoueur() {
     const router = useRouter();
@@ -47,7 +48,7 @@ export default function LoginJoueur() {
             return;
         }
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-            redirectTo: 'http://localhost:8081/auth/reset-password', // FIXME
+            redirectTo: '/auth/reset-password', // FIXME
         });
         if (error) {
             Alert.alert('Erreur', error.message);
@@ -189,8 +190,8 @@ export default function LoginJoueur() {
                     <Switch
                         value={rememberMe}
                         onValueChange={setRememberMe}
-                        thumbColor={rememberMe ? '#00ff88' : '#555'}
-                        trackColor={{ false: '#555', true: '#1e1e1e' }}
+                        thumbColor={rememberMe ? '#4D8065' : '#333'}
+                        trackColor={{ false: '#333', true: '#4D8065' }}
                     />
                     <Text style={styles.rememberText}>Se souvenir de moi</Text>
                 </View>
@@ -207,11 +208,17 @@ export default function LoginJoueur() {
                     <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => router.push('/auth/inscription-joueur')}>
-                    <Text style={styles.switchText}>
-                        Pas encore de compte ? Créer un compte Joueur
-                    </Text>
+                <View style={styles.separator} />
+
+                <Text style={styles.text}>Pas encore de compte ? </Text>
+                <TouchableOpacity
+                    style={styles.button}
+                    onPress={() => router.push('/auth/inscription-joueur')}
+                >
+                    <Text style={styles.buttonText}>Créer un compte Joueur</Text>
                 </TouchableOpacity>
+
+                <ReturnButton />
             </ScrollView>
         </KeyboardAvoidingView>
     );
@@ -225,8 +232,6 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         marginTop: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     title: {
         fontSize: 24,
@@ -275,25 +280,38 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         alignSelf: 'flex-start',
         marginBottom: 18,
-        marginTop: 8,
     },
     rememberText: {
-        color: '#00ff88',
+        color: '#fff',
         fontSize: 14,
         marginLeft: 10,
     },
     forgotText: {
-        color: '#00bfff',
+        color: '#00ff88',
+        fontSize: 12,
         marginTop: 18,
-        fontSize: 15,
         textAlign: 'center',
         textDecorationLine: 'underline',
     },
+    separator: {
+        height: 1,
+        backgroundColor: '#333',
+        width: '80%',
+        alignSelf: 'center',
+        marginVertical: 20,
+        marginTop: 30,
+    },
     switchText: {
         color: '#00ff88',
-        marginTop: 28,
         textDecorationLine: 'underline',
-        fontSize: 14,
+        fontSize: 13,
         textAlign: 'center',
+    },
+    text: {
+        fontSize: 13,
+        color: '#fff',
+        textAlign: 'center',
+        marginTop: 20,
+        marginBottom: 10,
     },
 });

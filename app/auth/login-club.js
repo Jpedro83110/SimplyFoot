@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import ReturnButton from '@/components/atoms/ReturnButton';
 
 export default function LoginClub() {
     const router = useRouter();
@@ -29,6 +30,7 @@ export default function LoginClub() {
                 'Erreur',
                 "Entrez d'abord votre email pour recevoir un lien de réinitialisation.",
             );
+            alert('Veuillez entrer votre email pour recevoir un lien de réinitialisation.'); //FIXME: Toast notification
             return;
         }
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
@@ -36,6 +38,7 @@ export default function LoginClub() {
             Alert.alert('Erreur', error.message);
         } else {
             Alert.alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
+            alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.'); //FIXME: Toast notification
         }
     };
 
@@ -60,6 +63,7 @@ export default function LoginClub() {
                         ? 'Email ou mot de passe incorrect.'
                         : `Erreur : ${authError?.message || 'Connexion impossible.'}`,
                 );
+                alert('Erreur : Connexion impossible.'); //FIXME: Toast notification
                 setLoading(false);
                 return;
             }
@@ -171,6 +175,7 @@ export default function LoginClub() {
                 <TouchableOpacity onPress={() => router.push('/auth/inscription-president')}>
                     <Text style={styles.switchText}>Créer un nouveau club (Président)</Text>
                 </TouchableOpacity>
+                <ReturnButton />
             </ScrollView>
         </KeyboardAvoidingView>
     );
