@@ -11,12 +11,12 @@ import {
     Platform,
     ScrollView,
     ActivityIndicator,
-    Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '../../lib/notifications';
 import { formatDateToISO, formatDateForDisplay, calculateAge } from '../../lib/formatDate';
+import ReturnButton from '@/components/atoms/ReturnButton';
 import { Ionicons } from '@expo/vector-icons';
 
 // Import conditionnel du DateTimePicker (seulement pour mobile)
@@ -539,11 +539,6 @@ export default function InscriptionCoach() {
             >
                 {/* Header avec logo */}
                 <View style={styles.header}>
-                    <Image
-                        source={require('../../assets/logo.png')}
-                        style={styles.logo}
-                        resizeMode="contain"
-                    />
                     <Text style={styles.title}>Créer un compte Coach</Text>
                     <Text style={styles.subtitle}>
                         Rejoignez votre club en tant qu&apos;encadrant
@@ -785,24 +780,9 @@ export default function InscriptionCoach() {
 
                     {/* Bouton d'inscription */}
                     {renderSubmitButton()}
-
-                    {/* Lien retour connexion */}
-                    <TouchableOpacity
-                        onPress={() => router.push('/auth/login-club')}
-                        disabled={loading || notificationsInitializing}
-                        style={styles.backLink}
-                    >
-                        <Text
-                            style={[
-                                styles.backLinkText,
-                                (loading || notificationsInitializing) && styles.textDisabled,
-                            ]}
-                        >
-                            Déjà un compte ? Se connecter
-                        </Text>
-                    </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
+            <ReturnButton />
         </ScrollView>
     );
 }

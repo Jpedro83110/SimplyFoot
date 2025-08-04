@@ -10,13 +10,13 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
-    Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '../../lib/notifications';
 import { formatDateForDisplay, calculateAge } from '../../lib/formatDate';
 import { Ionicons } from '@expo/vector-icons';
+import ReturnButton from '@/components/atoms/ReturnButton';
 import * as Clipboard from 'expo-clipboard';
 
 // Import conditionnel du DateTimePicker (seulement pour mobile)
@@ -590,11 +590,6 @@ export default function InscriptionPresident() {
             >
                 {/* Header avec logo */}
                 <View style={styles.header}>
-                    <Image
-                        source={require('../../assets/logo.png')}
-                        style={styles.logo}
-                        resizeMode="contain"
-                    />
                     <Text style={styles.title}>Créer votre club</Text>
                     <Text style={styles.subtitle}>
                         Créez votre club et commencez l&apos;aventure
@@ -924,24 +919,9 @@ export default function InscriptionPresident() {
                             </Text>
                         </View>
                     )}
-
-                    {/* Lien retour connexion */}
-                    <TouchableOpacity
-                        onPress={() => router.push('/auth/login-president')}
-                        disabled={loading || notificationsInitializing}
-                        style={styles.backLink}
-                    >
-                        <Text
-                            style={[
-                                styles.backLinkText,
-                                (loading || notificationsInitializing) && styles.textDisabled,
-                            ]}
-                        >
-                            Déjà un compte ? Se connecter
-                        </Text>
-                    </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
+            <ReturnButton />
         </ScrollView>
     );
 }
