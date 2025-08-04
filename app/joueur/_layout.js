@@ -136,7 +136,7 @@ export default function JoueurLayout() {
             isMounted = false;
             clearTimeout(timeoutId);
         };
-    }, []);
+    }, [checking, router, segments]);
 
     if (checking) {
         return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -10,13 +10,16 @@ export default function EvalMentale() {
     const [role, setRole] = useState('');
     const [error, setError] = useState('');
 
-    const criteres = [
-        { key: 'motivation', label: 'Motivation', color: '#00ff88' },
-        { key: 'rigueur', label: 'Rigueur', color: '#4fd1c5' },
-        { key: 'ponctualite', label: 'Ponctualité', color: '#facc15' },
-        { key: 'attitude', label: 'Attitude', color: '#f97316' },
-        { key: 'respect', label: 'Respect', color: '#fb7185' },
-    ];
+    const criteres = useMemo(
+        () => [
+            { key: 'motivation', label: 'Motivation', color: '#00ff88' },
+            { key: 'rigueur', label: 'Rigueur', color: '#4fd1c5' },
+            { key: 'ponctualite', label: 'Ponctualité', color: '#facc15' },
+            { key: 'attitude', label: 'Attitude', color: '#f97316' },
+            { key: 'respect', label: 'Respect', color: '#fb7185' },
+        ],
+        [],
+    );
 
     useEffect(() => {
         async function fetchData() {
@@ -56,7 +59,7 @@ export default function EvalMentale() {
         }
 
         fetchData();
-    }, []);
+    }, [criteres, user]);
 
     // Calcul dynamique de la note globale au cas où elle n'existe pas
     const computeNoteGlobale = () => {

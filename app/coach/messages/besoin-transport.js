@@ -29,10 +29,7 @@ export default function BesoinTransportCoach() {
             const session = await supabase.auth.getSession();
             const userId = session.data.session.user.id;
 
-            const { data: eqs, error } = await supabase
-                .from('equipes')
-                .select('*')
-                .eq('coach_id', userId);
+            const { data: eqs } = await supabase.from('equipes').select('*').eq('coach_id', userId);
 
             setEquipes(eqs || []);
             setLoading(false);
@@ -51,7 +48,7 @@ export default function BesoinTransportCoach() {
             const todayStr = today.toISOString().split('T')[0]; // Format YYYY-MM-DD
 
             // Récupérer TOUS les événements de l'équipe d'abord
-            const { data: allEvents, error: eventsError } = await supabase
+            const { data: allEvents } = await supabase
                 .from('evenements')
                 .select('*')
                 .eq('equipe_id', selectedEquipe.id)
@@ -69,7 +66,7 @@ export default function BesoinTransportCoach() {
                 // Pour chaque événement, on récupère les demandes associées
                 let demandesMap = {};
                 for (let evt of filteredEvents) {
-                    const { data: demandes, error: demandesError } = await supabase
+                    const { data: demandes } = await supabase
                         .from('messages_besoin_transport')
                         .select('*')
                         .eq('evenement_id', evt.id);
@@ -170,7 +167,7 @@ export default function BesoinTransportCoach() {
                 <View style={styles.emptyContainer}>
                     <Text style={styles.emptyTitle}>Aucun événement à venir</Text>
                     <Text style={styles.emptySubtitle}>
-                        Il n'y a pas d'événements futurs pour cette équipe
+                        Il n&apos;y a pas d&apos;événements futurs pour cette équipe
                     </Text>
                 </View>
             ) : (

@@ -104,7 +104,7 @@ export default function EquipeDetail() {
             ) : null}
 
             <View style={styles.block}>
-                <Text style={styles.label}>Nom de l'équipe :</Text>
+                <Text style={styles.label}>Nom de l&apos;équipe :</Text>
                 <Text style={styles.value}>{equipeNom}</Text>
             </View>
 

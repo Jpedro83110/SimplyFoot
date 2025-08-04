@@ -21,7 +21,7 @@ export default function MessagesGroupesCoach() {
     const [message, setMessage] = useState('');
     const [reponses, setReponses] = useState({});
     const [reponseText, setReponseText] = useState({});
-    const [loading, setLoading] = useState(false);
+    const [, setLoading] = useState(false); // FIXME
 
     // Purge tous les messages de groupe de +7j à chaque ouverture
     useEffect(() => {
@@ -44,7 +44,7 @@ export default function MessagesGroupesCoach() {
 
     // Gestion du cache pour messages d'équipe
     const cacheKey = equipeId ? `messages_groupes_${equipeId}` : null;
-    const [cachedMsgs, refreshMsgs, cacheLoading] = useCacheData(
+    const [cachedMsgs, refreshMsgs] = useCacheData(
         cacheKey,
         async () => {
             if (!equipeId) return [];
@@ -65,7 +65,7 @@ export default function MessagesGroupesCoach() {
             setLoading(true);
             refreshMsgs().then(() => setLoading(false));
         }
-    }, [equipeId]);
+    }, [equipeId, refreshMsgs]);
 
     // Chargement des réponses liées aux messages
     useEffect(() => {

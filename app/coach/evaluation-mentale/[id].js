@@ -187,7 +187,7 @@ export default function EvaluationMentale() {
 
             // Si aucune ligne n'a été mise à jour, on insère
             if (!updateData || updateData.length === 0) {
-                const { data: insertData, error: insertError } = await supabase
+                const { error: insertError } = await supabase
                     .from('evaluations_mentales')
                     .insert(updates)
                     .select();
@@ -204,7 +204,9 @@ export default function EvaluationMentale() {
                     await refresh();
                 }
             } catch (cacheError) {
+                console.error('Erreur cache:', cacheError);
                 // Ignore les erreurs de cache
+                // FIXME: bizarre ce commentaire
             }
 
             Alert.alert('Succès', 'Évaluation mentale enregistrée avec succès!', [

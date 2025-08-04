@@ -14,7 +14,6 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
-import useCacheData from '../../../lib/cache';
 
 export default function ListeEquipesCoach() {
     const router = useRouter();
@@ -44,7 +43,8 @@ export default function ListeEquipesCoach() {
                 if (error) throw error;
 
                 if (mounted) setEquipes(data || []);
-            } catch (e) {
+            } catch (error) {
+                console.error('Erreur lors du chargement des équipes:', error);
                 if (mounted) setEquipes([]);
             } finally {
                 if (mounted) setLoading(false);

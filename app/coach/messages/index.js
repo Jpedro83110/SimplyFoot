@@ -9,7 +9,7 @@ const GREEN = '#00ff88';
 export default function MessagesIndex() {
     const router = useRouter();
     // À remplacer par appel Supabase pour compter les besoins de transport en attente !
-    const [hasTransportRequest, setHasTransportRequest] = useState(false);
+    const [hasTransportRequest] = useState(false); // FIXME
 
     // --- Ici tu feras l'appel Supabase pour checker s'il existe des demandes en attente
     useEffect(() => {

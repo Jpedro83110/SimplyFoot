@@ -15,7 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '../../lib/notifications';
-import { formatDateToISO, formatDateForDisplay, calculateAge } from '../../lib/formatDate';
+import { formatDateForDisplay, calculateAge } from '../../lib/formatDate';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 
@@ -125,6 +125,7 @@ export default function InscriptionPresident() {
             const age = calculateAge(dateNaissance);
             setCalculatedAge(age);
         } catch (error) {
+            console.error("Erreur lors du calcul de l'âge:", error);
             setCalculatedAge(null);
         }
     }, [dateNaissance]);
@@ -318,11 +319,10 @@ export default function InscriptionPresident() {
             const { data: sessionData } = await supabase.auth.getSession();
             if (!sessionData.session) {
                 console.log('⚠️ Pas de session, tentative de login...');
-                const { data: loginData, error: loginError } =
-                    await supabase.auth.signInWithPassword({
-                        email: email.trim().toLowerCase(),
-                        password: password.trim(),
-                    });
+                const { error: loginError } = await supabase.auth.signInWithPassword({
+                    email: email.trim().toLowerCase(),
+                    password: password.trim(),
+                }); // FIXME: on ne fait rien du résultat ?
                 if (loginError) {
                     console.error('❌ Erreur Login:', loginError);
                     Alert.alert('Erreur', "Problème d'authentification après inscription.");
@@ -596,7 +596,9 @@ export default function InscriptionPresident() {
                         resizeMode="contain"
                     />
                     <Text style={styles.title}>Créer votre club</Text>
-                    <Text style={styles.subtitle}>Créez votre club et commencez l'aventure</Text>
+                    <Text style={styles.subtitle}>
+                        Créez votre club et commencez l&apos;aventure
+                    </Text>
                 </View>
 
                 {/* Formulaire */}
@@ -916,9 +918,9 @@ export default function InscriptionPresident() {
                                 </TouchableOpacity>
                             </View>
                             <Text style={styles.clubCodeInfo}>
-                                Partagez ce code avec vos joueurs et coachs pour qu'ils puissent
-                                rejoindre le club. Vous pourrez configurer les autres informations
-                                (site web, réseaux sociaux, etc.) dans votre dashboard.
+                                Partagez ce code avec vos joueurs et coachs pour qu&apos;ils
+                                puissent rejoindre le club. Vous pourrez configurer les autres
+                                informations (site web, réseaux sociaux, etc.) dans votre dashboard.
                             </Text>
                         </View>
                     )}

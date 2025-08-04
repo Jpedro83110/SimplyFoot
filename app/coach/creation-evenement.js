@@ -420,7 +420,7 @@ export default function CreateEvent() {
                 />
 
                 {/* Titre */}
-                <Text style={styles.label}>Nom de l'événement</Text>
+                <Text style={styles.label}>Nom de l&apos;événement</Text>
                 <TextInput
                     style={styles.input}
                     placeholder="Ex : 16e journée D2"

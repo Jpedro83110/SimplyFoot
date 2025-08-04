@@ -20,7 +20,7 @@ export default function MessagesPrivesCoach() {
     const [selectedEquipe, setSelectedEquipe] = useState(null);
     const [selectedJoueur, setSelectedJoueur] = useState(null);
     const [message, setMessage] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [, setLoading] = useState(false);
 
     // ** Purge automatique supprimée **
 
@@ -48,7 +48,7 @@ export default function MessagesPrivesCoach() {
     // --- CACHE / FILTRAGE DES MESSAGES ---
     const cacheKey =
         selectedJoueur && coachId ? `messages_prives_${coachId}_${selectedJoueur}` : null;
-    const [filMessages, refreshMessages, cacheLoading] = useCacheData(
+    const [filMessages, refreshMessages] = useCacheData(
         cacheKey,
         async () => {
             if (!coachId || !selectedJoueur) return [];
@@ -74,7 +74,7 @@ export default function MessagesPrivesCoach() {
             setLoading(true);
             refreshMessages().then(() => setLoading(false));
         }
-    }, [coachId, selectedJoueur]);
+    }, [coachId, refreshMessages, selectedJoueur]);
 
     const handleEnvoyer = async () => {
         if (!message.trim() || !selectedJoueur) return;

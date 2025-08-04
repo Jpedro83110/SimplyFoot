@@ -11,7 +11,6 @@ import {
 import { supabase } from '../../lib/supabase';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
-const GREEN = '#00ff88';
 const DARK = '#101415';
 const DARK_LIGHT = '#161b20';
 
@@ -258,7 +257,7 @@ export default function Equipe() {
                     </View>
                 )}
 
-                <Text style={styles.equipeTitle}>Membres de l'équipe ({players.length})</Text>
+                <Text style={styles.equipeTitle}>Membres de l&apos;équipe ({players.length})</Text>
                 {players.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <Text style={styles.emptyText}>Aucun joueur trouvé dans cette équipe.</Text>

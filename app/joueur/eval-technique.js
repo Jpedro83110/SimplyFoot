@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -15,16 +15,19 @@ export default function EvalTechnique() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const criteres = [
-        { key: 'tir', label: 'TIR', color: '#facc15' },
-        { key: 'passe', label: 'PASSE', color: '#00ff88' },
-        { key: 'centre', label: 'CENTRE', color: '#38bdf8' },
-        { key: 'tete', label: 'TÊTE', color: '#fb7185' },
-        { key: 'vitesse', label: 'VITESSE', color: '#4fd1c5' },
-        { key: 'defense', label: 'DÉFENSE', color: '#f97316' },
-        { key: 'placement', label: 'PLACEMENT', color: '#a3e635' },
-        { key: 'jeu_sans_ballon', label: 'J. SANS BALLON', color: '#818cf8' },
-    ];
+    const criteres = useMemo(
+        () => [
+            { key: 'tir', label: 'TIR', color: '#facc15' },
+            { key: 'passe', label: 'PASSE', color: '#00ff88' },
+            { key: 'centre', label: 'CENTRE', color: '#38bdf8' },
+            { key: 'tete', label: 'TÊTE', color: '#fb7185' },
+            { key: 'vitesse', label: 'VITESSE', color: '#4fd1c5' },
+            { key: 'defense', label: 'DÉFENSE', color: '#f97316' },
+            { key: 'placement', label: 'PLACEMENT', color: '#a3e635' },
+            { key: 'jeu_sans_ballon', label: 'J. SANS BALLON', color: '#818cf8' },
+        ],
+        [],
+    );
 
     useEffect(() => {
         async function fetchData() {
@@ -34,7 +37,7 @@ export default function EvalTechnique() {
                 const userId = sessionData?.session?.user?.id;
                 if (!userId) throw new Error('Utilisateur non identifié.');
 
-                const { data, error } = await supabase
+                const { data } = await supabase
                     .from('evaluations_techniques')
                     .select('*')
                     .eq('joueur_id', userId)
@@ -50,7 +53,7 @@ export default function EvalTechnique() {
         }
 
         fetchData();
-    }, []);
+    }, [criteres]);
 
     // Calcul dynamique de la moyenne
     const computeMoyenne = () => {

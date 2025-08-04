@@ -11,7 +11,6 @@ import {
     Modal,
     TextInput,
     Switch,
-    Dimensions,
     Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,7 +27,6 @@ const DARK_LIGHT = '#161b20';
 
 const LAST_MESSAGES_VIEWED = 'last_messages_viewed';
 const DEADLINE_LICENCE = new Date('2025-10-15T23:59:59');
-const { width: screenWidth } = Dimensions.get('window');
 
 export default function JoueurDashboard() {
     const [loading, setLoading] = useState(true);
@@ -53,7 +51,6 @@ export default function JoueurDashboard() {
     });
 
     const router = useRouter();
-    const isMobile = screenWidth < 768;
 
     const getImageUrlWithCacheBuster = (url) => {
         if (!url) return url;
@@ -85,9 +82,9 @@ export default function JoueurDashboard() {
             }
         }, 1000);
         return () => clearInterval(timer);
-    }, [joueur]);
+    }, [joueur, sendNotificationToStaff]);
 
-    const sendNotificationToStaff = async () => {
+    const sendNotificationToStaff = useCallback(async () => {
         if (!joueur || !equipe) return;
         try {
             const { data: staffData } = await supabase
@@ -137,7 +134,7 @@ export default function JoueurDashboard() {
         } catch (error) {
             console.error('❌ Erreur envoi notification:', error);
         }
-    };
+    }, [equipe, joueur]);
 
     const fetchAll = useCallback(async () => {
         try {
@@ -213,7 +210,7 @@ export default function JoueurDashboard() {
             setError(e.message);
             setLoading(false);
         }
-    }, [refreshKey]);
+    }, []);
 
     useEffect(() => {
         fetchAll();
@@ -252,7 +249,12 @@ export default function JoueurDashboard() {
                                 const oldFilePath = `photos_profils_joueurs/${fileName}`;
                                 await supabase.storage.from('fichiers').remove([oldFilePath]);
                             }
-                        } catch (deleteErr) {}
+                        } catch (deleteErr) {
+                            console.error(
+                                "Erreur lors de la suppression de l'ancienne photo:",
+                                deleteErr,
+                            );
+                        }
                     }
                     let fileData,
                         fileExt = 'jpg';
@@ -278,7 +280,7 @@ export default function JoueurDashboard() {
                             fileExt = 'gif';
                     }
                     const fileName = `photos_profils_joueurs/${user.id}_${Date.now()}.${fileExt}`;
-                    const { data: uploadData, error: uploadError } = await supabase.storage
+                    const { error: uploadError } = await supabase.storage
                         .from('fichiers')
                         .upload(fileName, fileData, {
                             contentType: `image/${fileExt}`,
@@ -311,6 +313,7 @@ export default function JoueurDashboard() {
                 }
             }
         } catch (error) {
+            console.error('Erreur lors de la sélection de la photo:', error);
             Alert.alert('Erreur', 'Impossible de sélectionner la photo');
             setUploadingPhoto(false);
         }
@@ -329,6 +332,7 @@ export default function JoueurDashboard() {
             setShowEditModal(false);
             Alert.alert('Succès', 'Informations mises à jour !');
         } catch (error) {
+            console.error('Erreur lors de la sauvegarde des modifications:', error);
             Alert.alert('Erreur', 'Impossible de sauvegarder les modifications.');
         }
     };
@@ -674,7 +678,8 @@ export default function JoueurDashboard() {
             </View>
             {/* Aide */}
             <Text style={{ color: GREEN, marginBottom: 10, textAlign: 'center', fontSize: 13 }}>
-                👉 Clique sur "Convocations" pour voir et répondre à tous tes prochains événements !
+                👉 Clique sur &quot;Convocations&quot; pour voir et répondre à tous tes prochains
+                événements !
             </Text>
             {/* Raccourcis */}
             <View style={styles.gridRow}>

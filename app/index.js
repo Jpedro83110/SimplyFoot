@@ -35,7 +35,7 @@ export default function Accueil() {
             <Image source={require('../assets/logo.png')} style={styles.logoImage} />
             <Text style={styles.title}>Bienvenue sur</Text>
             <Text style={styles.logo}>⚽ SimplyFoot</Text>
-            <Text style={styles.subtitle}>L'application des clubs de foot amateur</Text>
+            <Text style={styles.subtitle}>L&apos;application des clubs de foot amateur</Text>
 
             {loggedIn ? (
                 <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

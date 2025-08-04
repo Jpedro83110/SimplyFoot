@@ -56,7 +56,7 @@ export default function AdminLayout() {
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [router]);
 
     if (checking) {
         return (

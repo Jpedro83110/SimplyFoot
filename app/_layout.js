@@ -18,7 +18,7 @@ Notifications.setNotificationHandler({
 
 export default function GlobalLayout() {
     const [role, setRole] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true); // FIXME
 
     useEffect(() => {
         const fetchRole = async () => {

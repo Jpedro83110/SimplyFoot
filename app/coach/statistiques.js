@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function getBadge(note) {
     if (note >= 90) return require('../../assets/badges/platine.png');
@@ -217,7 +216,7 @@ export default function Statistiques() {
             <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>Aucune statistique disponible.</Text>
                 <Text style={styles.emptySubtext}>
-                    Créez des évaluations pour vos joueurs pour voir les statistiques d'équipe.
+                    Créez des évaluations pour vos joueurs pour voir les statistiques d&apos;équipe.
                 </Text>
                 <Pressable onPress={() => fetchStats(true)} style={styles.refreshButton}>
                     <Text style={styles.refreshText}>🔄 Actualiser</Text>
@@ -230,7 +229,7 @@ export default function Statistiques() {
         <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>
             <ScrollView contentContainerStyle={styles.scroll}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>🏆 Statistiques d'équipe</Text>
+                    <Text style={styles.title}>🏆 Statistiques d&apos;équipe</Text>
                     <Pressable
                         onPress={() => fetchStats(true)}
                         style={styles.refreshButton}

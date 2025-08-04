@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -19,16 +19,19 @@ export default function EvaluationTechnique() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
 
-    const criteres = [
-        'tir',
-        'passe',
-        'centre',
-        'tete',
-        'vitesse',
-        'defense',
-        'placement',
-        'jeu_sans_ballon',
-    ];
+    const criteres = useMemo(
+        () => [
+            'tir',
+            'passe',
+            'centre',
+            'tete',
+            'vitesse',
+            'defense',
+            'placement',
+            'jeu_sans_ballon',
+        ],
+        [],
+    );
 
     const [valeurs, setValeurs] = useState(Object.fromEntries(criteres.map((c) => [c, 50])));
     const [joueurInfo, setJoueurInfo] = useState(null);
@@ -126,7 +129,7 @@ export default function EvaluationTechnique() {
             });
             setValeurs(newValeurs);
         }
-    }, [evalData]);
+    }, [criteres, evalData]);
 
     const calculerMoyenne = () => {
         const total = criteres.reduce((sum, crit) => sum + (Number(valeurs[crit]) || 0), 0);
@@ -179,7 +182,7 @@ export default function EvaluationTechnique() {
 
             // Si aucune ligne n'a été mise à jour, on insère
             if (!updateData || updateData.length === 0) {
-                const { data: insertData, error: insertError } = await supabase
+                const { error: insertError } = await supabase
                     .from('evaluations_techniques')
                     .insert(updates)
                     .select();
@@ -196,7 +199,9 @@ export default function EvaluationTechnique() {
                     await refresh();
                 }
             } catch (cacheError) {
+                console.error('Erreur cache:', cacheError);
                 // Ignore les erreurs de cache
+                // FIXME: bizarre ce commentaire
             }
 
             Alert.alert('Succès', 'Évaluation technique enregistrée avec succès!', [

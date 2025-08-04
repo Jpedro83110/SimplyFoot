@@ -108,7 +108,7 @@ export default function AuthLayout() {
         if (!checking) {
             redirectUser();
         }
-    }, [checking, session, redirecting, segments]);
+    }, [checking, session, redirecting, segments, router]);
 
     if (checking || redirecting) {
         return (

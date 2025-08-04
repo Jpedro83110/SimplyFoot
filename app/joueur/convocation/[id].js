@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -13,7 +13,7 @@ import {
     TextInput,
     ScrollView,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
@@ -23,7 +23,6 @@ dayjs.locale('fr');
 
 export default function ConvocationReponse() {
     const { id } = useLocalSearchParams();
-    const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [event, setEvent] = useState(null);
     const [accepteTransport, setAccepteTransport] = useState(false);
@@ -31,7 +30,7 @@ export default function ConvocationReponse() {
     const [reponse, setReponse] = useState(null);
     const [reponseLoading, setReponseLoading] = useState(false);
     const [utilisateurId, setUtilisateurId] = useState(null);
-    const [joueurId, setJoueurId] = useState(null);
+    const [, setJoueurId] = useState(null);
     const [showTransportModal, setShowTransportModal] = useState(false);
 
     // Pour la messagerie transport
@@ -94,7 +93,7 @@ export default function ConvocationReponse() {
                 if (utilisateur.joueur_id) {
                     console.log('🚗 Recherche décharge pour joueur_id:', utilisateur.joueur_id);
 
-                    const { data: decharge, error: dechargeErr } = await supabase
+                    const { data: decharge } = await supabase
                         .from('decharges_generales')
                         .select('accepte_transport')
                         .eq('joueur_id', utilisateur.joueur_id) // ID table joueurs
@@ -137,10 +136,10 @@ export default function ConvocationReponse() {
             }
         }
         fetchData();
-    }, [id]);
+    }, [fetchTransportMessages, id]);
 
     // Fetch messages pour la messagerie transport
-    const fetchTransportMessages = async () => {
+    const fetchTransportMessages = useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from('messages_besoin_transport')
@@ -157,7 +156,7 @@ export default function ConvocationReponse() {
             console.error('❌ Erreur messages transport:', err);
             setMessages([]);
         }
-    };
+    }, [id]);
 
     // Réponse à la convocation
     const envoyerReponse = async (valeur) => {
@@ -269,7 +268,8 @@ export default function ConvocationReponse() {
             setNouvelleAdresse('');
             setNouvelleHeure('');
             await fetchTransportMessages();
-        } catch (err) {
+        } catch (error) {
+            console.error("Erreur lors de l'envoi de la proposition:", error);
             Alert.alert('Erreur', "Impossible d'envoyer la proposition.");
         } finally {
             setSendingProposition(false);
@@ -299,7 +299,8 @@ export default function ConvocationReponse() {
                 .eq('id', msgId);
             if (error) throw error;
             await fetchTransportMessages();
-        } catch (err) {
+        } catch (error) {
+            console.error('Erreur lors de la signature:', error);
             Alert.alert('Erreur', 'Impossible de signer.');
         }
     };
@@ -309,7 +310,7 @@ export default function ConvocationReponse() {
             <View style={styles.container}>
                 <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />
                 <Text style={{ color: '#ccc', textAlign: 'center', marginTop: 10 }}>
-                    Chargement de l'événement...
+                    Chargement de l&apos;événement...
                 </Text>
             </View>
         );
@@ -394,7 +395,7 @@ export default function ConvocationReponse() {
 
             {accepteTransport && reponse === 'present' && (
                 <View style={styles.switchBlock}>
-                    <Text style={styles.label}>Je n'ai pas de moyen de transport</Text>
+                    <Text style={styles.label}>Je n&apos;ai pas de moyen de transport</Text>
                     <Switch
                         value={besoinTransport}
                         onValueChange={setBesoinTransport}

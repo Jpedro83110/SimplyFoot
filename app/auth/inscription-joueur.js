@@ -23,7 +23,9 @@ let DateTimePicker = null;
 if (Platform.OS !== 'web') {
     try {
         DateTimePicker = require('@react-native-community/datetimepicker').default;
-    } catch (error) {}
+    } catch (error) {
+        console.warn('DateTimePicker not available:', error);
+    }
 }
 
 // Utils
@@ -131,7 +133,7 @@ export default function InscriptionJoueur() {
             setEquipeData(equipe);
             // Fetch coach associé à cette équipe
             if (equipe.coach_id) {
-                const { data: coach, error: errorCoach } = await supabase
+                const { data: coach } = await supabase
                     .from('staff')
                     .select('nom, prenom, email')
                     .eq('utilisateur_id', equipe.coach_id)
@@ -369,6 +371,7 @@ export default function InscriptionJoueur() {
                 ],
             );
         } catch (error) {
+            console.error('Error during player registration:', error);
             Alert.alert('Erreur', "Une erreur inattendue s'est produite. Veuillez réessayer.");
         } finally {
             router.push('/auth/login-joueur');
@@ -741,12 +744,13 @@ export default function InscriptionJoueur() {
                                     parentale est nécessaire :
                                 </Text>
                                 <Text style={styles.dechargeMessage}>
-                                    "J'accepte que mon enfant puisse être transporté sur le lieu
-                                    d'un événement par le coach ou un autre parent dans le cadre du
-                                    club."
+                                    &quot;J&apos;accepte que mon enfant puisse être transporté sur
+                                    le lieu d&apos;un événement par le coach ou un autre parent dans
+                                    le cadre du club.&quot;
                                 </Text>
                                 <Text style={styles.dechargeNote}>
-                                    ⚠️ Ce choix pourra être modifié plus tard dans l'espace parent.
+                                    ⚠️ Ce choix pourra être modifié plus tard dans l&apos;espace
+                                    parent.
                                 </Text>
                                 <View style={styles.dechargeRow}>
                                     <TouchableOpacity

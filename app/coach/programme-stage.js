@@ -115,7 +115,8 @@ export default function ProgrammeStage() {
             const { uri } = await Print.printToFileAsync({ html });
             await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
             setConfirmation('📄 PDF généré');
-        } catch (err) {
+        } catch (error) {
+            console.error("Erreur lors de l'impression du PDF:", error);
             setConfirmation('❌ Erreur impression PDF');
         }
     };
@@ -142,7 +143,8 @@ export default function ProgrammeStage() {
                 await shareAsync(fileUri, { mimeType: 'text/csv' });
                 setConfirmation('📤 Export CSV mobile OK');
             }
-        } catch (err) {
+        } catch (error) {
+            console.error("Erreur lors de l'export CSV:", error);
             setConfirmation('❌ Erreur export');
         }
     };

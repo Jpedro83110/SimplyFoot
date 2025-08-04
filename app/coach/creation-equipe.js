@@ -50,13 +50,13 @@ export default function CreationEquipe() {
     const [loading, setLoading] = useState(false);
 
     // Ajout du cache : on tente d'abord cache, puis fallback Supabase si rien trouvé
-    const [userInfo, refreshUserInfo, loadingUserInfo] = useCacheData(
+    const [userInfo, , loadingUserInfo] = useCacheData(
         'coach_user_info',
         async () => {
             const { data: sessionData } = await supabase.auth.getSession();
             const id = sessionData?.session?.user?.id;
             if (!id) return {};
-            const { data: userInfo, error } = await supabase
+            const { data: userInfo } = await supabase
                 .from('utilisateurs')
                 .select('club_id')
                 .eq('id', id)
@@ -93,7 +93,7 @@ export default function CreationEquipe() {
             // Génère un code équipe unique
             const codeEquipeGen = await generateUniqueCodeEquipe();
 
-            const { data, error } = await supabase
+            const { error } = await supabase
                 .from('equipes')
                 .insert({
                     nom,
@@ -118,7 +118,8 @@ export default function CreationEquipe() {
                 );
                 // Tu peux aussi garder le coach sur la page pour copier le code
             }
-        } catch (e) {
+        } catch (error) {
+            console.error("Erreur inattendue lors de la création de l'équipe:", error);
             Alert.alert('Erreur', 'Erreur inattendue lors de la création.');
         } finally {
             setLoading(false);
@@ -173,7 +174,7 @@ export default function CreationEquipe() {
                         {codeEquipe}
                     </Text>
                     <Text style={styles.codeEquipeInfo}>
-                        Ce code permet aux joueurs/parents de s'inscrire directement dans cette
+                        Ce code permet aux joueurs/parents de s&apos;inscrire directement dans cette
                         équipe.
                     </Text>
                 </View>

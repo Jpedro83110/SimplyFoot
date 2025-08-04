@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -28,7 +28,7 @@ export default function JoueurDetail() {
     const [saving, setSaving] = useState(false);
 
     // 🔧 FONCTION DE RECHARGEMENT COMPLÈTE
-    const fetchAll = async () => {
+    const fetchAll = useCallback(async () => {
         setLoading(true);
 
         try {
@@ -95,11 +95,11 @@ export default function JoueurDetail() {
         }
 
         setLoading(false);
-    };
+    }, [id]);
 
     useEffect(() => {
         fetchAll();
-    }, [id]);
+    }, [fetchAll, id]);
 
     // --- Ajouter / MAJ suivi personnalisé ---
     const ajouterOuMajSuivi = async () => {

@@ -545,7 +545,9 @@ export default function InscriptionCoach() {
                         resizeMode="contain"
                     />
                     <Text style={styles.title}>Créer un compte Coach</Text>
-                    <Text style={styles.subtitle}>Rejoignez votre club en tant qu'encadrant</Text>
+                    <Text style={styles.subtitle}>
+                        Rejoignez votre club en tant qu&apos;encadrant
+                    </Text>
                 </View>
 
                 {/* Formulaire */}

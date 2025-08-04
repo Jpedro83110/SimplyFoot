@@ -45,7 +45,7 @@ export default function CoachLayout() {
         };
 
         checkRole();
-    }, []);
+    }, [router]);
 
     if (checking) {
         return (

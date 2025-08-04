@@ -12,7 +12,6 @@ import {
     ActivityIndicator,
     Switch,
     ScrollView,
-    Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -48,7 +47,7 @@ export default function LoginJoueur() {
             return;
         }
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-            redirectTo: 'http://localhost:8081/auth/reset-password',
+            redirectTo: 'http://localhost:8081/auth/reset-password', // FIXME
         });
         if (error) {
             Alert.alert('Erreur', error.message);

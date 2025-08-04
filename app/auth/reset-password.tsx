@@ -31,7 +31,7 @@ export default function ResetPassword() {
                 refresh_token: '',
             });
         }
-    }, [access_token]);
+    }, [access_token, router]);
 
     const handleSubmit = async () => {
         if (password.length < 6) {

@@ -62,7 +62,7 @@ export default function BesoinTransportJoueur() {
             // 3. Récupérer l'équipe du joueur (si joueur_id existe)
             let equipeId = null;
             if (user.joueur_id) {
-                const { data: joueurData, error: joueurErr } = await supabase
+                const { data: joueurData } = await supabase
                     .from('joueurs')
                     .select('equipe_id')
                     .eq('id', user.joueur_id)
@@ -86,7 +86,7 @@ export default function BesoinTransportJoueur() {
 
             // 4. Vérifier la décharge transport (utilise joueur_id de la table joueurs)
             if (user.joueur_id) {
-                const { data: decharge, error: dechargeErr } = await supabase
+                const { data: decharge } = await supabase
                     .from('decharges_generales')
                     .select('accepte_transport')
                     .eq('joueur_id', user.joueur_id)
@@ -279,7 +279,7 @@ export default function BesoinTransportJoueur() {
                         <Text style={styles.emptyInfo}>
                             Les demandes apparaissent quand :{'\n'}• Vous êtes dans la même équipe
                             que le demandeur
-                            {'\n'}• L'événement est dans le futur
+                            {'\n'}• L&apos;événement est dans le futur
                             {'\n'}• Vous avez signé la décharge transport
                         </Text>
                     </View>

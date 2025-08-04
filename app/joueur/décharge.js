@@ -34,7 +34,7 @@ export default function Decharge() {
                 setDechargeExistante(true);
                 setLoading(false);
             } else {
-                const { data, error } = await supabase
+                const { data } = await supabase
                     .from('decharges_generales')
                     .select('*')
                     .eq('joueur_id', joueurId)
@@ -96,7 +96,7 @@ export default function Decharge() {
             <Text style={styles.title}>🧾 Décharge parentale</Text>
 
             <View style={styles.section}>
-                <Text style={styles.label}>L'enfant est-il mineur ?</Text>
+                <Text style={styles.label}>L&apos;enfant est-il mineur ?</Text>
                 <Switch value={mineur} onValueChange={setMineur} />
             </View>
 
