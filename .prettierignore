@@ -1,4 +1,9 @@
-node_modules
-dist
+.expo
+android/.gradle
+android/app/.cxx
+android/build
 build
 coverage
+dist
+node_modules
+shared-scripts
