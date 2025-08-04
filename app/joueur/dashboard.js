@@ -136,8 +136,6 @@ export default function JoueurDashboard() {
         return () => clearInterval(timer);
     }, [joueur, sendNotificationToStaff]);
 
-    
-
     const fetchAll = useCallback(async () => {
         try {
             const { data: sessionData } = await supabase.auth.getSession();
