@@ -7,7 +7,6 @@ export default function Accueil() {
     const router = useRouter();
     const [loggedIn, setLoggedIn] = useState(false);
 
-    // Fonction de redirection en fonction du rôle utilisateur
     const redirectUser = async (session) => {
         if (!session?.user) return;
 
@@ -54,7 +53,6 @@ export default function Accueil() {
             redirectUser(session);
         });
 
-        // Initial session check
         supabase.auth.getSession().then(({ data }) => {
             setLoggedIn(!!data.session?.user);
             redirectUser(data.session);
