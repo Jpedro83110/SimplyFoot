@@ -23,7 +23,26 @@
     },
     "jest": {
         "preset": "jest-expo",
-        "testEnvironment": "jsdom"
+        "testEnvironment": "jsdom",
+        "rootDir": ".",
+        "roots": [
+            "<rootDir>/app",
+            "<rootDir>/components",
+            "<rootDir>/helpers",
+            "<rootDir>/hooks",
+            "<rootDir>/lib",
+            "<rootDir>/utils"
+        ],
+        "collectCoverageFrom": [
+            "**/*.{js,jsx,ts,tsx}",
+            "!<rootDir>/node_modules/"
+        ],
+        "coverageThreshold": {
+            "global": {
+                "lines": 90,
+                "statements": 90
+            }
+        }
     },
     "prettier": "./.prettierrc.json",
     "dependencies": {
