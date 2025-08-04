@@ -8,5 +8,14 @@ module.exports = defineConfig([
     eslintPluginPrettierRecommended,
     {
         ignores: ['dist/*', 'node_modules/*', '.expo/*'],
+        rules: {
+            // Désactive les erreurs de fins de ligne pour éviter les conflits Git/Prettier
+            'prettier/prettier': [
+                'error',
+                {
+                    endOfLine: 'auto',
+                },
+            ],
+        },
     },
 ]);
