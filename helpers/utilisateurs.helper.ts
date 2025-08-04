@@ -13,7 +13,7 @@ export const getUtilisateurById = async <U extends UtilisateurField>(
         .from('utilisateurs')
         .select(fields.join(', '))
         .eq('id', id)
-        .maybeSingle();
+        .single();
 
     if (error) {
         throw error;

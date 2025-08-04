@@ -9,18 +9,16 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
-const GREEN = '#00ff88';
+import { getUtilisateurById } from '@/helpers/utilisateurs.helper';
+import { Utilisateur } from '@/types/utilisateur';
+import { COLOR_GREEN_300 } from '@/utils/styleContants.util';
 
 export default function BesoinTransportJoueur() {
     const [loading, setLoading] = useState(true);
-    const [demandes, setDemandes] = useState([]);
-    const [joueur, setJoueur] = useState(null);
+    const [demandes, setDemandes] = useState<any[]>([]); // FIXME
+    const [joueur, setJoueur] = useState<Pick<Utilisateur, 'nom' | 'prenom'>>();
     const [monEquipeId, setMonEquipeId] = useState(null);
     const router = useRouter();
-
-    useEffect(() => {
-        fetchDemandes();
-    }, []);
 
     async function fetchDemandes() {
         setLoading(true);
@@ -34,6 +32,7 @@ export default function BesoinTransportJoueur() {
                 setLoading(false);
                 return;
             }
+
             const userId = sessionData?.session?.user?.id;
             if (!userId) {
                 console.log("🔥🔥🔥 JOUEUR: Pas d'utilisateur connecté 🔥🔥🔥");
@@ -43,29 +42,31 @@ export default function BesoinTransportJoueur() {
             console.log('🔥🔥🔥 JOUEUR: User ID:', userId, '🔥🔥🔥');
 
             // 2. Récupérer les infos utilisateur
-            const { data: user, error: userErr } = await supabase
-                .from('utilisateurs')
-                .select('id, joueur_id, prenom, nom, role')
-                .eq('id', userId)
-                .single();
+            const utilisateur = await getUtilisateurById(userId, [
+                'id',
+                'joueur_id',
+                'prenom',
+                'nom',
+                'role',
+            ]);
 
-            console.log('🔥🔥🔥 JOUEUR: Utilisateur récupéré:', user, '🔥🔥🔥');
+            console.log('🔥🔥🔥 JOUEUR: Utilisateur récupéré:', utilisateur, '🔥🔥🔥');
 
-            if (userErr || !user || user.role !== 'joueur') {
+            if (utilisateur.role !== 'joueur') {
                 console.log('🔥🔥🔥 JOUEUR: Utilisateur non joueur ou non trouvé 🔥🔥🔥');
                 setLoading(false);
                 return;
             }
 
-            setJoueur({ prenom: user.prenom, nom: user.nom });
+            setJoueur(utilisateur);
 
             // 3. Récupérer l'équipe du joueur (si joueur_id existe)
             let equipeId = null;
-            if (user.joueur_id) {
+            if (utilisateur.joueur_id) {
                 const { data: joueurData } = await supabase
                     .from('joueurs')
                     .select('equipe_id')
-                    .eq('id', user.joueur_id)
+                    .eq('id', utilisateur.joueur_id)
                     .single();
 
                 console.log('🔥🔥🔥 JOUEUR: Joueur récupéré:', joueurData, '🔥🔥🔥');
@@ -85,11 +86,11 @@ export default function BesoinTransportJoueur() {
             console.log('🔥🔥🔥 JOUEUR: Mon équipe ID:', equipeId, '🔥🔥🔥');
 
             // 4. Vérifier la décharge transport (utilise joueur_id de la table joueurs)
-            if (user.joueur_id) {
+            if (utilisateur.joueur_id) {
                 const { data: decharge } = await supabase
                     .from('decharges_generales')
                     .select('accepte_transport')
-                    .eq('joueur_id', user.joueur_id)
+                    .eq('joueur_id', utilisateur.joueur_id)
                     .eq('accepte_transport', true)
                     .single();
 
@@ -140,14 +141,14 @@ export default function BesoinTransportJoueur() {
             const demandesAvecJoueurs = await Promise.all(
                 (besoins || []).map(async (demande) => {
                     console.log(
-                        `🔥🔥🔥 JOUEUR: Traitement demande ${demande.id}, joueur_id: ${demande.joueur_id} 🔥🔥🔥`,
+                        `🔥🔥🔥 JOUEUR: Traitement demande ${demande.id}, utilisateur_id: ${demande.utilisateur_id} 🔥🔥🔥`,
                     );
 
-                    // 🎯 CORRECTION : demande.joueur_id = ID UTILISATEUR
+                    // 🎯 CORRECTION : demande.utilisateur_id = ID UTILISATEUR
                     const { data: utilisateur, error: userErr } = await supabase
                         .from('utilisateurs')
                         .select('id, nom, prenom, joueur_id')
-                        .eq('id', demande.joueur_id) // Chercher par ID utilisateur
+                        .eq('id', demande.utilisateur_id) // Chercher par ID utilisateur
                         .single();
 
                     console.log(
@@ -257,6 +258,10 @@ export default function BesoinTransportJoueur() {
         }
     }
 
+    useEffect(() => {
+        fetchDemandes();
+    }, []);
+
     return (
         <View style={styles.bg}>
             <ScrollView style={styles.container}>
@@ -269,7 +274,7 @@ export default function BesoinTransportJoueur() {
                     </Text>
                 )}
 
-                {loading && <ActivityIndicator color={GREEN} style={{ marginTop: 40 }} />}
+                {loading && <ActivityIndicator color={COLOR_GREEN_300} style={{ marginTop: 40 }} />}
 
                 {!loading && demandes.length === 0 && (
                     <View style={styles.emptyContainer}>
@@ -312,9 +317,9 @@ export default function BesoinTransportJoueur() {
                                         demande.etat === 'en_attente'
                                             ? '#ffe44d'
                                             : demande.etat === 'proposition_faite'
-                                              ? '#00ff88'
+                                              ? COLOR_GREEN_300
                                               : demande.etat === 'signe'
-                                                ? '#00ff88'
+                                                ? COLOR_GREEN_300
                                                 : '#ffe44d',
                                 }}
                             >
@@ -370,12 +375,12 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         marginBottom: 16,
         borderLeftWidth: 4,
-        borderLeftColor: GREEN,
+        borderLeftColor: COLOR_GREEN_300,
     },
     joueur: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#00ff88',
+        color: COLOR_GREEN_300,
         marginBottom: 8,
     },
     evenement: {
@@ -396,7 +401,7 @@ const styles = StyleSheet.create({
     },
     detailBtn: {
         marginTop: 10,
-        backgroundColor: GREEN,
+        backgroundColor: COLOR_GREEN_300,
         padding: 9,
         borderRadius: 8,
         alignItems: 'center',

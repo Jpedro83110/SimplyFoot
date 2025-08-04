@@ -77,13 +77,13 @@ export default function BesoinTransportCoach() {
                             const { data: user } = await supabase
                                 .from('utilisateurs')
                                 .select('prenom, nom')
-                                .eq('id', d.joueur_id)
+                                .eq('id', d.utilisateur_id)
                                 .single();
                             // Parent demandeur (via décharge)
                             const { data: decharge } = await supabase
                                 .from('decharges_generales')
                                 .select('parent_prenom, parent_nom, accepte_transport')
-                                .eq('joueur_id', d.joueur_id)
+                                .eq('joueur_id', d.utilisateur_id)
                                 .eq('accepte_transport', true)
                                 .single();
 

@@ -19,7 +19,7 @@ export const getJoueurByUtilisateurId = async <U extends UtilisateurField, J ext
         .from('utilisateurs')
         .select(`${utilisateurFields.join(', ')}, joueurs(${fields.join(', ')})`)
         .eq('id', id)
-        .maybeSingle();
+        .single();
 
     if (error) {
         throw error;
