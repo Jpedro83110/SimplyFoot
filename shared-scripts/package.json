@@ -1,0 +1,30 @@
+{
+    "name": "shared-scripts",
+    "version": "1.0.0",
+    "description": "Scripts partagés pour l'application SimplyFoot",
+    "type": "module",
+    "scripts": {
+        "simulate": "node scripts/traffic-simulator.js",
+        "simulate:light": "node scripts/traffic-simulator.js 5 30000 5000",
+        "simulate:medium": "node scripts/traffic-simulator.js 20 120000 15000",
+        "simulate:heavy": "node scripts/traffic-simulator.js 50 300000 30000",
+        "simulate:stress": "node scripts/traffic-simulator.js 100 600000 60000",
+        "create:club:small": "node scripts/create-test-club.js create small",
+        "create:club:medium": "node scripts/create-test-club.js create medium",
+        "create:club:large": "node scripts/create-test-club.js create large",
+        "create:club:huge": "node scripts/create-test-club.js create huge",
+        "clubs:list": "node scripts/create-test-club.js list",
+        "clubs:delete-all": "node scripts/create-test-club.js delete-all"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.45.4",
+        "@faker-js/faker": "^8.4.1"
+    },
+    "keywords": [
+        "supabase",
+        "performance",
+        "testing",
+        "simulation"
+    ],
+    "author": "SimplyFoot Team"
+}

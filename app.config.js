@@ -1,7 +1,9 @@
+import packageJson from './package.json';
+
 export default {
     name: 'SimplyFoot',
     slug: 'simplyfoot',
-    version: '1.0.0',
+    version: packageJson.version,
     scheme: 'simplyfoot',
     orientation: 'portrait',
     icon: './assets/icon.png',
