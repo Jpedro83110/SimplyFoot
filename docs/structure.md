@@ -162,18 +162,18 @@ Documentation complète de toutes les routes et pages disponibles dans l'applica
 
 - **Rôles autorisés :** `joueur`, `admin`, `president`
 - **Fonctionnalités :**
-  - Vérification session utilisateur
-  - Gestion notifications push (mobile)
-  - Redirection auto vers dashboard
-  - Header avec navigation
+    - Vérification session utilisateur
+    - Gestion notifications push (mobile)
+    - Redirection auto vers dashboard
+    - Header avec navigation
 
 #### `/coach/_layout.js`
 
 - **Rôles autorisés :** `coach`, `admin`
 - **Fonctionnalités :**
-  - Vérification rôle coach
-  - Titres de pages dynamiques
-  - Header avec navigation
+    - Vérification rôle coach
+    - Titres de pages dynamiques
+    - Header avec navigation
 
 ## 🎯 **Paramètres Dynamiques**
 
@@ -182,8 +182,8 @@ Documentation complète de toutes les routes et pages disponibles dans l'applica
 - **`[id]`** → ID unique (joueur, événement, équipe, etc.)
 - Permet l'accès aux détails spécifiques d'une entité
 - Exemples :
-  - `/coach/joueur/123` → Fiche du joueur ID 123
-  - `/coach/composition/456` → Composition événement ID 456
+    - `/coach/joueur/123` → Fiche du joueur ID 123
+    - `/coach/composition/456` → Composition événement ID 456
 
 ## 📱 **Responsive Design**
 

@@ -15,11 +15,13 @@ cd simplyfoot
 ```
 
 ### 2. Installer les dépendances
+
 ```bash
 npm install
 ```
 
 ### 3. Lancer l'application
+
 ```bash
 npm run start
 ```

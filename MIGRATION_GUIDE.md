@@ -6,9 +6,9 @@
 
 1. **Renommer l'extension** : `.js` → `.ts` ou `.jsx` → `.tsx`
 2. **Ajouter les types progressivement** :
-   - Commencer par les paramètres de fonctions
-   - Ajouter les types de retour
-   - Typer les variables importantes
+    - Commencer par les paramètres de fonctions
+    - Ajouter les types de retour
+    - Typer les variables importantes
 3. **Importer les types nécessaires**
 4. **Corriger les erreurs TypeScript une par une**
 
@@ -25,23 +25,23 @@
 ```typescript
 // Types pour les props des composants
 interface TeamCardProps {
-  equipe: Tables<"equipes"> & { joueurs?: number };
-  onPress?: () => void;
+    equipe: Tables<'equipes'> & { joueurs?: number };
+    onPress?: () => void;
 }
 
 // Types pour les états de formulaires
 interface FormData {
-  titre: string;
-  dateDebut: string;
-  dateFin: string;
-  // ...
+    titre: string;
+    dateDebut: string;
+    dateFin: string;
+    // ...
 }
 
 // Types pour les réponses API
 interface ApiResponse<T> {
-  data: T | null;
-  error: Error | null;
-  loading: boolean;
+    data: T | null;
+    error: Error | null;
+    loading: boolean;
 }
 ```
 
@@ -51,11 +51,11 @@ Ajoutez dans `.vscode/settings.json` :
 
 ```json
 {
-  "typescript.preferences.files.excludeFileFromAutoImport": ["**/*.js"],
-  "typescript.suggest.autoImports": true,
-  "editor.codeActionsOnSave": {
-    "source.organizeImports": true
-  }
+    "typescript.preferences.files.excludeFileFromAutoImport": ["**/*.js"],
+    "typescript.suggest.autoImports": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": true
+    }
 }
 ```
 

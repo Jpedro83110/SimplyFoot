@@ -204,7 +204,7 @@ async simulateNouveauScenario(userClient) {
 ### Modifier la répartition utilisateurs
 
 ```javascript
-const userType = ["joueur", "coach", "admin"][i % 3]; // 33% chaque type
+const userType = ['joueur', 'coach', 'admin'][i % 3]; // 33% chaque type
 ```
 
 # 🏟️ Génération de Clubs de Test
@@ -268,16 +268,16 @@ Installe :
 
 1. **Créez d'abord un club de test** :
 
-   ```bash
-   npm run create:club:medium
-   ```
+    ```bash
+    npm run create:club:medium
+    ```
 
 2. **Récupérez les identifiants** dans le rapport généré
 
 3. **Lancez la simulation** avec de vrais utilisateurs :
-   ```bash
-   npm run simulate:medium
-   ```
+    ```bash
+    npm run simulate:medium
+    ```
 
 Le simulateur utilisera automatiquement les comptes créés avec le générateur de clubs !
 
