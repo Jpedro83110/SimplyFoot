@@ -165,7 +165,7 @@ export default function LoginJoueur() {
                     textContentType="username"
                 />
 
-                <View style={{ width: '100%', position: 'relative', marginBottom: 15 }}>
+                <View style={{ width: '100%', position: 'relative', marginBottom: 5 }}>
                     <TextInput
                         style={[styles.input, { paddingRight: 44 }]}
                         placeholder="Mot de passe"
@@ -186,7 +186,7 @@ export default function LoginJoueur() {
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.rememberContainer}>
+                <View style={{ ...styles.rememberContainer, marginBottom: 20 }}>
                     <Switch
                         value={rememberMe}
                         onValueChange={setRememberMe}
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
         color: '#00ff88',
         fontSize: 12,
         marginTop: 18,
-        textAlign: 'center',
+        textAlign: 'right',
         textDecorationLine: 'underline',
     },
     separator: {
@@ -305,6 +305,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         textAlign: 'center',
         marginTop: 20,
-        marginBottom: 10,
+        marginBottom: 15,
     },
 });

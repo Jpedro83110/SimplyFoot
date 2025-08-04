@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
         width: '100%',
         maxWidth: 400,
         elevation: 2,
-        marginTop: 12,
+        marginTop: 0,
     },
     primary: {
         backgroundColor: '#00ff88',
