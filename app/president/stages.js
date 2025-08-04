@@ -219,7 +219,7 @@ export default function Stages() {
         };
         const { error } = await supabase.from('stages').insert(dataObj);
         if (error) {
-            setConfirmation('❌ Erreur lors de l’enregistrement');
+            setConfirmation("❌ Erreur lors de l'enregistrement");
         } else {
             await refreshStages();
             setConfirmation('✅ Stage enregistré !');

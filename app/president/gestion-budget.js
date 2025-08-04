@@ -73,7 +73,7 @@ export default function GestionBudget() {
     const ajouterLigne = async () => {
         let { date, type, intitule, montant, categorie, commentaire } = nouvelleLigne;
         if (!clubId) {
-            Alert.alert('Erreur', 'Le club n’a pas encore été chargé.');
+            Alert.alert('Erreur', "Le club n'a pas encore été chargé.");
             return;
         }
         if (!intitule || !montant || isNaN(parseFloat(montant))) {
@@ -98,7 +98,7 @@ export default function GestionBudget() {
             },
         ]);
         if (error) {
-            Alert.alert('Erreur lors de l’ajout', error.message);
+            Alert.alert("Erreur lors de l'ajout", error.message);
         } else {
             setNouvelleLigne({
                 date: '',

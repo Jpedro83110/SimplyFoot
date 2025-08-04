@@ -7,11 +7,8 @@ import {
     ActivityIndicator,
     Pressable,
     ScrollView,
-    Dimensions,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-
-const { width } = Dimensions.get('window');
 
 export default function NutritionScannerReal() {
     const [permission, requestPermission] = useCameraPermissions();
@@ -24,7 +21,7 @@ export default function NutritionScannerReal() {
         if (!permission) {
             requestPermission();
         }
-    }, [permission]);
+    }, [permission, requestPermission]);
 
     const handleBarCodeScanned = async ({ type, data }) => {
         if (scanned) return;
@@ -139,7 +136,7 @@ export default function NutritionScannerReal() {
 
     const getFootballAdvice = (product) => {
         const { nutriscore, nutrition } = product;
-        const calories = nutrition.calories;
+        // const calories = nutrition.calories; // FIXME: not used
         const proteines = nutrition.proteines;
         const glucides = nutrition.glucides;
         const sucres = nutrition.sucres;
@@ -229,11 +226,11 @@ export default function NutritionScannerReal() {
             <View style={styles.container}>
                 <Text style={styles.permissionTitle}>📷 Autorisation caméra requise</Text>
                 <Text style={styles.permissionText}>
-                    Pour scanner les codes-barres nutritionnels, nous avons besoin d'accéder à la
-                    caméra.
+                    Pour scanner les codes-barres nutritionnels, nous avons besoin d&apos;accéder à
+                    la caméra.
                 </Text>
                 <Pressable style={styles.permissionButton} onPress={requestPermission}>
-                    <Text style={styles.permissionButtonText}>Autoriser l'accès</Text>
+                    <Text style={styles.permissionButtonText}>Autoriser l&apos;accès</Text>
                 </Pressable>
             </View>
         );

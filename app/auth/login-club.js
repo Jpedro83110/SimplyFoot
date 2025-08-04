@@ -27,7 +27,7 @@ export default function LoginClub() {
         if (!email) {
             Alert.alert(
                 'Erreur',
-                'Entrez d’abord votre email pour recevoir un lien de réinitialisation.',
+                "Entrez d'abord votre email pour recevoir un lien de réinitialisation.",
             );
             return;
         }

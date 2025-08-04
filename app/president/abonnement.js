@@ -74,7 +74,7 @@ export default function Abonnement() {
             <TouchableOpacity style={styles.payButton} onPress={handlePayment}>
                 <Text style={styles.payText}>
                     {Platform.OS === 'web'
-                        ? '💳 Payer l’abonnement'
+                        ? "💳 Payer l'abonnement"
                         : '🔒 Paiement uniquement sur le Web'}
                 </Text>
             </TouchableOpacity>

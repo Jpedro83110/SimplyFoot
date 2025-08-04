@@ -544,8 +544,8 @@ export default function TransportDetail() {
                         <Text style={{ color: '#fff', marginBottom: 10 }}>
                             Les deux parties doivent signer pour valider ce transport.{'\n'}
                             <Text style={{ color: '#aaa', fontStyle: 'italic' }}>
-                                “Je m’engage à transporter le joueur selon les modalités convenues,
-                                sous ma responsabilité.”
+                                “Je m&apos;engage à transporter le joueur selon les modalités
+                                convenues, sous ma responsabilité.”
                             </Text>
                         </Text>
                         {!signatureStatus.demandeur && (

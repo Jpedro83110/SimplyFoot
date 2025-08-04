@@ -1,14 +1,6 @@
 // app/joueur/motivation.js
 import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Dimensions,
-    Alert,
-    ScrollView,
-} from 'react-native';
+import { Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ScrollView } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { LineChart } from 'react-native-chart-kit';
 import { supabase } from '../../lib/supabase';
@@ -17,9 +9,9 @@ const demoMode = true;
 const motivationQuotes = [
     'Tu as déjà survécu à 100% de tes mauvaises journées.',
     'Chaque jour est une nouvelle chance.',
-    'L’équipe avant tout.',
-    'Tu n’abandonnes pas. Tu grandis.',
-    'Un effort aujourd’hui, une victoire demain.',
+    "L'équipe avant tout.",
+    "Tu n'abandonnes pas. Tu grandis.",
+    "Un effort aujourd'hui, une victoire demain.",
 ];
 
 export default function Motivation() {
@@ -52,7 +44,7 @@ export default function Motivation() {
 
     const handleSave = async () => {
         if (demoMode) {
-            Alert.alert('✅ Motivation enregistrée', `Tu te sens à ${motivation}/10 aujourd’hui`);
+            Alert.alert('✅ Motivation enregistrée', `Tu te sens à ${motivation}/10 aujourd'hui`);
         } else {
             const session = await supabase.auth.getSession();
             const joueurId = session.data.session.user.id;
@@ -66,7 +58,7 @@ export default function Motivation() {
             else
                 Alert.alert(
                     '✅ Motivation enregistrée',
-                    `Tu te sens à ${motivation}/10 aujourd’hui`,
+                    `Tu te sens à ${motivation}/10 aujourd'hui`,
                 );
         }
     };

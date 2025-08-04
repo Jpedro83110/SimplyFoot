@@ -71,7 +71,7 @@ export default function AdminDashboard() {
                 style={[styles.button, { marginTop: 30, backgroundColor: '#00ff8844' }]}
             >
                 <Text style={[styles.buttonText, { color: '#ffffff' }]}>
-                    🔙 Retour à l’accueil admin
+                    🔙 Retour à l'accueil admin
                 </Text>
             </TouchableOpacity>
         </ScrollView>

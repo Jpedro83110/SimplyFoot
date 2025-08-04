@@ -40,7 +40,7 @@ export default function AdminLayout() {
             }
 
             if (user.role === 'admin') {
-                console.log('[ADMIN LAYOUT] Accès autorisé à l’admin');
+                console.log("[ADMIN LAYOUT] Accès autorisé à l'admin");
                 if (isMounted) setAuthorized(true);
             } else {
                 console.warn('[ADMIN LAYOUT] Accès refusé. Rôle =', user.role);

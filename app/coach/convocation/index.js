@@ -84,7 +84,7 @@ export default function ConvocationsList() {
             return;
         }
 
-        // 2. Supprimer l’événement
+        // 2. Supprimer l'événement
         const { error: errorEvt } = await supabase.from('evenements').delete().eq('id', eventId);
 
         if (errorEvt) {

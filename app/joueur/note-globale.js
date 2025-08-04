@@ -93,7 +93,7 @@ export default function NoteGlobaleEquipe() {
     // Responsive design
     const isMobile = screenWidth < 600;
 
-    // Helpers d’affichage note :
+    // Helpers d'affichage note :
     const displayNote = (note) => (note !== null ? `${Math.round(note)}/100` : '—/100');
 
     return (

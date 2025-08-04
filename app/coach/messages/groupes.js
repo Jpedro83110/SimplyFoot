@@ -147,7 +147,7 @@ export default function MessagesGroupesCoach() {
                         ))}
                     </View>
                     <TextInput
-                        placeholder="Ton message pour l’équipe..."
+                        placeholder="Ton message pour l'équipe..."
                         placeholderTextColor="#777"
                         style={styles.input}
                         value={message}

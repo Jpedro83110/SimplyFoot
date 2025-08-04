@@ -12,7 +12,7 @@ export default function ReseauxSociaux({ facebook, instagram, boutique }) {
                 await Linking.openURL(url); // fallback vers navigateur
             }
         } catch (error) {
-            Alert.alert('Erreur', 'Impossible d’ouvrir ce lien.', error);
+            Alert.alert('Erreur', "Impossible d'ouvrir ce lien.", error);
         }
     };
 

@@ -39,11 +39,11 @@ export default function LoginJoueur() {
         if (!email) {
             Alert.alert(
                 'Erreur',
-                'Entrez d’abord votre email pour recevoir un lien de réinitialisation.',
+                "Entrez d'abord votre email pour recevoir un lien de réinitialisation.",
             );
             console.log(
                 'Erreur',
-                'Entrez d’abord votre email pour recevoir un lien de réinitialisation.',
+                "Entrez d'abord votre email pour recevoir un lien de réinitialisation.",
             );
             return;
         }

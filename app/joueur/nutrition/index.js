@@ -23,7 +23,7 @@ export default function NutritionIndex() {
             <TouchableOpacity
                 style={[styles.button, { marginTop: 18, backgroundColor: '#0096ff' }]}
                 onPress={() => router.push('/joueur/nutrition/conseils')}
-                disabled // désactivé pour l’instant
+                disabled // désactivé pour l'instant
             >
                 <Text style={styles.buttonText}>💡 Nos conseils</Text>
                 <Text style={styles.desc}>

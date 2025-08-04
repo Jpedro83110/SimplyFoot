@@ -12,14 +12,13 @@ import { supabase } from '../../../lib/supabase';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
-const DARK_LIGHT = '#161b20';
 
 export default function MessagesGroupesJoueur() {
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [reponses, setReponses] = useState({});
-    const [joueurId, setJoueurId] = useState(null);
-    const [equipeId, setEquipeId] = useState(null);
+    const [, setReponses] = useState({});
+    const [, setJoueurId] = useState(null);
+    const [, setEquipeId] = useState(null);
 
     // Purge tous les messages de groupe de +7j à chaque ouverture
     useEffect(() => {
@@ -102,7 +101,7 @@ export default function MessagesGroupesJoueur() {
                     <Text style={styles.title}>💬 Messages de groupe</Text>
                     <Text style={styles.info}>
                         La messagerie de groupe permet au coach de communiquer des informations à
-                        toute l’équipe. Les joueurs ne peuvent pas répondre ici.
+                        toute l&apos;équipe. Les joueurs ne peuvent pas répondre ici.
                     </Text>
                     {messages.length === 0 && (
                         <Text style={styles.noMessages}>

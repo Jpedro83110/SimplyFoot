@@ -24,7 +24,7 @@ function generateCodeEquipe(length = 6) {
     return code;
 }
 
-// Génère et vérifie l’unicité du code équipe
+// Génère et vérifie l'unicité du code équipe
 async function generateUniqueCodeEquipe() {
     let code, exists;
     do {
@@ -108,7 +108,7 @@ export default function CreationEquipe() {
 
             if (error) {
                 console.error('[EQUIPE] ❌ Erreur création :', error);
-                Alert.alert('Erreur', 'Création de l’équipe échouée.');
+                Alert.alert('Erreur', "Création de l'équipe échouée.");
             } else {
                 setCodeEquipe(codeEquipeGen);
                 Alert.alert(

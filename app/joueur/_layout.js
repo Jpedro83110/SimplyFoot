@@ -113,7 +113,7 @@ export default function JoueurLayout() {
                         }
                     } catch (e) {
                         // Ici, pas d'alerte bloquante : juste log en console
-                        console.error('[PUSH] Erreur lors de l’enregistrement du token', e);
+                        console.error("[PUSH] Erreur lors de l'enregistrement du token", e);
                     }
                 }
             } else {

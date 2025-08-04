@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,9 +13,9 @@ export default function MessagesIndex() {
 
     useEffect(() => {
         checkCanAskTransport();
-    }, []);
+    }, [checkCanAskTransport]);
 
-    async function checkCanAskTransport() {
+    const checkCanAskTransport = useCallback(async () => {
         // 1. Récupère l'utilisateur courant (parent ou joueur)
         const { data: sessionData } = await supabase.auth.getSession();
         const userId = sessionData?.session?.user?.id;
@@ -55,7 +55,7 @@ export default function MessagesIndex() {
         console.log('decharge', decharge, 'dechargeError', dechargeError); // <--- LOG 5
 
         setCanAskTransport(!!decharge);
-    }
+    }, []);
 
     // Petite fonction utilitaire pour calculer l'âge
     function getAge(dateNaissance) {
@@ -118,7 +118,7 @@ export default function MessagesIndex() {
                             style={{ marginRight: 12 }}
                         />
                         <Text style={[styles.buttonText, { color: '#ffd700' }]}>
-                            J'ai besoin de transport
+                            J&apos;ai besoin de transport
                         </Text>
                     </TouchableOpacity>
                 )}
