@@ -4,7 +4,7 @@ import { Utilisateur, UtilisateurField } from '@/types/utilisateur';
 export const getUtilisateurById = async <U extends UtilisateurField>(
     id: string,
     fields: U[],
-): Promise<Pick<Utilisateur, U> | undefined> => {
+): Promise<Pick<Utilisateur, U>> => {
     if (!fields || fields.length === 0) {
         fields = ['id'] as U[];
     }
@@ -17,7 +17,9 @@ export const getUtilisateurById = async <U extends UtilisateurField>(
 
     if (error) {
         throw error;
+    } else if (!data) {
+        throw new Error(`Utilisateur with id ${id} not found`); // FIXME custom exception
     }
 
-    return data ? (data as unknown as Pick<Utilisateur, U>) : undefined;
+    return data as unknown as Pick<Utilisateur, U>;
 };

@@ -10,30 +10,30 @@ import { getJoueurByUtilisateurId } from '@/helpers/joueurs.helper';
 
 export default function MessagesIndex() {
     const router = useRouter();
-    const [canAskTransport, setCanAskTransport] = useState(false);
+    const [canAnswerTransportRequest, setCanAnswerTransportRequest] = useState(false);
 
     const checkCanAskTransport = useCallback(async () => {
-        // 1. Récupère l'utilisateur courant (parent ou joueur)
         const { data: sessionData } = await supabase.auth.getSession();
         const userId = sessionData?.session?.user?.id;
         console.log('userId', userId); // <--- LOG 1
 
         if (!userId) {
-            setCanAskTransport(false);
+            setCanAnswerTransportRequest(false);
             return;
         }
 
         const utilisateur = await getJoueurByUtilisateurId(userId, ['id', 'date_naissance']);
 
-        if (!utilisateur || !utilisateur.joueurs.date_naissance) {
-            setCanAskTransport(false);
+        if (!utilisateur.joueurs.date_naissance) {
+            setCanAnswerTransportRequest(false);
             return;
         }
 
-        // 4. Vérifie l'âge du joueur (mineur < 18 ans)
         const age = calculateAge(utilisateur.joueurs.date_naissance);
-        console.log('age', age); // <--- LOG 4
-        if (age >= 18) return setCanAskTransport(false);
+        if (age >= 18) {
+            setCanAnswerTransportRequest(false);
+            return;
+        }
 
         // 5. Vérifie la présence d'une décharge générale signée (table fournie)
         const { data: decharge, error: dechargeError } = await supabase
@@ -44,11 +44,11 @@ export default function MessagesIndex() {
             .maybeSingle();
         console.log('decharge', decharge, 'dechargeError', dechargeError); // <--- LOG 5
 
-        setCanAskTransport(!!decharge);
+        setCanAnswerTransportRequest(!!decharge);
     }, []);
 
     useEffect(() => {
-        checkCanAskTransport();
+        checkCanAskTransport(); // FIXME: to delete ?
     }, [checkCanAskTransport]);
 
     function handleAskTransport() {
@@ -91,7 +91,7 @@ export default function MessagesIndex() {
                 </TouchableOpacity>
 
                 {/* BOUTON BESOIN DE TRANSPORT */}
-                {canAskTransport && (
+                {canAnswerTransportRequest && (
                     <TouchableOpacity
                         style={[styles.button, { borderColor: '#ffd700' }]}
                         onPress={handleAskTransport}
@@ -103,7 +103,7 @@ export default function MessagesIndex() {
                             style={{ marginRight: 12 }}
                         />
                         <Text style={[styles.buttonText, { color: '#ffd700' }]}>
-                            J&apos;ai besoin de transport
+                            Demande de transport
                         </Text>
                     </TouchableOpacity>
                 )}

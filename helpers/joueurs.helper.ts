@@ -6,7 +6,7 @@ export const getJoueurByUtilisateurId = async <U extends UtilisateurField, J ext
     id: string,
     fields?: J[],
     utilisateurFields?: U[],
-): Promise<UtilisateurWithJoueurPicked<U, J> | undefined> => {
+): Promise<UtilisateurWithJoueurPicked<U, J>> => {
     if (!fields || fields.length === 0) {
         fields = ['id'] as J[];
     }
@@ -23,7 +23,9 @@ export const getJoueurByUtilisateurId = async <U extends UtilisateurField, J ext
 
     if (error) {
         throw error;
+    } else if (!data) {
+        throw new Error(`Utilisateur with id ${id} not found`); // FIXME custom exception
     }
 
-    return data ? (data as unknown as UtilisateurWithJoueurPicked<U, J>) : undefined;
+    return data as unknown as UtilisateurWithJoueurPicked<U, J>;
 };
