@@ -39,3 +39,6 @@ app-example
 
 # scripts
 scripts/scripts/reports
+
+# test
+coverage/

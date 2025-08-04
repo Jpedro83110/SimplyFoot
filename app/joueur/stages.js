@@ -12,7 +12,6 @@ import { supabase } from '../../lib/supabase';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
-const DARK_LIGHT = '#161b20';
 
 export default function LectureStage() {
     const [stage, setStage] = useState(null);

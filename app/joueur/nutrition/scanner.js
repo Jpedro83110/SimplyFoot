@@ -18,8 +18,8 @@ export default function NutritionScanner() {
                 <Text style={styles.title}>Scan nutrition</Text>
                 <Text style={styles.text}>
                     Notre scanner nutritionnel arrive bientôt sur SimplyFoot !{'\n\n'}
-                    Tu pourras bientôt scanner n'importe quel aliment ou boisson pour connaître leur
-                    Nutri-Score, avoir des conseils personnalisés et améliorer ta récupération.
+                    Tu pourras bientôt scanner n&apos;importe quel aliment ou boisson pour connaître
+                    leur Nutri-Score, avoir des conseils personnalisés et améliorer ta récupération.
                 </Text>
 
                 {/* Bouton de test pour développement */}
