@@ -58,32 +58,6 @@ export default function JoueurDashboard() {
         return `${url}${separator}v=${refreshKey}`;
     };
 
-    useEffect(() => {
-        const timer = setInterval(() => {
-            const now = new Date().getTime();
-            const distance = DEADLINE_LICENCE.getTime() - now;
-            if (distance > 0) {
-                setTimeLeft({
-                    days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-                    hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-                    minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-                });
-            } else {
-                setTimeLeft({ expired: true });
-                if (
-                    joueur &&
-                    (!joueur.numero_licence ||
-                        joueur.numero_licence.trim() === '' ||
-                        joueur.numero_licence === 'N/C' ||
-                        joueur.numero_licence === 'NC')
-                ) {
-                    sendNotificationToStaff();
-                }
-            }
-        }, 1000);
-        return () => clearInterval(timer);
-    }, [joueur, sendNotificationToStaff]);
-
     const sendNotificationToStaff = useCallback(async () => {
         if (!joueur || !equipe) return;
         try {
@@ -135,6 +109,32 @@ export default function JoueurDashboard() {
             console.error('❌ Erreur envoi notification:', error);
         }
     }, [equipe, joueur]);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const now = new Date().getTime();
+            const distance = DEADLINE_LICENCE.getTime() - now;
+            if (distance > 0) {
+                setTimeLeft({
+                    days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+                    hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+                    minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+                });
+            } else {
+                setTimeLeft({ expired: true });
+                if (
+                    joueur &&
+                    (!joueur.numero_licence ||
+                        joueur.numero_licence.trim() === '' ||
+                        joueur.numero_licence === 'N/C' ||
+                        joueur.numero_licence === 'NC')
+                ) {
+                    sendNotificationToStaff();
+                }
+            }
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [joueur, sendNotificationToStaff]);
 
     const fetchAll = useCallback(async () => {
         try {
