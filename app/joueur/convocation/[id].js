@@ -39,6 +39,26 @@ export default function ConvocationReponse() {
     const [nouvelleHeure, setNouvelleHeure] = useState('');
     const [sendingProposition, setSendingProposition] = useState(false);
 
+    // Fetch messages pour la messagerie transport
+    const fetchTransportMessages = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('messages_besoin_transport')
+                .select(
+                    `
+          *, 
+          joueurs:joueur_id(nom, prenom, age)
+        `,
+                )
+                .eq('evenement_id', id);
+            if (error) throw error;
+            setMessages(data || []);
+        } catch (err) {
+            console.error('❌ Erreur messages transport:', err);
+            setMessages([]);
+        }
+    }, [id]);
+
     useEffect(() => {
         async function fetchData() {
             try {
@@ -137,26 +157,6 @@ export default function ConvocationReponse() {
         }
         fetchData();
     }, [fetchTransportMessages, id]);
-
-    // Fetch messages pour la messagerie transport
-    const fetchTransportMessages = useCallback(async () => {
-        try {
-            const { data, error } = await supabase
-                .from('messages_besoin_transport')
-                .select(
-                    `
-          *, 
-          joueurs:joueur_id(nom, prenom, age)
-        `,
-                )
-                .eq('evenement_id', id);
-            if (error) throw error;
-            setMessages(data || []);
-        } catch (err) {
-            console.error('❌ Erreur messages transport:', err);
-            setMessages([]);
-        }
-    }, [id]);
 
     // Réponse à la convocation
     const envoyerReponse = async (valeur) => {
