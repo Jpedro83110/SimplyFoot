@@ -1,12 +1,9 @@
 // JoueurCard enrichie - Avec badge licence et présence
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import { useRouter } from 'expo-router';
 
 // FIXME: seams not used
 export default function JoueurCard({ nom, poste, stats, avatar, licenceOK, presence, onPress }) {
-    const router = useRouter();
-
     const presenceColor = presence >= 75 ? '#00ff88' : presence >= 50 ? '#ffa500' : '#ff4d4d';
     const licenceColor = licenceOK ? '#00ff88' : '#ff4d4d';
 

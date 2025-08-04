@@ -12,18 +12,15 @@ import {
     Platform,
     KeyboardAvoidingView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { supabase } from '../../lib/supabase';
 import useCacheData from '../../lib/cache';
 import { formatDateFR, normalizeHour } from '../../lib/formatDate'; // <-- AJOUT ICI
-import Header from '../../components/business/Header';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
-const DARK_LIGHT = '#161b20';
 
 const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
 
@@ -129,7 +126,7 @@ export default function Stages() {
     };
 
     const cacheKey = clubId ? `stages_club_${clubId}` : null;
-    const [stages, refreshStages, loading] = useCacheData(cacheKey, fetchStages, 3600);
+    const [stages, refreshStages] = useCacheData(cacheKey, fetchStages, 3600);
 
     const resetForm = () => {
         setTitre('');
@@ -321,7 +318,8 @@ export default function Stages() {
             const { uri } = await Print.printToFileAsync({ html });
             await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
             setConfirmation('📄 PDF généré');
-        } catch (err) {
+        } catch (error) {
+            console.error('Erreur impression PDF:', error);
             setConfirmation('❌ Erreur impression PDF');
         }
     };
@@ -345,7 +343,8 @@ export default function Stages() {
                 await shareAsync(fileUri, { mimeType: 'text/csv' });
                 setConfirmation('📤 Export CSV mobile OK');
             }
-        } catch (err) {
+        } catch (error) {
+            console.error('Erreur export CSV:', error);
             setConfirmation('❌ Erreur export');
         }
     };

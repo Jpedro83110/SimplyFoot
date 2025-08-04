@@ -12,33 +12,6 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 
 // FIXME: seams not used
 export default function NutritionScanner() {
-    // --- WEB BLOQUÉ ---
-    if (Platform.OS === 'web') {
-        return (
-            <View style={styles.webContainer}>
-                <View style={styles.webIcon}>
-                    <Text style={{ fontSize: 100, opacity: 0.3 }}>📱</Text>
-                </View>
-                <Text style={styles.webTitle}>📷 Scanner Nutrition</Text>
-                <Text style={styles.webText}>
-                    Cette fonctionnalité nécessite l'accès à la caméra de votre smartphone.
-                </Text>
-                <Text style={styles.webSubtext}>
-                    🚫 <Text style={{ fontWeight: 'bold' }}>Non disponible sur ordinateur</Text>
-                    {'\n'}✅ <Text style={{ fontWeight: 'bold' }}>Disponible sur l'app mobile</Text>
-                </Text>
-                <View style={styles.webInstructions}>
-                    <Text style={styles.webInstructionsTitle}>Pour utiliser le scanner :</Text>
-                    <Text style={styles.webInstructionsText}>
-                        1. Ouvrez l'app sur votre téléphone{'\n'}
-                        2. Allez dans "Scanner Nutrition"{'\n'}
-                        3. Pointez la caméra vers un code-barres
-                    </Text>
-                </View>
-            </View>
-        );
-    }
-
     // --- MOBILE UNIQUEMENT ---
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
@@ -50,7 +23,7 @@ export default function NutritionScanner() {
         if (!permission) {
             requestPermission();
         }
-    }, [permission]);
+    }, [permission, requestPermission]);
 
     const handleBarCodeScanned = async ({ type, data }) => {
         if (scanned) return;
@@ -156,6 +129,35 @@ export default function NutritionScanner() {
         return '';
     };
 
+    // --- WEB BLOQUÉ ---
+    // FIXME: il faut bloquer avant d'arriver sur ce composant
+    if (Platform.OS === 'web') {
+        return (
+            <View style={styles.webContainer}>
+                <View style={styles.webIcon}>
+                    <Text style={{ fontSize: 100, opacity: 0.3 }}>📱</Text>
+                </View>
+                <Text style={styles.webTitle}>📷 Scanner Nutrition</Text>
+                <Text style={styles.webText}>
+                    Cette fonctionnalité nécessite l&lsquo;accès à la caméra de votre smartphone.
+                </Text>
+                <Text style={styles.webSubtext}>
+                    🚫 <Text style={{ fontWeight: 'bold' }}>Non disponible sur ordinateur</Text>
+                    {'\n'}✅{' '}
+                    <Text style={{ fontWeight: 'bold' }}>Disponible sur l&lsquo;app mobile</Text>
+                </Text>
+                <View style={styles.webInstructions}>
+                    <Text style={styles.webInstructionsTitle}>Pour utiliser le scanner :</Text>
+                    <Text style={styles.webInstructionsText}>
+                        1. Ouvrez l&lsquo;app sur votre téléphone{'\n'}
+                        2. Allez dans &ldquo;Scanner Nutrition&ldquo;{'\n'}
+                        3. Pointez la caméra vers un code-barres
+                    </Text>
+                </View>
+            </View>
+        );
+    }
+
     // Vérification des permissions
     if (!permission) {
         return (
@@ -171,11 +173,11 @@ export default function NutritionScanner() {
             <View style={styles.container}>
                 <Text style={styles.permissionTitle}>⛔ Accès à la caméra requis</Text>
                 <Text style={styles.permissionText}>
-                    Pour scanner les codes-barres nutritionnels, nous avons besoin d'accéder à la
-                    caméra de votre téléphone.
+                    Pour scanner les codes-barres nutritionnels, nous avons besoin d&apos;accéder à
+                    la caméra de votre téléphone.
                 </Text>
                 <Pressable style={styles.permissionButton} onPress={requestPermission}>
-                    <Text style={styles.permissionButtonText}>📱 Autoriser l'accès</Text>
+                    <Text style={styles.permissionButtonText}>📱 Autoriser l&apos;accès</Text>
                 </Pressable>
             </View>
         );

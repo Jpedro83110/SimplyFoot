@@ -1,12 +1,18 @@
 // CompositionTerrain.js - version carte FIFA avec terrain latéral et liste joueurs
-import { LogBox } from 'react-native';
 import React from 'react';
-import { View, Text, StyleSheet, ImageBackground, Dimensions, ScrollView } from 'react-native';
+import {
+    LogBox,
+    View,
+    Text,
+    StyleSheet,
+    ImageBackground,
+    Dimensions,
+    ScrollView,
+} from 'react-native';
 LogBox.ignoreLogs([
     'VirtualizedLists should never be nested', // ignore l'avertissement
 ]);
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 // FIXME: seams not used

@@ -12,21 +12,16 @@ import {
     Dimensions,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
-import { useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import * as ExpoSharing from 'expo-sharing';
 import * as Print from 'expo-print';
-import * as SharingWeb from 'expo-sharing';
 import { PieChart } from 'react-native-chart-kit';
 import useCacheData from '../../lib/cache';
 import { formatDateFR } from '../../lib/formatDate';
 
-const GREEN = '#00ff88';
 const DARK = '#101415';
-const DARK_LIGHT = '#161b20';
 
 export default function GestionBudget() {
-    const router = useRouter();
     const [filtreMois, setFiltreMois] = useState('');
     const [clubId, setClubId] = useState(null);
     const [nouvelleLigne, setNouvelleLigne] = useState({
@@ -141,7 +136,7 @@ export default function GestionBudget() {
             await FileSystem.writeAsStringAsync(path, csv, {
                 encoding: FileSystem.EncodingType.UTF8,
             });
-            await Sharing.shareAsync(path);
+            await ExpoSharing.shareAsync(path);
         }
     };
 
@@ -164,7 +159,7 @@ export default function GestionBudget() {
           .join('')}
       </table></body></html>`;
         const { uri } = await Print.printToFileAsync({ html });
-        await SharingWeb.shareAsync(uri);
+        await ExpoSharing.shareAsync(uri);
     };
 
     const archiverEtVider = async () => {

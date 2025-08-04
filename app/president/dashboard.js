@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -14,7 +14,6 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../lib/supabase';
 import useCacheData from '../../lib/cache';
@@ -144,9 +143,6 @@ export default function PresidentDashboard() {
                     return;
                 }
             }
-
-            // Sélection d'image selon la plateforme
-            let image;
 
             if (Platform.OS === 'web') {
                 // Pour le web, on va utiliser un input file

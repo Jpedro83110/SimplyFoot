@@ -9,7 +9,6 @@ import {
     TouchableOpacity,
     Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import useCacheData from '../../lib/cache';

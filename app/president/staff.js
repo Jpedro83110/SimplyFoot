@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
-    TextInput,
     StyleSheet,
     TouchableOpacity,
     ScrollView,
@@ -14,13 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import useCacheData from '../../lib/cache';
 
-const GREEN = '#00ff88';
 const DARK = '#101415';
-const DARK_LIGHT = '#161b20';
 
 export default function Staff() {
-    const [nom, setNom] = useState('');
-    const [prenom, setPrenom] = useState('');
     const [clubId, setClubId] = useState(null);
 
     // Récupération clubId (session)

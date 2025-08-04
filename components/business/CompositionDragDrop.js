@@ -196,7 +196,11 @@ export default function CompositionDragDrop({ evenementId }) {
                                 typeof compo.joueurs === 'string'
                                     ? JSON.parse(compo.joueurs)
                                     : compo.joueurs;
-                        } catch (e) {
+                        } catch (error) {
+                            console.error(
+                                '🎨 COMPOSITION: Erreur lors de la récupération de la composition sauvegardée:',
+                                error,
+                            );
                             joueursSaved = null;
                         }
                         if (joueursSaved && joueursSaved[j.id]) {

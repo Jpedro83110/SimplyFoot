@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, Image, Linking, Platform, Alert } from 'react-native';
+import { View, TouchableOpacity, Image, Linking, Alert } from 'react-native';
 
 // FIXME: seams not used
 export default function ReseauxSociaux({ facebook, instagram, boutique }) {
@@ -11,8 +11,8 @@ export default function ReseauxSociaux({ facebook, instagram, boutique }) {
             } else {
                 await Linking.openURL(url); // fallback vers navigateur
             }
-        } catch (e) {
-            Alert.alert('Erreur', 'Impossible d’ouvrir ce lien.');
+        } catch (error) {
+            Alert.alert('Erreur', 'Impossible d’ouvrir ce lien.', error);
         }
     };
 

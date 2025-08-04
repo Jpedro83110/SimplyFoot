@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 
 // FIXME: seams not used
 export default function EvenementCard({

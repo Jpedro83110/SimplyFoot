@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -12,7 +12,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { supabase } from '../../lib/supabase';
-import * as Notifications from 'expo-notifications';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
@@ -50,7 +49,7 @@ export default function Evenements() {
         return null;
     };
 
-    const fetchEvents = async () => {
+    const fetchEvents = useCallback(async () => {
         setLoading(true);
         const { data: sessionData } = await supabase.auth.getSession();
         const userId = sessionData?.session?.user?.id;
@@ -73,11 +72,11 @@ export default function Evenements() {
         else setEvents(data);
 
         setLoading(false);
-    };
+    }, []);
 
     useEffect(() => {
         fetchEvents();
-    }, []);
+    }, [fetchEvents]);
 
     const envoyerNotifications = async (message, clubId) => {
         const { data: utilisateurs } = await supabase
@@ -227,7 +226,7 @@ export default function Evenements() {
 
                     <TouchableOpacity style={styles.createButton} onPress={handleSubmit}>
                         <Ionicons name="add-circle" size={20} color="#000" />
-                        <Text style={styles.buttonText}>Créer l'événement</Text>
+                        <Text style={styles.buttonText}>Créer l&apos;événement</Text>
                     </TouchableOpacity>
                 </View>
 

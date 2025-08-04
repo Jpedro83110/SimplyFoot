@@ -9,8 +9,6 @@ import {
     Alert,
     Image,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -75,8 +73,9 @@ export default function Membres() {
                     joueursData = joueursResult || [];
                 }
                 setJoueurs(joueursData);
-            } catch (err) {
+            } catch (error) {
                 Alert.alert('Erreur', 'Impossible de charger les joueurs.');
+                console.error('Erreur chargement joueurs:', error);
             }
             setLoading(false);
         }

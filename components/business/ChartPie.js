@@ -1,6 +1,6 @@
 // 📁 components/ChartPie.js
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, Text } from 'react-native';
 
 let VictoryPie;
 try {

@@ -37,7 +37,7 @@ export default function TransportDetail() {
     useEffect(() => {
         fetchAll();
         // eslint-disable-next-line
-  }, [id]);
+    }, [id]);
 
     async function fetchAll() {
         setLoading(true);
@@ -381,7 +381,7 @@ export default function TransportDetail() {
 
             {!loading && demande && !autorise && (
                 <Text style={{ color: '#ffe44d', margin: 18, fontStyle: 'italic' }}>
-                    <Ionicons name="lock-closed" size={16} color="#ffe44d" /> Vous n'êtes pas
+                    <Ionicons name="lock-closed" size={16} color="#ffe44d" /> Vous n&apos;êtes pas
                     autorisé à proposer ou valider un transport pour cette demande.
                 </Text>
             )}
