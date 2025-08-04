@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '../../../lib/supabase';
-
-const GREEN = '#00ff88';
+import { supabase } from '@/lib/supabase';
+import { calculateAge } from '@/utils/date.util';
+import { DARK_GRADIENT, COLOR_GREEN_300 } from '@/utils/styleContants.util';
+import { getJoueurByUtilisateurId } from '@/helpers/joueurs.helper';
 
 export default function MessagesIndex() {
     const router = useRouter();
@@ -16,28 +17,21 @@ export default function MessagesIndex() {
         const { data: sessionData } = await supabase.auth.getSession();
         const userId = sessionData?.session?.user?.id;
         console.log('userId', userId); // <--- LOG 1
-        if (!userId) return setCanAskTransport(false);
 
-        // 2. Récup info utilisateur (pour joueur_id)
-        const { data: user, error: userError } = await supabase
-            .from('utilisateurs')
-            .select('id, joueur_id')
-            .eq('id', userId)
-            .maybeSingle();
-        console.log('user', user, 'userError', userError); // <--- LOG 2
-        if (!user || !user.joueur_id) return setCanAskTransport(false);
+        if (!userId) {
+            setCanAskTransport(false);
+            return;
+        }
 
-        // 3. Récup info joueur liée à cet utilisateur
-        const { data: joueurData, error: joueurError } = await supabase
-            .from('joueurs')
-            .select('id, date_naissance')
-            .eq('id', user.joueur_id)
-            .maybeSingle();
-        console.log('joueurData', joueurData, 'joueurError', joueurError); // <--- LOG 3
-        if (!joueurData || !joueurData.date_naissance) return setCanAskTransport(false);
+        const utilisateur = await getJoueurByUtilisateurId(userId, ['id', 'date_naissance']);
+
+        if (!utilisateur || !utilisateur.joueurs.date_naissance) {
+            setCanAskTransport(false);
+            return;
+        }
 
         // 4. Vérifie l'âge du joueur (mineur < 18 ans)
-        const age = getAge(joueurData.date_naissance);
+        const age = calculateAge(utilisateur.joueurs.date_naissance);
         console.log('age', age); // <--- LOG 4
         if (age >= 18) return setCanAskTransport(false);
 
@@ -45,7 +39,7 @@ export default function MessagesIndex() {
         const { data: decharge, error: dechargeError } = await supabase
             .from('decharges_generales')
             .select('accepte_transport')
-            .eq('joueur_id', joueurData.id)
+            .eq('joueur_id', utilisateur.joueurs.id)
             .eq('accepte_transport', true)
             .maybeSingle();
         console.log('decharge', decharge, 'dechargeError', dechargeError); // <--- LOG 5
@@ -57,15 +51,6 @@ export default function MessagesIndex() {
         checkCanAskTransport();
     }, [checkCanAskTransport]);
 
-    // Petite fonction utilitaire pour calculer l'âge
-    function getAge(dateNaissance) {
-        if (!dateNaissance) return 99;
-        const d = new Date(dateNaissance);
-        const diff = Date.now() - d.getTime();
-        const age = new Date(diff).getUTCFullYear() - 1970;
-        return age;
-    }
-
     function handleAskTransport() {
         router.push('/joueur/messages/besoin-transport');
     }
@@ -76,7 +61,7 @@ export default function MessagesIndex() {
             style={styles.background}
             resizeMode="cover"
         >
-            <LinearGradient colors={['#121212cc', '#121212dd']} style={styles.container}>
+            <LinearGradient colors={DARK_GRADIENT} style={styles.container}>
                 <Text style={styles.title}>💬 Messagerie Joueur</Text>
 
                 <TouchableOpacity
@@ -86,7 +71,7 @@ export default function MessagesIndex() {
                     <MaterialCommunityIcons
                         name="account-box-multiple-outline"
                         size={30}
-                        color={GREEN}
+                        color={COLOR_GREEN_300}
                         style={{ marginRight: 12 }}
                     />
                     <Text style={styles.buttonText}>Messagerie privée</Text>
@@ -99,7 +84,7 @@ export default function MessagesIndex() {
                     <MaterialCommunityIcons
                         name="account-group-outline"
                         size={30}
-                        color={GREEN}
+                        color={COLOR_GREEN_300}
                         style={{ marginRight: 12 }}
                     />
                     <Text style={styles.buttonText}>Messagerie de groupe</Text>
@@ -138,14 +123,14 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: GREEN,
+        color: COLOR_GREEN_300,
         marginBottom: 40,
     },
     button: {
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
         borderRadius: 14,
         paddingVertical: 16,
         paddingHorizontal: 24,
@@ -156,7 +141,7 @@ const styles = StyleSheet.create({
         maxWidth: 300,
     },
     buttonText: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontSize: 18,
         fontWeight: '600',
     },
