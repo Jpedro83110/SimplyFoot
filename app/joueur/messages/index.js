@@ -11,10 +11,6 @@ export default function MessagesIndex() {
     const router = useRouter();
     const [canAskTransport, setCanAskTransport] = useState(false);
 
-    useEffect(() => {
-        checkCanAskTransport();
-    }, [checkCanAskTransport]);
-
     const checkCanAskTransport = useCallback(async () => {
         // 1. Récupère l'utilisateur courant (parent ou joueur)
         const { data: sessionData } = await supabase.auth.getSession();
@@ -56,6 +52,10 @@ export default function MessagesIndex() {
 
         setCanAskTransport(!!decharge);
     }, []);
+
+    useEffect(() => {
+        checkCanAskTransport();
+    }, [checkCanAskTransport]);
 
     // Petite fonction utilitaire pour calculer l'âge
     function getAge(dateNaissance) {
