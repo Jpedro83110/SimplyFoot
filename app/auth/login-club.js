@@ -10,12 +10,12 @@ import {
     Platform,
     StatusBar,
     ScrollView,
-    ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
+import Button from '@/components/atoms/Button';
 
 export default function LoginClub() {
     const router = useRouter();
@@ -156,25 +156,27 @@ export default function LoginClub() {
                     </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-                    {loading ? (
-                        <ActivityIndicator color="#000" />
-                    ) : (
-                        <Text style={styles.buttonText}>Se connecter</Text>
-                    )}
-                </TouchableOpacity>
+                <Button text="Se connecter" onPress={handleLogin} color="primary" />
 
-                <TouchableOpacity onPress={handleForgotPassword}>
-                    <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
-                </TouchableOpacity>
+                <View style={styles.forgotContainer}>
+                    <TouchableOpacity onPress={handleForgotPassword}>
+                        <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+                    </TouchableOpacity>
+                </View>
 
-                <TouchableOpacity onPress={() => router.push('/auth/inscription-coach')}>
-                    <Text style={styles.switchText}>Créer un compte Coach</Text>
-                </TouchableOpacity>
+                <View style={styles.separator} />
+                <Button
+                    text="Créer un compte Coach"
+                    onPress={() => router.push('/auth/inscription-coach')}
+                    color="secondary"
+                />
+                <View style={{ marginBottom: 15 }} />
+                <Button
+                    text="Créer un nouveau Club (Président)"
+                    onPress={() => router.push('/auth/inscription-president')}
+                    color="secondary"
+                />
 
-                <TouchableOpacity onPress={() => router.push('/auth/inscription-president')}>
-                    <Text style={styles.switchText}>Créer un nouveau club (Président)</Text>
-                </TouchableOpacity>
                 <ReturnButton />
             </ScrollView>
         </KeyboardAvoidingView>
@@ -234,11 +236,15 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontSize: 16,
     },
+    forgotContainer: {
+        width: '100%',
+        alignItems: 'flex-end',
+    },
     forgotText: {
-        color: '#00bfff',
-        marginTop: 22,
-        fontSize: 15,
-        textAlign: 'center',
+        color: '#00ff88',
+        fontSize: 12,
+        marginTop: 18,
+        textAlign: 'right',
         textDecorationLine: 'underline',
     },
     switchText: {
@@ -247,5 +253,13 @@ const styles = StyleSheet.create({
         textDecorationLine: 'underline',
         fontSize: 14,
         textAlign: 'center',
+    },
+    separator: {
+        height: 1,
+        backgroundColor: '#333',
+        width: '80%',
+        alignSelf: 'center',
+        marginVertical: 20,
+        marginTop: 30,
     },
 });
