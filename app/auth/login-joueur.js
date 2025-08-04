@@ -9,7 +9,6 @@ import {
     KeyboardAvoidingView,
     Platform,
     StatusBar,
-    ActivityIndicator,
     Switch,
     ScrollView,
 } from 'react-native';
@@ -18,6 +17,7 @@ import { supabase } from '../../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ReturnButton from '@/components/atoms/ReturnButton';
+import Button from '@/components/atoms/Button';
 
 export default function LoginJoueur() {
     const router = useRouter();
@@ -196,13 +196,7 @@ export default function LoginJoueur() {
                     <Text style={styles.rememberText}>Se souvenir de moi</Text>
                 </View>
 
-                <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-                    {loading ? (
-                        <ActivityIndicator color="#000" />
-                    ) : (
-                        <Text style={styles.buttonText}>Se connecter</Text>
-                    )}
-                </TouchableOpacity>
+                <Button text="Se connecter" onPress={handleLogin} color="primary" />
 
                 <TouchableOpacity onPress={handleForgotPassword}>
                     <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
@@ -211,12 +205,11 @@ export default function LoginJoueur() {
                 <View style={styles.separator} />
 
                 <Text style={styles.text}>Pas encore de compte ? </Text>
-                <TouchableOpacity
-                    style={styles.button}
+                <Button
+                    text="Créer un compte Joueur"
                     onPress={() => router.push('/auth/inscription-joueur')}
-                >
-                    <Text style={styles.buttonText}>Créer un compte Joueur</Text>
-                </TouchableOpacity>
+                    color="secondary"
+                />
 
                 <ReturnButton />
             </ScrollView>
