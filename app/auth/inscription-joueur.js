@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
-    TextInput,
     TouchableOpacity,
     StyleSheet,
     Alert,
@@ -17,6 +16,7 @@ import { setupNotifications, initializeNotificationsForUser } from '../../lib/no
 import { formatDateToISO, formatDateForDisplay, calculateAge } from '../../lib/formatDate';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
+import Input from '@/components/atoms/Input';
 
 // DatePicker mobile
 let DateTimePicker = null;
@@ -89,6 +89,7 @@ export default function InscriptionJoueur() {
     const [codeEquipe, setCodeEquipe] = useState('');
     const [equipeData, setEquipeData] = useState(null);
     const [coachData, setCoachData] = useState(null);
+    const [errors, setErrors] = React.useState({});
 
     const [nom, setNom] = useState('');
     const [prenom, setPrenom] = useState('');
@@ -102,7 +103,7 @@ export default function InscriptionJoueur() {
 
     const [dateNaissance, setDateNaissance] = useState(new Date(2008, 0, 1));
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [accepteDecharge, setAccepteDecharge] = useState(null);
+    const [waiverAccepted, setWaiverAccepted] = useState(null);
 
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -154,7 +155,7 @@ export default function InscriptionJoueur() {
         setCalculatedAge(age);
         setIsMinor(age < 18);
         if (age >= 18) {
-            setAccepteDecharge(null);
+            setWaiverAccepted(null);
             setNomParent('');
             setPrenomParent('');
             setTelephoneParent('');
@@ -191,82 +192,28 @@ export default function InscriptionJoueur() {
 
     // Validation
     const validateForm = () => {
-        if (!email.trim()) {
-            Alert.alert('Erreur', "L'email est obligatoire.");
-            return false;
-        }
-        if (!isValidEmail(email.trim())) {
-            Alert.alert('Erreur', "Format d'email invalide.");
-            return false;
-        }
-        if (!password.trim()) {
-            Alert.alert('Erreur', 'Le mot de passe est obligatoire.');
-            return false;
-        }
-        if (password.length < 6) {
-            Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères.');
-            return false;
-        }
-        if (password !== confirmPassword) {
-            Alert.alert('Erreur', 'Les mots de passe ne correspondent pas.');
-            return false;
-        }
-        if (!codeEquipe.trim()) {
-            Alert.alert('Erreur', 'Le code équipe est obligatoire.');
-            return false;
-        }
-        if (!equipeData) {
-            Alert.alert('Erreur', 'Le code équipe est invalide ou inexistant.');
-            return false;
-        }
-        if (!nom.trim()) {
-            Alert.alert('Erreur', 'Le nom est obligatoire.');
-            return false;
-        }
-        if (!prenom.trim()) {
-            Alert.alert('Erreur', 'Le prénom est obligatoire.');
-            return false;
-        }
-        if (!dateNaissance) {
-            Alert.alert('Erreur', 'La date de naissance est obligatoire.');
-            return false;
-        }
-        // Poste(s) optionnel
+        const newErrors = {};
+
+        if (!email.trim() || !isValidEmail(email.trim())) newErrors.email = true;
+        if (!password.trim() || password.length < 6) newErrors.password = true;
+        if (password !== confirmPassword) newErrors.confirmPassword = true;
+        if (!codeEquipe.trim() || !equipeData) newErrors.codeEquipe = true;
+        if (!nom.trim()) newErrors.nom = true;
+        if (!prenom.trim()) newErrors.prenom = true;
+        if (!dateNaissance) newErrors.dateNaissance = true;
+
         if (isMinor) {
-            if (!nomParent.trim()) {
-                Alert.alert('Erreur', 'Nom du parent/tuteur obligatoire.');
-                return false;
-            }
-            if (!prenomParent.trim()) {
-                Alert.alert('Erreur', 'Prénom du parent/tuteur obligatoire.');
-                return false;
-            }
-            if (!telephoneParent.trim()) {
-                Alert.alert('Erreur', 'Téléphone du parent/tuteur obligatoire.');
-                return false;
-            }
-            if (!isValidPhone(telephoneParent.trim())) {
-                Alert.alert('Erreur', 'Format de téléphone du parent/tuteur invalide.');
-                return false;
-            }
-            if (accepteDecharge === null) {
-                Alert.alert(
-                    'Décharge parentale requise',
-                    "Merci d'indiquer si vous acceptez ou refusez la décharge parentale.",
-                );
-                return false;
-            }
+            if (!nomParent.trim()) newErrors.nomParent = true;
+            if (!prenomParent.trim()) newErrors.prenomParent = true;
+            if (!telephoneParent.trim() || !isValidPhone(telephoneParent.trim()))
+                newErrors.telephoneParent = true;
+            if (waiverAccepted === null) newErrors.waiverAccepted = true;
         } else {
-            if (!telephone.trim()) {
-                Alert.alert('Erreur', 'Votre téléphone est obligatoire.');
-                return false;
-            }
-            if (!isValidPhone(telephone.trim())) {
-                Alert.alert('Erreur', 'Format de téléphone invalide.');
-                return false;
-            }
+            if (!telephone.trim() || !isValidPhone(telephone.trim())) newErrors.telephone = true;
         }
-        return true;
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     // 🚀 Inscription
@@ -347,7 +294,7 @@ export default function InscriptionJoueur() {
                     parent_nom: nomParent.trim(),
                     parent_prenom: prenomParent.trim(),
                     parent_telephone: telephoneParent.trim(),
-                    accepte_transport: accepteDecharge === true ? true : false,
+                    accepte_transport: waiverAccepted === true ? true : false,
                     date_signature: new Date().toISOString(),
                 });
             }
@@ -379,7 +326,6 @@ export default function InscriptionJoueur() {
         }
     };
 
-    // -------- UI --------
     return (
         <>
             <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -393,103 +339,58 @@ export default function InscriptionJoueur() {
                     </View>
                     <View style={styles.form}>
                         {/* EMAIL */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="mail-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Email"
-                                placeholderTextColor="#aaa"
-                                value={email}
-                                onChangeText={setEmail}
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                                textContentType="emailAddress"
-                                editable={!loading}
-                            />
-                        </View>
+                        <Input
+                            icon="mail-outline"
+                            placeholder="Email*"
+                            value={email}
+                            onChangeText={setEmail}
+                            keyboardType="email-address"
+                            textContentType="emailAddress"
+                            editable={!loading}
+                            error={email === undefined ? 'Le mail est requis' : false}
+                        />
                         {/* PASSWORD */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="lock-closed-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={[styles.input, { paddingRight: 50 }]}
-                                placeholder="Mot de passe (min. 6 caractères)"
-                                placeholderTextColor="#aaa"
-                                secureTextEntry={!showPassword}
-                                value={password}
-                                onChangeText={setPassword}
-                                textContentType="newPassword"
-                                editable={!loading}
-                            />
-                            <TouchableOpacity
-                                style={styles.eyeButton}
-                                onPress={() => setShowPassword(!showPassword)}
-                                disabled={loading}
-                            >
-                                <Ionicons
-                                    name={showPassword ? 'eye' : 'eye-off'}
-                                    size={22}
-                                    color="#888"
-                                />
-                            </TouchableOpacity>
-                        </View>
+                        <Input
+                            icon="lock-closed-outline"
+                            placeholder="Mot de passe*"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry
+                            showToggle
+                            show={showPassword}
+                            onToggle={() => setShowPassword(!showPassword)}
+                            textContentType="newPassword"
+                            editable={!loading}
+                            error={password === undefined ? 'Le mot de passe est requis' : false}
+                        />
                         {/* CONFIRM PASSWORD */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="lock-closed-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={[styles.input, { paddingRight: 50 }]}
-                                placeholder="Confirmer le mot de passe"
-                                placeholderTextColor="#aaa"
-                                secureTextEntry={!showConfirmPassword}
-                                value={confirmPassword}
-                                onChangeText={setConfirmPassword}
-                                textContentType="newPassword"
-                                editable={!loading}
-                            />
-                            <TouchableOpacity
-                                style={styles.eyeButton}
-                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                                disabled={loading}
-                            >
-                                <Ionicons
-                                    name={showConfirmPassword ? 'eye' : 'eye-off'}
-                                    size={22}
-                                    color="#888"
-                                />
-                            </TouchableOpacity>
-                        </View>
+                        <Input
+                            icon="lock-closed-outline"
+                            placeholder="Confirmer le mot de passe*"
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            secureTextEntry
+                            showToggle
+                            show={showConfirmPassword}
+                            onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
+                            textContentType="newPassword"
+                            editable={!loading}
+                            error={
+                                confirmPassword === undefined
+                                    ? 'La confirmation du mot de passe est requise'
+                                    : false
+                            }
+                        />
                         {/* CODE EQUIPE */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="key-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Code Équipe"
-                                placeholderTextColor="#aaa"
-                                value={codeEquipe}
-                                onChangeText={setCodeEquipe}
-                                autoCapitalize="characters"
-                                editable={!loading}
-                            />
-                        </View>
+                        <Input
+                            icon="key-outline"
+                            placeholder="Code Équipe*"
+                            value={codeEquipe}
+                            onChangeText={setCodeEquipe}
+                            autoCapitalize="characters"
+                            editable={!loading}
+                            error={codeEquipe === undefined ? 'Le code équipe est requis' : false}
+                        />
                         {/* INFOS EQUIPE */}
                         {equipeData && (
                             <View style={styles.equipeInfoBlock}>
@@ -508,40 +409,24 @@ export default function InscriptionJoueur() {
                             </View>
                         )}
                         {/* NOM / PRÉNOM */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="person-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Nom"
-                                placeholderTextColor="#aaa"
-                                value={nom}
-                                onChangeText={setNom}
-                                textContentType="familyName"
-                                editable={!loading}
-                            />
-                        </View>
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="person-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Prénom"
-                                placeholderTextColor="#aaa"
-                                value={prenom}
-                                onChangeText={setPrenom}
-                                textContentType="givenName"
-                                editable={!loading}
-                            />
-                        </View>
+                        <Input
+                            icon="person-outline"
+                            placeholder="Nom du joueur*"
+                            value={nom}
+                            onChangeText={setNom}
+                            textContentType="familyName"
+                            editable={!loading}
+                            error={nom === undefined ? 'Le nom du joueur est requis' : false}
+                        />
+                        <Input
+                            icon="person-outline"
+                            placeholder="Prénom du joueur*"
+                            value={prenom}
+                            onChangeText={setPrenom}
+                            textContentType="givenName"
+                            editable={!loading}
+                            error={prenom === undefined ? 'Le prénom du joueur est requis' : false}
+                        />
                         {/* DATE DE NAISSANCE */}
                         {Platform.OS === 'web' ? (
                             <View style={styles.inputGroup}>
@@ -555,7 +440,7 @@ export default function InscriptionJoueur() {
                                     value={dateNaissance}
                                     onChange={handleWebDateChange}
                                     disabled={loading}
-                                    placeholder="Date de naissance"
+                                    placeholder="Date de naissance*"
                                 />
                             </View>
                         ) : (
@@ -642,98 +527,69 @@ export default function InscriptionJoueur() {
                             </View>
                         )}
                         {/* POSTE(S) */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="football-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Poste(s) (optionnel, ex: Gardien, Défenseur...)"
-                                placeholderTextColor="#aaa"
-                                value={postes}
-                                onChangeText={setPostes}
-                                editable={!loading}
-                            />
-                        </View>
+                        <Input
+                            icon="football-outline"
+                            placeholder="Poste(s) (optionnel, ex: Gardien, Défenseur...)"
+                            value={postes}
+                            onChangeText={setPostes}
+                            editable={!loading}
+                        />
                         {/* TÉLÉPHONE JOUEUR OU INFOS PARENT */}
                         {!isMinor && (
-                            <View style={styles.inputGroup}>
-                                <Ionicons
-                                    name="call-outline"
-                                    size={20}
-                                    color="#888"
-                                    style={styles.inputIcon}
-                                />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Votre téléphone"
-                                    placeholderTextColor="#aaa"
-                                    value={telephone}
-                                    onChangeText={setTelephone}
-                                    keyboardType="phone-pad"
-                                    textContentType="telephoneNumber"
-                                    editable={!loading}
-                                />
-                            </View>
+                            <Input
+                                icon="call-outline"
+                                placeholder="Votre téléphone*"
+                                value={telephone}
+                                onChangeText={setTelephone}
+                                keyboardType="phone-pad"
+                                textContentType="telephoneNumber"
+                                editable={!loading}
+                                error={telephone === undefined ? 'Le téléphone est requis' : false}
+                            />
                         )}
                         {isMinor && (
                             <>
-                                <View style={styles.inputGroup}>
-                                    <Ionicons
-                                        name="person-outline"
-                                        size={20}
-                                        color="#ffb100"
-                                        style={styles.inputIcon}
-                                    />
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="Nom du parent / tuteur"
-                                        placeholderTextColor="#aaa"
-                                        value={nomParent}
-                                        onChangeText={setNomParent}
-                                        editable={!loading}
-                                    />
-                                </View>
-                                <View style={styles.inputGroup}>
-                                    <Ionicons
-                                        name="person-outline"
-                                        size={20}
-                                        color="#ffb100"
-                                        style={styles.inputIcon}
-                                    />
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="Prénom du parent / tuteur"
-                                        placeholderTextColor="#aaa"
-                                        value={prenomParent}
-                                        onChangeText={setPrenomParent}
-                                        editable={!loading}
-                                    />
-                                </View>
-                                <View style={styles.inputGroup}>
-                                    <Ionicons
-                                        name="call-outline"
-                                        size={20}
-                                        color="#ffb100"
-                                        style={styles.inputIcon}
-                                    />
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="Téléphone du parent / tuteur"
-                                        placeholderTextColor="#aaa"
-                                        value={telephoneParent}
-                                        onChangeText={setTelephoneParent}
-                                        keyboardType="phone-pad"
-                                        textContentType="telephoneNumber"
-                                        editable={!loading}
-                                    />
-                                </View>
+                                <Input
+                                    icon="person-outline"
+                                    placeholder="Nom du parent / tuteur*"
+                                    value={nomParent}
+                                    onChangeText={setNomParent}
+                                    editable={!loading}
+                                    error={
+                                        nomParent === undefined
+                                            ? 'Le nom du parent / tuteur est requis'
+                                            : false
+                                    }
+                                />
+                                <Input
+                                    icon="person-outline"
+                                    placeholder="Prénom du parent / tuteur*"
+                                    value={prenomParent}
+                                    onChangeText={setPrenomParent}
+                                    editable={!loading}
+                                    error={
+                                        prenomParent === undefined
+                                            ? 'Le prénom du parent / tuteur est requis'
+                                            : false
+                                    }
+                                />
+                                <Input
+                                    icon="call-outline"
+                                    placeholder="Téléphone du parent / tuteur*"
+                                    value={telephoneParent}
+                                    onChangeText={setTelephoneParent}
+                                    keyboardType="phone-pad"
+                                    textContentType="telephoneNumber"
+                                    editable={!loading}
+                                    error={
+                                        telephoneParent === undefined
+                                            ? 'Le téléphone du parent / tuteur est requis'
+                                            : false
+                                    }
+                                />
                                 {/* Bloc décharge */}
-                                <View style={styles.dechargeBlock}>
-                                    <Text style={styles.dechargeTitle}>
+                                <View style={styles.waiverBlock}>
+                                    <Text style={styles.waiverTitle}>
                                         <Ionicons
                                             name="document-text-outline"
                                             size={16}
@@ -741,41 +597,39 @@ export default function InscriptionJoueur() {
                                         />{' '}
                                         Décharge parentale obligatoire
                                     </Text>
-                                    <Text style={styles.dechargeText}>
+                                    <Text style={styles.waiverText}>
                                         Votre enfant étant mineur ({calculatedAge} ans), une
                                         décharge parentale est nécessaire :
                                     </Text>
-                                    <Text style={styles.dechargeMessage}>
+                                    <Text style={styles.waiverMessage}>
                                         &quot;J&apos;accepte que mon enfant puisse être transporté
                                         sur le lieu d&apos;un événement par le coach ou un autre
                                         parent dans le cadre du club.&quot;
                                     </Text>
-                                    <Text style={styles.dechargeNote}>
+                                    <Text style={styles.waiverNote}>
                                         ⚠️ Ce choix pourra être modifié plus tard dans l&apos;espace
                                         parent.
                                     </Text>
-                                    <View style={styles.dechargeRow}>
+                                    <View style={styles.waiverRow}>
                                         <TouchableOpacity
                                             style={[
-                                                styles.dechargeButton,
-                                                accepteDecharge === true &&
-                                                    styles.dechargeButtonSelected,
+                                                styles.waiverButton,
+                                                waiverAccepted === true &&
+                                                    styles.waiverButtonSelected,
                                             ]}
-                                            onPress={() => setAccepteDecharge(true)}
+                                            onPress={() => setWaiverAccepted(true)}
                                             disabled={loading}
                                         >
                                             <Ionicons
                                                 name="checkmark-circle-outline"
                                                 size={18}
-                                                color={
-                                                    accepteDecharge === true ? '#121212' : '#fff'
-                                                }
+                                                color={waiverAccepted === true ? '#121212' : '#fff'}
                                             />
                                             <Text
                                                 style={[
-                                                    styles.dechargeButtonText,
-                                                    accepteDecharge === true &&
-                                                        styles.dechargeButtonTextSelected,
+                                                    styles.waiverButtonText,
+                                                    waiverAccepted === true &&
+                                                        styles.waiverButtonTextSelected,
                                                 ]}
                                             >
                                                 Signer la décharge
@@ -783,25 +637,25 @@ export default function InscriptionJoueur() {
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={[
-                                                styles.dechargeButton,
-                                                accepteDecharge === false &&
-                                                    styles.dechargeButtonSelected,
+                                                styles.waiverButton,
+                                                waiverAccepted === false &&
+                                                    styles.waiverButtonSelected,
                                             ]}
-                                            onPress={() => setAccepteDecharge(false)}
+                                            onPress={() => setWaiverAccepted(false)}
                                             disabled={loading}
                                         >
                                             <Ionicons
                                                 name="close-circle-outline"
                                                 size={18}
                                                 color={
-                                                    accepteDecharge === false ? '#121212' : '#fff'
+                                                    waiverAccepted === false ? '#121212' : '#fff'
                                                 }
                                             />
                                             <Text
                                                 style={[
-                                                    styles.dechargeButtonText,
-                                                    accepteDecharge === false &&
-                                                        styles.dechargeButtonTextSelected,
+                                                    styles.waiverButtonText,
+                                                    waiverAccepted === false &&
+                                                        styles.waiverButtonTextSelected,
                                                 ]}
                                             >
                                                 Ne pas signer maintenant
@@ -924,7 +778,7 @@ const styles = StyleSheet.create({
     ageIndicatorMinor: { borderLeftWidth: 3, borderLeftColor: '#ffb100' },
     ageIndicatorMajor: { borderLeftWidth: 3, borderLeftColor: '#00ff88' },
     ageText: { fontSize: 14, fontWeight: '600' },
-    dechargeBlock: {
+    waiverBlock: {
         marginBottom: 24,
         backgroundColor: '#1a1a1a',
         padding: 16,
@@ -932,9 +786,9 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#ffb100',
     },
-    dechargeTitle: { color: '#ffb100', fontSize: 16, fontWeight: '700', marginBottom: 12 },
-    dechargeText: { color: '#fff', fontSize: 15, lineHeight: 22, marginBottom: 8 },
-    dechargeMessage: {
+    waiverTitle: { color: '#ffb100', fontSize: 16, fontWeight: '700', marginBottom: 12 },
+    waiverText: { color: '#fff', fontSize: 15, lineHeight: 22, marginBottom: 8 },
+    waiverMessage: {
         color: '#ddd',
         fontSize: 14,
         fontStyle: 'italic',
@@ -944,9 +798,9 @@ const styles = StyleSheet.create({
         borderLeftWidth: 2,
         borderLeftColor: '#ffb100',
     },
-    dechargeNote: { color: '#ffb100', fontSize: 13, fontWeight: '500', marginBottom: 16 },
-    dechargeRow: { flexDirection: 'row', gap: 12 },
-    dechargeButton: {
+    waiverNote: { color: '#ffb100', fontSize: 13, fontWeight: '500', marginBottom: 16 },
+    waiverRow: { flexDirection: 'row', gap: 12 },
+    waiverButton: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
@@ -958,9 +812,9 @@ const styles = StyleSheet.create({
         borderColor: '#555',
         gap: 6,
     },
-    dechargeButtonSelected: { backgroundColor: '#00ff88', borderColor: '#00ff88' },
-    dechargeButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-    dechargeButtonTextSelected: { color: '#121212' },
+    waiverButtonSelected: { backgroundColor: '#00ff88', borderColor: '#00ff88' },
+    waiverButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+    waiverButtonTextSelected: { color: '#121212' },
     button: {
         backgroundColor: '#00ff88',
         paddingVertical: 16,
