@@ -20,7 +20,7 @@ export default function MessagesPrivesCoach() {
     const [selectedEquipe, setSelectedEquipe] = useState(null);
     const [selectedJoueur, setSelectedJoueur] = useState(null);
     const [message, setMessage] = useState('');
-    const [, setLoading] = useState(false);
+    const [, setLoading] = useState(false); // FIXME
 
     // ** Purge automatique supprimée **
 

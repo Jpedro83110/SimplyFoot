@@ -30,7 +30,7 @@ export default function ConvocationReponse() {
     const [reponse, setReponse] = useState(null);
     const [reponseLoading, setReponseLoading] = useState(false);
     const [utilisateurId, setUtilisateurId] = useState(null);
-    const [, setJoueurId] = useState(null);
+    const [, setJoueurId] = useState(null); // FIXME
     const [showTransportModal, setShowTransportModal] = useState(false);
 
     // Pour la messagerie transport

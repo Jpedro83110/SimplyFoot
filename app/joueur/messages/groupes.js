@@ -16,9 +16,9 @@ const DARK = '#101415';
 export default function MessagesGroupesJoueur() {
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [, setReponses] = useState({});
-    const [, setJoueurId] = useState(null);
-    const [, setEquipeId] = useState(null);
+    const [, setReponses] = useState({}); // FIXME
+    const [, setJoueurId] = useState(null); // FIXME
+    const [, setEquipeId] = useState(null); // FIXME
 
     // Purge tous les messages de groupe de +7j à chaque ouverture
     useEffect(() => {
