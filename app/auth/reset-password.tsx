@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    StyleSheet,
+    Alert,
+    ActivityIndicator,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -73,7 +81,11 @@ export default function ResetPassword() {
                             onPress={() => setShowPassword(!showPassword)}
                             activeOpacity={0.7}
                         >
-                            <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color="#888" />
+                            <Ionicons
+                                name={showPassword ? 'eye' : 'eye-off'}
+                                size={22}
+                                color="#888"
+                            />
                         </TouchableOpacity>
                     </View>
                     <View style={styles.inputGroup}>
@@ -93,14 +105,23 @@ export default function ResetPassword() {
                             onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                             activeOpacity={0.7}
                         >
-                            <Ionicons name={showConfirmPassword ? 'eye' : 'eye-off'} size={22} color="#888" />
+                            <Ionicons
+                                name={showConfirmPassword ? 'eye' : 'eye-off'}
+                                size={22}
+                                color="#888"
+                            />
                         </TouchableOpacity>
                     </View>
-                    <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
-                        {loading
-                            ? <ActivityIndicator color="#000" />
-                            : <Text style={styles.buttonText}>Valider</Text>
-                        }
+                    <TouchableOpacity
+                        style={styles.button}
+                        onPress={handleSubmit}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="#000" />
+                        ) : (
+                            <Text style={styles.buttonText}>Valider</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             </View>
