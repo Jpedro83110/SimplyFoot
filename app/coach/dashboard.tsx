@@ -216,7 +216,7 @@ export default function CoachDashboard() {
             fetchCoachEquipes();
             fetchCoachEvenements();
         }
-    }, [userId]);
+    }, [fetchCoach, fetchCoachEquipes, fetchCoachEvenements, userId]);
 
     useEffect(() => {
         if (coach) {
@@ -228,13 +228,13 @@ export default function CoachDashboard() {
                 experience: coach?.experience || '',
             });
         }
-    }, [coach]);
+    }, [coach, fetchClubStage]);
 
     useEffect(() => {
         if (evenement?.id) {
             fetchEvenementParticipations();
         }
-    }, [evenement]);
+    }, [evenement, fetchEvenementParticipations]);
 
     // Upload photo
     const handleUploadProfilePhoto = async () => {

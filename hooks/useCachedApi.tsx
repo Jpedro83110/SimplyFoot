@@ -26,10 +26,10 @@ function useCachedApi<T>(
     const [data, setData] = useState<T | undefined>();
     const [loading, setLoading] = useState<boolean>(false);
 
-    const isValidCache = (entry: CacheEntry<T>): boolean => {
+    const isValidCache = useCallback((entry: CacheEntry<T>): boolean => {
         const now = Date.now();
         return now - entry.timestamp < entry.ttl * 1000;
-    };
+    }, []);
 
     const fetchCachedData = useCallback(async (): Promise<void> => {
         if (!key || loading) return;
@@ -61,7 +61,7 @@ function useCachedApi<T>(
         } finally {
             setLoading(false);
         }
-    }, [key, fetchData, ttl, isValidCache]);
+    }, [key, loading, isValidCache, fetchData, ttl]);
 
     const refresh = useCallback(async (): Promise<void> => {
         cache.delete(key); // Force refresh
