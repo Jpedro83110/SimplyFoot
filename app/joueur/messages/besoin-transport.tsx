@@ -10,7 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { getUtilisateurById } from '@/helpers/utilisateurs.helper';
-import { Utilisateur } from '@/types/utilisateur';
+import { Utilisateur } from '@/types/Utilisateur';
 import { COLOR_GREEN_300 } from '@/utils/styleContants.util';
 
 export default function BesoinTransportJoueur() {

@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import { JoueurField } from '@/types/joueur';
-import { UtilisateurField, UtilisateurWithJoueurPicked } from '@/types/utilisateur';
+import { JoueurField } from '@/types/Joueur';
+import { UtilisateurField, UtilisateurWithJoueurPicked } from '@/types/Utilisateur';
 
 export const getJoueurByUtilisateurId = async <U extends UtilisateurField, J extends JoueurField>(
     id: string,

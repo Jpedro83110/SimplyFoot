@@ -1,4 +1,4 @@
-import { Joueur, JoueurField } from './joueur';
+import { Joueur, JoueurField } from './Joueur';
 
 export type UtilisateurField = keyof Utilisateur;
 

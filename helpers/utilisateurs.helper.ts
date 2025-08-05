@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { Utilisateur, UtilisateurField } from '@/types/utilisateur';
+import { Utilisateur, UtilisateurField } from '@/types/Utilisateur';
 
 export const getUtilisateurById = async <U extends UtilisateurField>(
     id: string,
