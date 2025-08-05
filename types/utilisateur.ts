@@ -1,7 +1,7 @@
 import { DechargeGenerale, DechargeGeneraleFields } from './DechargesGenerales';
-import { Joueur, JoueurField } from './Joueur';
+import { Joueur, JoueurFields } from './Joueur';
 
-export type UtilisateurField = keyof Utilisateur;
+export type UtilisateurFields = keyof Utilisateur;
 
 export type UtilisateurRole = 'joueur' | 'coach' | 'president' | 'admin'; // FIXME: admin is necessary ?
 
@@ -19,9 +19,16 @@ export interface Utilisateur {
     telephone?: string;
 }
 
+export type UtilisateurWithJoueurPicked<U extends UtilisateurFields, J extends JoueurFields> = Pick<
+    Utilisateur,
+    U
+> & {
+    joueurs: Pick<Joueur, J>;
+};
+
 export type UtilisateurWithJoueurAndDechargesGeneralesPicked<
-    U extends UtilisateurField,
-    J extends JoueurField,
+    U extends UtilisateurFields,
+    J extends JoueurFields,
     D extends DechargeGeneraleFields,
 > = Pick<Utilisateur, U> & {
     joueurs: Pick<Joueur, J> & { decharges_generales: [Pick<DechargeGenerale, D>] };

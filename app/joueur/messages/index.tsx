@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useEffectOnce } from 'react-use';
 import { Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -14,10 +15,8 @@ export default function MessagesIndex() {
     const checkCanAskTransport = useCallback(async () => {
         const { data: sessionData } = await supabase.auth.getSession();
         const userId = sessionData?.session?.user?.id;
-        console.log('userId', userId); // <--- LOG 1
 
         if (!userId) {
-            setCanAnswerTransportRequest(false);
             return;
         }
 
@@ -36,9 +35,9 @@ export default function MessagesIndex() {
         }
     }, []);
 
-    useEffect(() => {
-        checkCanAskTransport(); // FIXME: to delete ?
-    }, [checkCanAskTransport]);
+    useEffectOnce(() => {
+        checkCanAskTransport();
+    });
 
     function handleAskTransport() {
         router.push('/joueur/messages/besoin-transport');

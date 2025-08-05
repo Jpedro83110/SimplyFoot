@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
     View,
     Text,
@@ -9,258 +9,67 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
-import { getUtilisateurById } from '@/helpers/utilisateurs.helper';
-import { Utilisateur } from '@/types/Utilisateur';
+import { UtilisateurWithJoueurPicked } from '@/types/Utilisateur';
 import { COLOR_GREEN_300 } from '@/utils/styleContants.util';
+import { getJoueurByUtilisateurId } from '@/helpers/joueurs.helper';
+import { MessagesBesoinTransportWithEvenementAndUtilisateurPicked } from '@/types/MessagesBesoinTransport';
+import { getMessagesBesoinTransportAndUtilisateurByEquipeId } from '@/helpers/messagesBesoinTransport.helper';
+import { useEffectOnce } from 'react-use';
 
 export default function BesoinTransportJoueur() {
     const [loading, setLoading] = useState(true);
-    const [demandes, setDemandes] = useState<any[]>([]); // FIXME
-    const [joueur, setJoueur] = useState<Pick<Utilisateur, 'nom' | 'prenom'>>();
-    const [monEquipeId, setMonEquipeId] = useState(null);
+    const [demandes, setDemandes] = useState<
+        MessagesBesoinTransportWithEvenementAndUtilisateurPicked<
+            'id' | 'adresse_demande' | 'heure_demande' | 'etat',
+            'id' | 'titre' | 'date' | 'heure' | 'lieu',
+            'id' | 'prenom' | 'nom'
+        >[]
+    >([]);
+    const [utilisateur, setUtilisateur] =
+        useState<UtilisateurWithJoueurPicked<'nom' | 'prenom', 'equipe_id'>>();
     const router = useRouter();
 
     async function fetchDemandes() {
         setLoading(true);
-        console.log('🔥🔥🔥 JOUEUR: Début fetchDemandes 🔥🔥🔥');
 
         try {
-            // 1. Session user connecté
-            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-            if (sessionError) {
-                console.log('🔥🔥🔥 JOUEUR: ERREUR session:', sessionError, '🔥🔥🔥');
-                setLoading(false);
-                return;
-            }
-
+            const { data: sessionData } = await supabase.auth.getSession();
             const userId = sessionData?.session?.user?.id;
+
             if (!userId) {
-                console.log("🔥🔥🔥 JOUEUR: Pas d'utilisateur connecté 🔥🔥🔥");
-                setLoading(false);
-                return;
-            }
-            console.log('🔥🔥🔥 JOUEUR: User ID:', userId, '🔥🔥🔥');
-
-            // 2. Récupérer les infos utilisateur
-            const utilisateur = await getUtilisateurById(userId, [
-                'id',
-                'joueur_id',
-                'prenom',
-                'nom',
-                'role',
-            ]);
-
-            console.log('🔥🔥🔥 JOUEUR: Utilisateur récupéré:', utilisateur, '🔥🔥🔥');
-
-            if (utilisateur.role !== 'joueur') {
-                console.log('🔥🔥🔥 JOUEUR: Utilisateur non joueur ou non trouvé 🔥🔥🔥');
-                setLoading(false);
-                return;
+                return; // FIXME: manage error
             }
 
-            setJoueur(utilisateur);
-
-            // 3. Récupérer l'équipe du joueur (si joueur_id existe)
-            let equipeId = null;
-            if (utilisateur.joueur_id) {
-                const { data: joueurData } = await supabase
-                    .from('joueurs')
-                    .select('equipe_id')
-                    .eq('id', utilisateur.joueur_id)
-                    .single();
-
-                console.log('🔥🔥🔥 JOUEUR: Joueur récupéré:', joueurData, '🔥🔥🔥');
-
-                if (joueurData) {
-                    equipeId = joueurData.equipe_id;
-                    setMonEquipeId(equipeId);
-                }
-            }
-
-            if (!equipeId) {
-                console.log('🔥🔥🔥 JOUEUR: Joueur pas associé à une équipe 🔥🔥🔥');
-                setDemandes([]);
-                setLoading(false);
-                return;
-            }
-            console.log('🔥🔥🔥 JOUEUR: Mon équipe ID:', equipeId, '🔥🔥🔥');
-
-            // 4. Vérifier la décharge transport (utilise joueur_id de la table joueurs)
-            if (utilisateur.joueur_id) {
-                const { data: decharge } = await supabase
-                    .from('decharges_generales')
-                    .select('accepte_transport')
-                    .eq('joueur_id', utilisateur.joueur_id)
-                    .eq('accepte_transport', true)
-                    .single();
-
-                console.log('🔥🔥🔥 JOUEUR: Décharge trouvée:', decharge, '🔥🔥🔥');
-
-                if (!decharge) {
-                    console.log(
-                        "🔥🔥🔥 JOUEUR: Parent n'a pas signé la décharge pour accepter le transport 🔥🔥🔥",
-                    );
-                    setDemandes([]);
-                    setLoading(false);
-                    return;
-                }
-            }
-
-            // 5. Récupérer TOUTES les demandes de transport avec les événements
-            console.log('🔥🔥🔥 JOUEUR: Récupération de toutes les demandes 🔥🔥🔥');
-            const { data: besoins, error: besoinErr } = await supabase
-                .from('messages_besoin_transport')
-                .select(
-                    `
-          *,
-          evenement:evenement_id (
-            id,
-            titre, 
-            date, 
-            heure, 
-            lieu,
-            equipe_id
-          )
-        `,
-                )
-                .order('created_at', { ascending: false });
-
-            console.log('🔥🔥🔥 JOUEUR: Demandes récupérées:', besoins?.length || 0, '🔥🔥🔥');
-
-            if (besoinErr) {
-                console.log('🔥🔥🔥 JOUEUR: ERREUR besoins:', besoinErr, '🔥🔥🔥');
-                setLoading(false);
-                return;
-            }
-
-            if (besoins && besoins.length > 0) {
-                console.log('🔥🔥🔥 JOUEUR: Première demande:', besoins[0], '🔥🔥🔥');
-            }
-
-            // 6. Pour chaque demande, récupérer les infos du joueur demandeur
-            const demandesAvecJoueurs = await Promise.all(
-                (besoins || []).map(async (demande) => {
-                    console.log(
-                        `🔥🔥🔥 JOUEUR: Traitement demande ${demande.id}, utilisateur_id: ${demande.utilisateur_id} 🔥🔥🔥`,
-                    );
-
-                    // 🎯 CORRECTION : demande.utilisateur_id = ID UTILISATEUR
-                    const { data: utilisateur, error: userErr } = await supabase
-                        .from('utilisateurs')
-                        .select('id, nom, prenom, joueur_id')
-                        .eq('id', demande.utilisateur_id) // Chercher par ID utilisateur
-                        .single();
-
-                    console.log(
-                        `🔥🔥🔥 JOUEUR: Utilisateur trouvé:`,
-                        utilisateur,
-                        'erreur:',
-                        userErr,
-                        '🔥🔥🔥',
-                    );
-
-                    // Récupérer l'équipe via l'utilisateur
-                    let joueurEquipe = null;
-                    if (utilisateur?.joueur_id) {
-                        const { data: joueurData } = await supabase
-                            .from('joueurs')
-                            .select('equipe_id')
-                            .eq('id', utilisateur.joueur_id)
-                            .single();
-                        joueurEquipe = joueurData;
-                    }
-
-                    console.log(`🔥🔥🔥 JOUEUR: Équipe du demandeur:`, joueurEquipe, '🔥🔥🔥');
-
-                    return {
-                        ...demande,
-                        utilisateur,
-                        joueur: joueurEquipe,
-                    };
-                }),
+            const fetchedUtilisateur = await getJoueurByUtilisateurId(
+                userId,
+                ['id', 'equipe_id'],
+                ['id', 'nom', 'prenom'],
             );
 
-            console.log(
-                '🔥🔥🔥 JOUEUR: Demandes avec joueurs:',
-                demandesAvecJoueurs.length,
-                '🔥🔥🔥',
+            setUtilisateur(fetchedUtilisateur);
+
+            if (!fetchedUtilisateur.joueurs?.equipe_id) {
+                return; // FIXME: manage error
+            }
+
+            const fetchedDemandes = await getMessagesBesoinTransportAndUtilisateurByEquipeId(
+                fetchedUtilisateur.joueurs.equipe_id,
+                ['id', 'adresse_demande', 'heure_demande', 'etat'],
+                ['id', 'titre', 'date', 'heure', 'lieu'],
+                ['id', 'prenom', 'nom'],
             );
 
-            // 7. Filtrer pour ne garder que les demandes de la même équipe
-            const demandesEquipe = demandesAvecJoueurs.filter((demande) => {
-                // Filtrer par équipe de l'événement OU par équipe du joueur demandeur
-                const eventEquipeId = demande.evenement?.equipe_id;
-                const joueurEquipeId = demande.joueur?.equipe_id;
-
-                const isMyTeamEvent = eventEquipeId === equipeId;
-                const isMyTeamPlayer = joueurEquipeId === equipeId;
-                const isMyTeam = isMyTeamEvent || isMyTeamPlayer;
-
-                console.log(
-                    `🔥🔥🔥 JOUEUR: Demande ${demande.id}:`,
-                    {
-                        eventEquipeId,
-                        joueurEquipeId,
-                        monEquipeId: equipeId,
-                        isMyTeamEvent,
-                        isMyTeamPlayer,
-                        isMyTeam,
-                    },
-                    '🔥🔥🔥',
-                );
-
-                return isMyTeam;
-            });
-
-            console.log('🔥🔥🔥 JOUEUR: Demandes de mon équipe:', demandesEquipe.length, '🔥🔥🔥');
-
-            // 8. Filtrer pour ne garder que les demandes d'aujourd'hui et futures
-            const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
-            console.log("🔥🔥🔥 JOUEUR: Date aujourd'hui:", todayStr, '🔥🔥🔥');
-
-            const demandesFiltrees = demandesEquipe.filter((demande) => {
-                if (!demande.evenement || !demande.evenement.date) {
-                    console.log(
-                        '🔥🔥🔥 JOUEUR: Demande sans événement ou date:',
-                        demande.id,
-                        '🔥🔥🔥',
-                    );
-                    return false;
-                }
-
-                const eventDateStr = demande.evenement.date.slice(0, 10);
-                const isFuture = eventDateStr >= todayStr;
-                console.log(
-                    '🔥🔥🔥 JOUEUR: Événement',
-                    demande.evenement.titre,
-                    'date:',
-                    eventDateStr,
-                    "vs aujourd'hui:",
-                    todayStr,
-                    'futur:',
-                    isFuture,
-                    '🔥🔥🔥',
-                );
-                return isFuture;
-            });
-
-            console.log(
-                '🔥🔥🔥 JOUEUR: Demandes finales filtrées:',
-                demandesFiltrees.length,
-                '🔥🔥🔥',
-            );
-            setDemandes(demandesFiltrees);
+            setDemandes(fetchedDemandes);
         } catch (error) {
-            console.error('🔥🔥🔥 JOUEUR: Erreur générale:', error, '🔥🔥🔥');
+            console.error('Error fetching demandes:', error);
         } finally {
             setLoading(false);
         }
     }
 
-    useEffect(() => {
+    useEffectOnce(() => {
         fetchDemandes();
-    }, []);
+    });
 
     return (
         <View style={styles.bg}>
@@ -268,9 +77,9 @@ export default function BesoinTransportJoueur() {
                 <Text style={styles.title}>🚘 Demandes de transport - Équipe</Text>
 
                 {/* Debug info */}
-                {joueur && (
+                {utilisateur && (
                     <Text style={styles.debug}>
-                        👤 {joueur.prenom} {joueur.nom} | Équipe: {monEquipeId || 'Aucune'}
+                        👤 {utilisateur.prenom} {utilisateur.nom} | Équipe:{' '}
                     </Text>
                 )}
 
@@ -297,11 +106,11 @@ export default function BesoinTransportJoueur() {
                         </Text>
 
                         {/* Affichage de l'événement associé */}
-                        {demande.evenement && (
+                        {demande.evenements && (
                             <Text style={styles.evenement}>
-                                🏟️ {demande.evenement.titre} — {demande.evenement.date}
-                                {demande.evenement.heure && ` à ${demande.evenement.heure}`}
-                                {demande.evenement.lieu && ` (${demande.evenement.lieu})`}
+                                🏟️ {demande.evenements.titre} — {demande.evenements.date}
+                                {demande.evenements.heure && ` à ${demande.evenements.heure}`}
+                                {demande.evenements.lieu && ` (${demande.evenements.lieu})`}
                             </Text>
                         )}
 
@@ -323,7 +132,7 @@ export default function BesoinTransportJoueur() {
                                                 : '#ffe44d',
                                 }}
                             >
-                                {demande.etat || demande.statut}
+                                {demande.etat}
                             </Text>
                         </Text>
                         <TouchableOpacity

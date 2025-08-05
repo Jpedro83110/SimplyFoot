@@ -1,3 +1,8 @@
+import { Evenement, EvenementFields } from './Evenement';
+import { Utilisateur, UtilisateurFields } from './Utilisateur';
+
+export type MessagesBesoinTransportFields = keyof MessagesBesoinTransport;
+
 export type MessagesBesoinTransportEtat = 'en_attente' | 'proposition_faite' | 'signe';
 
 export interface MessagesBesoinTransport {
@@ -19,3 +24,12 @@ export interface MessagesBesoinTransport {
     signature_demandeur_date?: string;
     signature_conducteur_date?: string;
 }
+
+export type MessagesBesoinTransportWithEvenementAndUtilisateurPicked<
+    M extends MessagesBesoinTransportFields,
+    E extends EvenementFields,
+    U extends UtilisateurFields,
+> = Pick<MessagesBesoinTransport, M> & {
+    evenements: Pick<Evenement, E>;
+    utilisateur: Pick<Utilisateur, U>;
+};

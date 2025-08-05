@@ -1,9 +1,10 @@
-export type JoueurField = keyof Joueur;
+export type JoueurFields = keyof Joueur;
 
 export type JoueurPoste = 'gardien' | 'defenseur' | 'milieu' | 'attaquant';
 
 export interface Joueur {
     id: string;
+    equipe_id?: string; // FIXME: can be null
     nom?: string;
     prenom?: string;
     poste?: JoueurPoste;

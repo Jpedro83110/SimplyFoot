@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import { Utilisateur, UtilisateurField } from '@/types/Utilisateur';
+import { Utilisateur, UtilisateurFields } from '@/types/Utilisateur';
 
-export const getUtilisateurById = async <U extends UtilisateurField>(
+export const getUtilisateurById = async <U extends UtilisateurFields>(
     id: string,
     fields: U[],
 ): Promise<Pick<Utilisateur, U>> => {

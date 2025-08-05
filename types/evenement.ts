@@ -1,3 +1,5 @@
+export type EvenementFields = keyof Evenement;
+
 export type EvenementType = 'match' | 'entrainement' | 'tournoi' | 'plateau' | 'autre';
 
 export interface Evenement {
