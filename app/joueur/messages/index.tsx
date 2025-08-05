@@ -4,9 +4,8 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '@/lib/supabase';
-import { calculateAge } from '@/utils/date.util';
 import { DARK_GRADIENT, COLOR_GREEN_300 } from '@/utils/styleContants.util';
-import { getJoueurByUtilisateurId } from '@/helpers/joueurs.helper';
+import { getJoueurAndDechargesGeneralesByUtilisateurId } from '@/helpers/joueurs.helper';
 
 export default function MessagesIndex() {
     const router = useRouter();
@@ -22,29 +21,19 @@ export default function MessagesIndex() {
             return;
         }
 
-        const utilisateur = await getJoueurByUtilisateurId(userId, ['id', 'date_naissance']);
+        const utilisateur = await getJoueurAndDechargesGeneralesByUtilisateurId(
+            userId,
+            ['id'],
+            ['id'],
+            ['id', 'accepte_transport'],
+        );
 
-        if (!utilisateur.joueurs.date_naissance) {
-            setCanAnswerTransportRequest(false);
-            return;
+        if (
+            utilisateur.joueurs.decharges_generales.length > 0 &&
+            utilisateur.joueurs.decharges_generales[0].accepte_transport
+        ) {
+            setCanAnswerTransportRequest(true);
         }
-
-        const age = calculateAge(utilisateur.joueurs.date_naissance);
-        if (age >= 18) {
-            setCanAnswerTransportRequest(false);
-            return;
-        }
-
-        // 5. Vérifie la présence d'une décharge générale signée (table fournie)
-        const { data: decharge, error: dechargeError } = await supabase
-            .from('decharges_generales')
-            .select('accepte_transport')
-            .eq('joueur_id', utilisateur.joueurs.id)
-            .eq('accepte_transport', true)
-            .maybeSingle();
-        console.log('decharge', decharge, 'dechargeError', dechargeError); // <--- LOG 5
-
-        setCanAnswerTransportRequest(!!decharge);
     }, []);
 
     useEffect(() => {

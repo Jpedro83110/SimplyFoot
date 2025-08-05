@@ -1,12 +1,21 @@
 import { supabase } from '@/lib/supabase';
+import { DechargeGeneraleFields } from '@/types/DechargesGenerales';
 import { JoueurField } from '@/types/Joueur';
-import { UtilisateurField, UtilisateurWithJoueurPicked } from '@/types/Utilisateur';
+import {
+    UtilisateurField,
+    UtilisateurWithJoueurAndDechargesGeneralesPicked,
+} from '@/types/Utilisateur';
 
-export const getJoueurByUtilisateurId = async <U extends UtilisateurField, J extends JoueurField>(
+export const getJoueurAndDechargesGeneralesByUtilisateurId = async <
+    U extends UtilisateurField,
+    J extends JoueurField,
+    D extends DechargeGeneraleFields,
+>(
     id: string,
     fields?: J[],
     utilisateurFields?: U[],
-): Promise<UtilisateurWithJoueurPicked<U, J>> => {
+    dechargeGeneraleFields?: D[],
+): Promise<UtilisateurWithJoueurAndDechargesGeneralesPicked<U, J, D>> => {
     if (!fields || fields.length === 0) {
         fields = ['id'] as J[];
     }
@@ -15,9 +24,15 @@ export const getJoueurByUtilisateurId = async <U extends UtilisateurField, J ext
         utilisateurFields = ['id'] as U[];
     }
 
+    if (!dechargeGeneraleFields || dechargeGeneraleFields.length === 0) {
+        dechargeGeneraleFields = ['id'] as D[];
+    }
+
     const { data, error } = await supabase
         .from('utilisateurs')
-        .select(`${utilisateurFields.join(', ')}, joueurs(${fields.join(', ')})`)
+        .select(
+            `${utilisateurFields.join(', ')}, joueurs(${fields.join(', ')}, decharges_generales(${dechargeGeneraleFields.join(', ')}))`,
+        )
         .eq('id', id)
         .single();
 
@@ -27,5 +42,5 @@ export const getJoueurByUtilisateurId = async <U extends UtilisateurField, J ext
         throw new Error(`Utilisateur with id ${id} not found`); // FIXME custom exception
     }
 
-    return data as unknown as UtilisateurWithJoueurPicked<U, J>;
+    return data as unknown as UtilisateurWithJoueurAndDechargesGeneralesPicked<U, J, D>;
 };
