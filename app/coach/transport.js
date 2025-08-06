@@ -36,7 +36,7 @@ export default function TransportManquant() {
         async function fetchParticipants() {
             const { data, error } = await supabase
                 .from('participations_evenement')
-                .select('id, besoin_transport, joueur_id, evenement_id, transport_valide_par')
+                .select('id, besoin_transport, utilisateur_id, evenement_id, transport_valide_par')
                 .eq('besoin_transport', true)
                 .is('transport_valide_par', null);
 
@@ -50,7 +50,7 @@ export default function TransportManquant() {
                     const { data: joueurData } = await supabase
                         .from('utilisateurs')
                         .select('prenom, nom')
-                        .eq('id', p.joueur_id)
+                        .eq('id', p.utilisateur_id)
                         .single();
 
                     const { data: evt } = await supabase

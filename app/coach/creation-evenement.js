@@ -241,14 +241,14 @@ export default function CreateEvent() {
                 // Vérifie s'il existe déjà une participation (évite les conflits 409)
                 const { data: deja, error: dejaErr } = await supabase
                     .from('participations_evenement')
-                    .select('id, joueur_id')
+                    .select('id, utilisateur_id')
                     .eq('evenement_id', nouvelEvenement.id);
 
                 if (dejaErr) {
                     console.error('⚠️ Erreur vérification participations existantes:', dejaErr);
                 }
 
-                const dejaIds = deja ? deja.map((p) => p.joueur_id) : [];
+                const dejaIds = deja ? deja.map((p) => p.utilisateur_id) : [];
                 console.log('🔍 Participations déjà existantes:', dejaIds);
 
                 const participations = selectedJoueurs

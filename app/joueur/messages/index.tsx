@@ -14,15 +14,15 @@ export default function MessagesIndex() {
 
     const checkCanAskTransport = useCallback(async () => {
         const { data: sessionData } = await supabase.auth.getSession();
-        const userId = sessionData?.session?.user?.id;
+        const utilisateurId = sessionData?.session?.user?.id;
 
-        if (!userId) {
+        if (!utilisateurId) {
             return;
         }
 
         const utilisateur = await getJoueurAndDechargesGeneralesByUtilisateurId({
-            userId,
-            fields: ['id'],
+            utilisateurId,
+            joueurFields: ['id'],
             utilisateurFields: ['id'],
             dechargeGeneraleFields: ['id', 'accepte_transport'],
         });

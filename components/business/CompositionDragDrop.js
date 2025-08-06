@@ -49,7 +49,7 @@ export default function CompositionDragDrop({ evenementId }) {
                 // 2. Récupère toutes les participations à cet événement
                 const { data: participations, error: partError } = await supabase
                     .from('participations_evenement')
-                    .select('joueur_id, reponse, besoin_transport')
+                    .select('utilisateur_id, reponse, besoin_transport')
                     .eq('evenement_id', evenementId);
 
                 console.log(
@@ -118,12 +118,12 @@ export default function CompositionDragDrop({ evenementId }) {
                 (participations || []).forEach((participation) => {
                     console.log(`🎨 COMPOSITION: Traitement participation:`, participation);
 
-                    // participation.joueur_id = ID UTILISATEUR
-                    // Trouver le joueur_id correspondant
-                    const joueurTableId = utilisateursMap[participation.joueur_id];
+                    // participation.utilisateur_id = ID UTILISATEUR
+                    // Trouver le utilisateur_id correspondant
+                    const joueurTableId = utilisateursMap[participation.utilisateur_id];
 
                     console.log(
-                        `🎨 COMPOSITION: User ID ${participation.joueur_id} -> Joueur ID ${joueurTableId}`,
+                        `🎨 COMPOSITION: User ID ${participation.utilisateur_id} -> Joueur ID ${joueurTableId}`,
                     );
 
                     if (joueurTableId) {
@@ -150,7 +150,7 @@ export default function CompositionDragDrop({ evenementId }) {
 
                 // 6. Générer la liste des indécis (joueurs sans participation)
                 const participantsJoueursIds = (participations || [])
-                    .map((p) => utilisateursMap[p.joueur_id])
+                    .map((p) => utilisateursMap[p.utilisateur_id])
                     .filter(Boolean);
 
                 const indecisData = (allJoueurs || [])

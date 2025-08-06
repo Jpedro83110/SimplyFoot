@@ -31,15 +31,15 @@ export default function BesoinTransportJoueur() {
 
         try {
             const { data: sessionData } = await supabase.auth.getSession();
-            const userId = sessionData?.session?.user?.id;
+            const utilisateurId = sessionData?.session?.user?.id;
 
-            if (!userId) {
+            if (!utilisateurId) {
                 return; // FIXME: manage error
             }
 
             const fetchedUtilisateur = await getJoueurByUtilisateurId({
-                userId,
-                fields: ['id', 'equipe_id'],
+                utilisateurId,
+                joueurFields: ['id', 'equipe_id'],
                 utilisateurFields: ['id', 'nom', 'prenom'],
             });
 
@@ -49,7 +49,7 @@ export default function BesoinTransportJoueur() {
 
             const fetchedDemandes = await getMessagesBesoinTransportAndUtilisateurByEquipeId({
                 equipeId: fetchedUtilisateur.joueurs.equipe_id,
-                fields: ['id', 'adresse_demande', 'heure_demande', 'etat'],
+                messagesBesoinTransportFields: ['id', 'adresse_demande', 'heure_demande', 'etat'],
                 evenementFields: ['id', 'titre', 'date', 'heure', 'lieu', 'equipe_id'],
                 utilisateurFields: ['id', 'prenom', 'nom'],
             });
