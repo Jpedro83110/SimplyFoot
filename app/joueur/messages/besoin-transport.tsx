@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { COLOR_GREEN_300 } from '@/utils/styleContants.util';
 import { getJoueurByUtilisateurId } from '@/helpers/joueurs.helper';
-import { MessagesBesoinTransportWithEvenementAndUtilisateurPicked } from '@/types/MessagesBesoinTransport0';
+import { MessagesBesoinTransportWithEvenementAndUtilisateurPicked } from '@/types/MessagesBesoinTransport';
 import { getMessagesBesoinTransportAndUtilisateurByEquipeId } from '@/helpers/messagesBesoinTransport.helper';
 import { useEffectOnce } from 'react-use';
 

@@ -1,10 +1,10 @@
 import { supabase } from '@/lib/supabase';
-import { EvenementFields } from '@/types/Evenement0';
+import { EvenementFields } from '@/types/Evenement';
 import {
     MessagesBesoinTransportFields,
     MessagesBesoinTransportWithEvenementAndUtilisateurPicked,
-} from '@/types/MessagesBesoinTransport0';
-import { UtilisateurFields } from '@/types/Utilisateur0';
+} from '@/types/MessagesBesoinTransport';
+import { UtilisateurFields } from '@/types/Utilisateur';
 
 export const getMessagesBesoinTransportAndUtilisateurByEquipeId = async <
     M extends MessagesBesoinTransportFields,
