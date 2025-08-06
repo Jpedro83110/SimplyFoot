@@ -120,6 +120,10 @@ function analyzeCodebase(options = {}) {
     let tsFiles = 0;
     let styleLines = 0;
 
+    // Nouveau: tableau pour stocker le nombre de lignes par fichier avec les détails
+    const fileLinesArray = [];
+    const fileDetails = []; // Nouveau: pour stocker les détails de chaque fichier
+
     if (verbose) {
         console.log('🔍 Analyse des fichiers sources...\n');
     }
@@ -142,9 +146,19 @@ function analyzeCodebase(options = {}) {
         const jsFilesInDir = findFiles(dirPath, JS_EXTENSIONS);
         for (const file of jsFilesInDir) {
             const { codeLines, styleLines: fileStyleLines } = countLinesWithStyles(file);
+            const totalFileLines = codeLines + fileStyleLines;
             jsLines += codeLines;
             styleLines += fileStyleLines;
             jsFiles++;
+            fileLinesArray.push(totalFileLines);
+
+            // Ajouter les détails du fichier
+            fileDetails.push({
+                path: path.relative(process.cwd(), file),
+                lines: totalFileLines,
+                type: 'JS',
+            });
+
             if (verbose) {
                 console.log(
                     `   JS: ${path.relative(process.cwd(), file)} (${codeLines} lignes code, ${fileStyleLines} lignes style)`,
@@ -156,9 +170,19 @@ function analyzeCodebase(options = {}) {
         const tsFilesInDir = findFiles(dirPath, TS_EXTENSIONS);
         for (const file of tsFilesInDir) {
             const { codeLines, styleLines: fileStyleLines } = countLinesWithStyles(file);
+            const totalFileLines = codeLines + fileStyleLines;
             tsLines += codeLines;
             styleLines += fileStyleLines;
             tsFiles++;
+            fileLinesArray.push(totalFileLines);
+
+            // Ajouter les détails du fichier
+            fileDetails.push({
+                path: path.relative(process.cwd(), file),
+                lines: totalFileLines,
+                type: 'TS',
+            });
+
             if (verbose) {
                 console.log(
                     `   TS: ${path.relative(process.cwd(), file)} (${codeLines} lignes code, ${fileStyleLines} lignes style)`,
@@ -180,31 +204,62 @@ function analyzeCodebase(options = {}) {
     const jsPercentage = totalCodeLines > 0 ? ((jsLines / totalCodeLines) * 100).toFixed(2) : 0;
     const tsPercentage = totalCodeLines > 0 ? ((tsLines / totalCodeLines) * 100).toFixed(2) : 0;
 
-    // Affichage des résultats
-    console.log('📊 AVANCEMENT DE LA MIGRATION TYPESCRIPT');
-    console.log('========================================');
-    console.log(
-        `📄 Fichiers JavaScript/JSX: ${jsFiles} fichiers, ${jsLines} lignes (${jsTotalPercentage}%)`,
-    );
-    console.log(
-        `📄 Fichiers TypeScript/TSX: ${tsFiles} fichiers, ${tsLines} lignes (${tsTotalPercentage}%)`,
-    );
-    console.log(`🎨 Style JSX/TSX: ${styleLines} lignes (${styleTotalPercentage}%)`);
-    console.log(`📄 Total: ${jsFiles + tsFiles} fichiers, ${totalLines} lignes`);
-    console.log('');
-    console.log('📈 RÉPARTITION:');
-    console.log(`   JavaScript/JSX: ${jsPercentage}%`);
-    console.log(`   TypeScript/TSX: ${tsPercentage}%`);
+    // Calculer les statistiques par fichier
+    const totalFiles = jsFiles + tsFiles;
+    let averageLinesPerFile = 0;
+    let medianLinesPerFile = 0;
+
+    if (totalFiles > 0) {
+        // Moyenne
+        averageLinesPerFile = Math.round(totalLines / totalFiles);
+
+        // Médiane
+        const sortedFileLinesArray = [...fileLinesArray].sort((a, b) => a - b);
+        if (sortedFileLinesArray.length % 2 === 0) {
+            // Nombre pair de fichiers
+            const mid1 = sortedFileLinesArray[Math.floor(sortedFileLinesArray.length / 2) - 1];
+            const mid2 = sortedFileLinesArray[Math.floor(sortedFileLinesArray.length / 2)];
+            medianLinesPerFile = Math.round((mid1 + mid2) / 2);
+        } else {
+            // Nombre impair de fichiers
+            medianLinesPerFile = sortedFileLinesArray[Math.floor(sortedFileLinesArray.length / 2)];
+        }
+    }
 
     // Génération d'une barre de progression visuelle
     const barLength = 50;
     const jsBarLength = Math.round((jsLines / totalCodeLines) * barLength);
     const tsBarLength = barLength - jsBarLength;
 
+    // Créer le top 5 des plus gros fichiers
+    const top5Files = fileDetails.sort((a, b) => b.lines - a.lines).slice(0, 5);
+
+    // Affichage des résultats
+    console.log('📊 CODE LINE STATISTICS');
+    console.log('=======================');
+    console.log(`📄 JavaScript/JSX: ${jsFiles} files, ${jsLines} lines (${jsTotalPercentage}%)`);
+    console.log(`📄 TypeScript/TSX: ${tsFiles} files, ${tsLines} lines (${tsTotalPercentage}%)`);
+    console.log(`🎨 Style JSX/TSX: ${styleLines} lines (${styleTotalPercentage}%)`);
+    console.log(`📄 Total: ${jsFiles + tsFiles} files, ${totalLines} lines`);
+    console.log('');
+    console.log('📈 RÉPARTITION:');
+    console.log(`   JavaScript/JSX: ${jsPercentage}%`);
+    console.log(`   TypeScript/TSX: ${tsPercentage}%`);
     console.log('');
     console.log('📊 VISUALISATION:');
     console.log(`[${'█'.repeat(tsBarLength)}${'░'.repeat(jsBarLength)}]`);
     console.log(`  TS/TSX: ${tsPercentage}%           JS/JSX: ${jsPercentage}%`);
+    console.log('');
+    console.log('📊 STATISTIQUES PAR FICHIER:');
+    console.log(`   Médiane: ${medianLinesPerFile} lignes par fichier`);
+    console.log(`   Moyenne: ${averageLinesPerFile} lignes par fichier`);
+    console.log('');
+    console.log('🏆 TOP 5 DES PLUS GROS FICHIERS:');
+    top5Files.forEach((file, index) => {
+        const rank = index + 1;
+        const typeIcon = file.type === 'TS' ? '🔷' : '🔶';
+        console.log(`   ${rank}. ${typeIcon} ${file.path} (${file.lines} lignes)`);
+    });
 
     return {
         javascript: {
@@ -225,6 +280,12 @@ function analyzeCodebase(options = {}) {
             lines: totalLines,
             codeLines: totalCodeLines,
         },
+        statistics: {
+            averageLinesPerFile,
+            medianLinesPerFile,
+        },
+        // Nouveau: top 5 des fichiers
+        top5Files,
     };
 }
 
