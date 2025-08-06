@@ -88,24 +88,9 @@ jobs:
                   # Run tests and capture output
                   npm run test:coverage > coverage_output.txt 2>&1 || true
 
-                  # Display the full output for debugging
-                  echo "=== Full coverage output ==="
-                  cat coverage_output.txt
-                  echo "=== End of coverage output ==="
-
-                  # Try multiple patterns to find coverage summary
+                  # Extract coverage table (from header to the end of table)
                   echo "COVERAGE_SUMMARY<<EOF" >> $GITHUB_OUTPUT
-                  if grep -A 5 "All files" coverage_output.txt; then
-                      grep -A 5 "All files" coverage_output.txt
-                  elif grep -A 10 "Coverage summary" coverage_output.txt; then
-                      grep -A 10 "Coverage summary" coverage_output.txt
-                  elif grep -A 10 "%" coverage_output.txt | tail -15; then
-                      echo "Coverage percentages found:"
-                      grep -A 10 "%" coverage_output.txt | tail -15
-                  else
-                      echo "No coverage summary found. Full output:"
-                      tail -20 coverage_output.txt
-                  fi
+                  sed -n '/File.*% Stmts.*% Branch.*% Funcs.*% Lines/,/^-*$/p' coverage_output.txt
                   echo "EOF" >> $GITHUB_OUTPUT
 
             - name: Comment PR with coverage
