@@ -247,7 +247,7 @@ function analyzeCodebase(options = {}) {
     console.log(`   TypeScript/TSX: ${tsPercentage}%`);
     console.log('');
     console.log('📊 VISUALIZATION:');
-    console.log(`[${'█'.repeat(tsBarLength)}${'░'.repeat(jsBarLength)}]`);
+    console.log(`[${'█'.repeat(tsBarLength)}${'▁'.repeat(jsBarLength)}]`);
     console.log(`  TS/TSX: ${tsPercentage}%           JS/JSX: ${jsPercentage}%`);
     console.log('');
     console.log('📊 STATISTICS PER FILE:');
