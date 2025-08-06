@@ -1,11 +1,11 @@
 import { supabase } from '@/lib/supabase';
-import { DechargeGeneraleFields } from '@/types/DechargesGenerales';
-import { JoueurFields } from '@/types/Joueur';
+import { DechargeGeneraleFields } from '@/types/DechargesGenerales0';
+import { JoueurFields } from '@/types/Joueur0';
 import {
     UtilisateurFields,
     UtilisateurWithJoueurAndDechargesGeneralesPicked,
     UtilisateurWithJoueurPicked,
-} from '@/types/Utilisateur';
+} from '@/types/Utilisateur0';
 
 export const getJoueurByUtilisateurId = async <U extends UtilisateurFields, J extends JoueurFields>(
     id: string,

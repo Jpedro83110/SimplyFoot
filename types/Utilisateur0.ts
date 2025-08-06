@@ -1,5 +1,5 @@
-import { DechargeGenerale, DechargeGeneraleFields } from './DechargesGenerales';
-import { Joueur, JoueurFields } from './Joueur';
+import { DechargeGenerale, DechargeGeneraleFields } from './DechargesGenerales0';
+import { Joueur, JoueurFields } from './Joueur0';
 
 export type UtilisateurFields = keyof Utilisateur;
 

@@ -1,5 +1,5 @@
-import { Evenement, EvenementFields } from './Evenement';
-import { Utilisateur, UtilisateurFields } from './Utilisateur';
+import { Evenement, EvenementFields } from './Evenement0';
+import { Utilisateur, UtilisateurFields } from './Utilisateur0';
 
 export type MessagesBesoinTransportFields = keyof MessagesBesoinTransport;
 
