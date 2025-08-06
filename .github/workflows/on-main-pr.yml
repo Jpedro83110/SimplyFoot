@@ -85,13 +85,27 @@ jobs:
             - name: Run tests with coverage
               id: test-coverage
               run: |
-                  echo "COVERAGE_OUTPUT<<EOF" >> $GITHUB_OUTPUT
-                  npm run test:coverage 2>&1 | tee coverage_output.txt
-                  echo "EOF" >> $GITHUB_OUTPUT
+                  # Run tests and capture output
+                  npm run test:coverage > coverage_output.txt 2>&1 || true
 
-                  # Extract the "All files" coverage summary
+                  # Display the full output for debugging
+                  echo "=== Full coverage output ==="
+                  cat coverage_output.txt
+                  echo "=== End of coverage output ==="
+
+                  # Try multiple patterns to find coverage summary
                   echo "COVERAGE_SUMMARY<<EOF" >> $GITHUB_OUTPUT
-                  grep -A 10 "All files" coverage_output.txt || echo "Coverage summary not found"
+                  if grep -A 5 "All files" coverage_output.txt; then
+                      grep -A 5 "All files" coverage_output.txt
+                  elif grep -A 10 "Coverage summary" coverage_output.txt; then
+                      grep -A 10 "Coverage summary" coverage_output.txt
+                  elif grep -A 10 "%" coverage_output.txt | tail -15; then
+                      echo "Coverage percentages found:"
+                      grep -A 10 "%" coverage_output.txt | tail -15
+                  else
+                      echo "No coverage summary found. Full output:"
+                      tail -20 coverage_output.txt
+                  fi
                   echo "EOF" >> $GITHUB_OUTPUT
 
             - name: Comment PR with coverage
