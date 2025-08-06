@@ -226,7 +226,6 @@ export default function ConvocationReponse() {
             const { error } = await supabase.from('messages_besoin_transport').insert({
                 evenement_id: id,
                 utilisateur_id: utilisateurId, // ID utilisateur
-                auteur_id: utilisateurId, // ID utilisateur
                 adresse_demande: nouvelleAdresse,
                 heure_demande: nouvelleHeure,
                 etat: 'en_attente',

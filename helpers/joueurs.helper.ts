@@ -22,7 +22,7 @@ export const getJoueurByUtilisateurId = async <U extends UtilisateurFields, J ex
 
     const { data, error } = await supabase
         .from('utilisateurs')
-        .select(`${utilisateurFields.join(', ')}, joueurs(${fields.join(', ')})`)
+        .select(`${utilisateurFields.join(', ')}, joueurs:joueur_id(${fields.join(', ')})`)
         .eq('id', id)
         .single();
 
@@ -60,7 +60,7 @@ export const getJoueurAndDechargesGeneralesByUtilisateurId = async <
     const { data, error } = await supabase
         .from('utilisateurs')
         .select(
-            `${utilisateurFields.join(', ')}, joueurs(${fields.join(', ')}, decharges_generales(${dechargeGeneraleFields.join(', ')}))`,
+            `${utilisateurFields.join(', ')}, joueurs:joueur_id(${fields.join(', ')}, decharges_generales(${dechargeGeneraleFields.join(', ')}))`,
         )
         .eq('id', id)
         .single();

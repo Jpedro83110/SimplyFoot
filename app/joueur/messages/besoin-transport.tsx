@@ -55,7 +55,7 @@ export default function BesoinTransportJoueur() {
             const fetchedDemandes = await getMessagesBesoinTransportAndUtilisateurByEquipeId(
                 fetchedUtilisateur.joueurs.equipe_id,
                 ['id', 'adresse_demande', 'heure_demande', 'etat'],
-                ['id', 'titre', 'date', 'heure', 'lieu'],
+                ['id', 'titre', 'date', 'heure', 'lieu', 'equipe_id'],
                 ['id', 'prenom', 'nom'],
             );
 

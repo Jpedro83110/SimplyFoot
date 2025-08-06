@@ -31,8 +31,9 @@ export const getMessagesBesoinTransportAndUtilisateurByEquipeId = async <
     const { data, error } = await supabase
         .from('messages_besoin_transport')
         .select(
-            `${fields.join(', ')}, evenements(equipe_id, ${evenementFields?.filter((field) => field !== 'equipe_id').join(', ')}) , utilisateurs(${utilisateurFields?.join(', ')})`,
+            `${fields.join(', ')}, evenements:evenement_id(equipe_id, ${evenementFields?.filter((field) => field !== 'equipe_id').join(', ')}) , utilisateurs:utilisateur_id(${utilisateurFields?.join(', ')})`,
         )
+        .not('evenements', 'is', null)
         .eq('evenements.equipe_id', equipeId);
 
     if (error) {

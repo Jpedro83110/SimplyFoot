@@ -9,13 +9,11 @@ export interface MessagesBesoinTransport {
     id: string;
     evenement_id?: string; // FIXME: can be null
     utilisateur_id?: string; // FIXME: can be null
-    auteur_id?: string; // FIXME: can be null
     adresse_demande?: string;
     heure_demande?: string;
     etat?: MessagesBesoinTransportEtat;
     adresse_proposee?: string;
     heure_proposee?: string;
-    propose_par?: string;
     signature_parent?: string;
     signature_transporteur?: string;
     created_at?: string;
