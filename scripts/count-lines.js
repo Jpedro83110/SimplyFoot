@@ -1,25 +1,25 @@
 const fs = require('fs');
 const path = require('path');
 
-// Répertoires à analyser
+// Directories to analyze
 const SOURCE_DIRS = ['app', 'components', 'helpers', 'hooks', 'lib', 'utils'];
 
-// Extensions de fichiers
+// File extensions
 const JS_EXTENSIONS = ['.js', '.jsx'];
 const TS_EXTENSIONS = ['.ts', '.tsx'];
 
-// Patterns pour exclure les fichiers de test
+// Patterns to exclude test files
 const TEST_PATTERNS = [/__tests__/, /\.test\./, /\.spec\./];
 
 /**
- * Vérifie si un fichier est un fichier de test
+ * Checks if a file is a test file
  */
 function isTestFile(filePath) {
     return TEST_PATTERNS.some((pattern) => pattern.test(filePath));
 }
 
 /**
- * Compte les lignes en séparant le code logique des styles
+ * Counts lines by separating logical code from styles
  */
 function countLinesWithStyles(filePath) {
     try {
@@ -35,12 +35,12 @@ function countLinesWithStyles(filePath) {
             const line = lines[i];
             const trimmedLine = line.trim();
 
-            // Ignorer les lignes vides
+            // Ignore empty lines
             if (trimmedLine.length === 0) {
                 continue;
             }
 
-            // Détecter le début d'un StyleSheet.create
+            // Detect the beginning of a StyleSheet.create
             if (trimmedLine.includes('StyleSheet.create(')) {
                 inStyleSheet = true;
                 braceCount = 0;
@@ -49,7 +49,7 @@ function countLinesWithStyles(filePath) {
             }
 
             if (inStyleSheet) {
-                // Compter les accolades ouvrantes et fermantes
+                // Count opening and closing braces
                 for (let char of trimmedLine) {
                     if (char === '{') {
                         braceCount++;
@@ -60,25 +60,25 @@ function countLinesWithStyles(filePath) {
 
                 styleLines++;
 
-                // Si on ferme toutes les accolades, on sort du StyleSheet
+                // If we close all braces, we exit the StyleSheet
                 if (braceCount < 0) {
                     inStyleSheet = false;
                 }
             } else {
-                // Ligne de code normale
+                // Normal code line
                 codeLines++;
             }
         }
 
         return { codeLines, styleLines };
     } catch (error) {
-        console.warn(`Erreur lors de la lecture du fichier ${filePath}:`, error.message);
+        console.warn(`Error reading file ${filePath}:`, error.message);
         return { codeLines: 0, styleLines: 0 };
     }
 }
 
 /**
- * Parcourt récursivement un répertoire et trouve tous les fichiers
+ * Recursively traverses a directory and finds all files
  */
 function findFiles(dir, extensions) {
     const files = [];
@@ -101,7 +101,7 @@ function findFiles(dir, extensions) {
                 }
             }
         } catch (error) {
-            console.warn(`Erreur lors du parcours du répertoire ${currentDir}:`, error.message);
+            console.warn(`Error traversing directory ${currentDir}:`, error.message);
         }
     }
 
@@ -110,7 +110,7 @@ function findFiles(dir, extensions) {
 }
 
 /**
- * Analyse les fichiers dans les répertoires source
+ * Analyzes files in source directories
  */
 function analyzeCodebase(options = {}) {
     const { verbose = false } = options;
@@ -120,12 +120,12 @@ function analyzeCodebase(options = {}) {
     let tsFiles = 0;
     let styleLines = 0;
 
-    // Nouveau: tableau pour stocker le nombre de lignes par fichier avec les détails
+    // New: array to store line count per file with details
     const fileLinesArray = [];
-    const fileDetails = []; // Nouveau: pour stocker les détails de chaque fichier
+    const fileDetails = []; // New: to store details of each file
 
     if (verbose) {
-        console.log('🔍 Analyse des fichiers sources...\n');
+        console.log('🔍 Analyzing source files...\n');
     }
 
     for (const sourceDir of SOURCE_DIRS) {
@@ -133,16 +133,16 @@ function analyzeCodebase(options = {}) {
 
         if (!fs.existsSync(dirPath)) {
             if (verbose) {
-                console.warn(`⚠️  Le répertoire ${sourceDir} n'existe pas`);
+                console.warn(`⚠️  Directory ${sourceDir} does not exist`);
             }
             continue;
         }
 
         if (verbose) {
-            console.log(`📁 Analyse du répertoire: ${sourceDir}`);
+            console.log(`📁 Analyzing directory: ${sourceDir}`);
         }
 
-        // Analyser les fichiers JavaScript/JSX
+        // Analyze JavaScript/JSX files
         const jsFilesInDir = findFiles(dirPath, JS_EXTENSIONS);
         for (const file of jsFilesInDir) {
             const { codeLines, styleLines: fileStyleLines } = countLinesWithStyles(file);
@@ -152,7 +152,7 @@ function analyzeCodebase(options = {}) {
             jsFiles++;
             fileLinesArray.push(totalFileLines);
 
-            // Ajouter les détails du fichier
+            // Add file details
             fileDetails.push({
                 path: path.relative(process.cwd(), file),
                 lines: totalFileLines,
@@ -161,12 +161,12 @@ function analyzeCodebase(options = {}) {
 
             if (verbose) {
                 console.log(
-                    `   JS: ${path.relative(process.cwd(), file)} (${codeLines} lignes code, ${fileStyleLines} lignes style)`,
+                    `   JS: ${path.relative(process.cwd(), file)} (${codeLines} code lines, ${fileStyleLines} style lines)`,
                 );
             }
         }
 
-        // Analyser les fichiers TypeScript/TSX
+        // Analyze TypeScript/TSX files
         const tsFilesInDir = findFiles(dirPath, TS_EXTENSIONS);
         for (const file of tsFilesInDir) {
             const { codeLines, styleLines: fileStyleLines } = countLinesWithStyles(file);
@@ -176,7 +176,7 @@ function analyzeCodebase(options = {}) {
             tsFiles++;
             fileLinesArray.push(totalFileLines);
 
-            // Ajouter les détails du fichier
+            // Add file details
             fileDetails.push({
                 path: path.relative(process.cwd(), file),
                 lines: totalFileLines,
@@ -185,7 +185,7 @@ function analyzeCodebase(options = {}) {
 
             if (verbose) {
                 console.log(
-                    `   TS: ${path.relative(process.cwd(), file)} (${codeLines} lignes code, ${fileStyleLines} lignes style)`,
+                    `   TS: ${path.relative(process.cwd(), file)} (${codeLines} code lines, ${fileStyleLines} style lines)`,
                 );
             }
         }
@@ -204,37 +204,37 @@ function analyzeCodebase(options = {}) {
     const jsPercentage = totalCodeLines > 0 ? ((jsLines / totalCodeLines) * 100).toFixed(2) : 0;
     const tsPercentage = totalCodeLines > 0 ? ((tsLines / totalCodeLines) * 100).toFixed(2) : 0;
 
-    // Calculer les statistiques par fichier
+    // Calculate statistics per file
     const totalFiles = jsFiles + tsFiles;
     let averageLinesPerFile = 0;
     let medianLinesPerFile = 0;
 
     if (totalFiles > 0) {
-        // Moyenne
+        // Average
         averageLinesPerFile = Math.round(totalLines / totalFiles);
 
-        // Médiane
+        // Median
         const sortedFileLinesArray = [...fileLinesArray].sort((a, b) => a - b);
         if (sortedFileLinesArray.length % 2 === 0) {
-            // Nombre pair de fichiers
+            // Even number of files
             const mid1 = sortedFileLinesArray[Math.floor(sortedFileLinesArray.length / 2) - 1];
             const mid2 = sortedFileLinesArray[Math.floor(sortedFileLinesArray.length / 2)];
             medianLinesPerFile = Math.round((mid1 + mid2) / 2);
         } else {
-            // Nombre impair de fichiers
+            // Odd number of files
             medianLinesPerFile = sortedFileLinesArray[Math.floor(sortedFileLinesArray.length / 2)];
         }
     }
 
-    // Génération d'une barre de progression visuelle
+    // Generate a visual progress bar
     const barLength = 50;
     const jsBarLength = Math.round((jsLines / totalCodeLines) * barLength);
     const tsBarLength = barLength - jsBarLength;
 
-    // Créer le top 5 des plus gros fichiers
+    // Create top 5 largest files
     const top5Files = fileDetails.sort((a, b) => b.lines - a.lines).slice(0, 5);
 
-    // Affichage des résultats
+    // Display results
     console.log('📊 CODE LINE STATISTICS');
     console.log('=======================');
     console.log(`📄 JavaScript/JSX: ${jsFiles} files, ${jsLines} lines (${jsTotalPercentage}%)`);
@@ -242,23 +242,23 @@ function analyzeCodebase(options = {}) {
     console.log(`🎨 Style JSX/TSX: ${styleLines} lines (${styleTotalPercentage}%)`);
     console.log(`📄 Total: ${jsFiles + tsFiles} files, ${totalLines} lines`);
     console.log('');
-    console.log('📈 RÉPARTITION:');
+    console.log('📈 DISTRIBUTION:');
     console.log(`   JavaScript/JSX: ${jsPercentage}%`);
     console.log(`   TypeScript/TSX: ${tsPercentage}%`);
     console.log('');
-    console.log('📊 VISUALISATION:');
+    console.log('📊 VISUALIZATION:');
     console.log(`[${'█'.repeat(tsBarLength)}${'░'.repeat(jsBarLength)}]`);
     console.log(`  TS/TSX: ${tsPercentage}%           JS/JSX: ${jsPercentage}%`);
     console.log('');
-    console.log('📊 STATISTIQUES PAR FICHIER:');
-    console.log(`   Médiane: ${medianLinesPerFile} lignes par fichier`);
-    console.log(`   Moyenne: ${averageLinesPerFile} lignes par fichier`);
+    console.log('📊 STATISTICS PER FILE:');
+    console.log(`   Median: ${medianLinesPerFile} lines per file`);
+    console.log(`   Average: ${averageLinesPerFile} lines per file`);
     console.log('');
-    console.log('🏆 TOP 5 DES PLUS GROS FICHIERS:');
+    console.log('🏆 TOP 5 LARGEST FILES:');
     top5Files.forEach((file, index) => {
         const rank = index + 1;
         const typeIcon = file.type === 'TS' ? '🔷' : '🔶';
-        console.log(`   ${rank}. ${typeIcon} ${file.path} (${file.lines} lignes)`);
+        console.log(`   ${rank}. ${typeIcon} ${file.path} (${file.lines} lines)`);
     });
 
     return {
@@ -284,20 +284,20 @@ function analyzeCodebase(options = {}) {
             averageLinesPerFile,
             medianLinesPerFile,
         },
-        // Nouveau: top 5 des fichiers
+        // New: top 5 files
         top5Files,
     };
 }
 
-// Exécution du script
+// Script execution
 if (require.main === module) {
-    // Vérifier si l'option verbose est passée en argument
+    // Check if verbose option is passed as argument
     const verbose = process.argv.includes('--verbose') || process.argv.includes('-v');
 
     try {
         analyzeCodebase({ verbose });
     } catch (error) {
-        console.error("❌ Erreur lors de l'analyse:", error.message);
+        console.error('❌ Error during analysis:', error.message);
         process.exit(1);
     }
 }
