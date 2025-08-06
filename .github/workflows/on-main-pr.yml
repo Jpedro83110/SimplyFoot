@@ -98,7 +98,7 @@ jobs:
 
                       \`\`\`
                       ------------------------------------|---------|----------|---------|---------|-------------------
-                                                            | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line
+                                                       | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line
                       ------------------------------------|---------|----------|---------|---------|-------------------
                       ${coverageSummary}
                       \`\`\`
@@ -112,7 +112,7 @@ jobs:
                           body: comment
                       });
               env:
-                  COVERAGE_SUMMARY: ${{ steps.test-coverage.outputs.COVERAGE_SUMMARY }}
+                  TEST_OUTPUT: ${{ steps.test-coverage.outputs.TEST_OUTPUT }}
 
     stats:
         runs-on: ubuntu-latest
