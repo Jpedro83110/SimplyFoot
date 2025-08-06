@@ -85,22 +85,21 @@ jobs:
             - name: Run tests with coverage
               id: test-coverage
               run: |
-                  # Run tests and capture output
-                  npm run test:coverage > coverage_output.txt 2>&1 || true
-
-                  # Extract coverage table (from header to the end of table)
-                  echo "COVERAGE_SUMMARY<<EOF" >> $GITHUB_OUTPUT
-                  sed -n '/File.*% Stmts.*% Branch.*% Funcs.*% Lines/,/^-*$/p' coverage_output.txt
+                  echo "TEST_OUTPUT<<EOF" >> $GITHUB_OUTPUT
+                  npm run test:coverage | grep 'All files' >> $GITHUB_OUTPUT
                   echo "EOF" >> $GITHUB_OUTPUT
 
             - name: Comment PR with coverage
               uses: actions/github-script@v7
               with:
                   script: |
-                      const coverageSummary = process.env.COVERAGE_SUMMARY;
+                      const coverageSummary = process.env.TEST_OUTPUT;
                       const comment = `## 🧪 Test Coverage Summary
 
                       \`\`\`
+                      ------------------------------------|---------|----------|---------|---------|-------------------
+                                                            | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line
+                      ------------------------------------|---------|----------|---------|---------|-------------------
                       ${coverageSummary}
                       \`\`\`
 
