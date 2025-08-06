@@ -19,17 +19,61 @@ function isTestFile(filePath) {
 }
 
 /**
- * Compte les lignes non-vides dans un fichier
+ * Compte les lignes en séparant le code logique des styles
  */
-function countLines(filePath) {
+function countLinesWithStyles(filePath) {
     try {
         const content = fs.readFileSync(filePath, 'utf8');
         const lines = content.split('\n');
-        // Compter seulement les lignes non-vides (après suppression des espaces)
-        return lines.filter((line) => line.trim().length > 0).length;
+
+        let codeLines = 0;
+        let styleLines = 0;
+        let inStyleSheet = false;
+        let braceCount = 0;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmedLine = line.trim();
+
+            // Ignorer les lignes vides
+            if (trimmedLine.length === 0) {
+                continue;
+            }
+
+            // Détecter le début d'un StyleSheet.create
+            if (trimmedLine.includes('StyleSheet.create(')) {
+                inStyleSheet = true;
+                braceCount = 0;
+                styleLines++;
+                continue;
+            }
+
+            if (inStyleSheet) {
+                // Compter les accolades ouvrantes et fermantes
+                for (let char of trimmedLine) {
+                    if (char === '{') {
+                        braceCount++;
+                    } else if (char === '}') {
+                        braceCount--;
+                    }
+                }
+
+                styleLines++;
+
+                // Si on ferme toutes les accolades, on sort du StyleSheet
+                if (braceCount < 0) {
+                    inStyleSheet = false;
+                }
+            } else {
+                // Ligne de code normale
+                codeLines++;
+            }
+        }
+
+        return { codeLines, styleLines };
     } catch (error) {
         console.warn(`Erreur lors de la lecture du fichier ${filePath}:`, error.message);
-        return 0;
+        return { codeLines: 0, styleLines: 0 };
     }
 }
 
@@ -74,6 +118,7 @@ function analyzeCodebase(options = {}) {
     let jsFiles = 0;
     let tsLines = 0;
     let tsFiles = 0;
+    let styleLines = 0;
 
     if (verbose) {
         console.log('🔍 Analyse des fichiers sources...\n');
@@ -96,22 +141,28 @@ function analyzeCodebase(options = {}) {
         // Analyser les fichiers JavaScript/JSX
         const jsFilesInDir = findFiles(dirPath, JS_EXTENSIONS);
         for (const file of jsFilesInDir) {
-            const lines = countLines(file);
-            jsLines += lines;
+            const { codeLines, styleLines: fileStyleLines } = countLinesWithStyles(file);
+            jsLines += codeLines;
+            styleLines += fileStyleLines;
             jsFiles++;
             if (verbose) {
-                console.log(`   JS: ${path.relative(process.cwd(), file)} (${lines} lignes)`);
+                console.log(
+                    `   JS: ${path.relative(process.cwd(), file)} (${codeLines} lignes code, ${fileStyleLines} lignes style)`,
+                );
             }
         }
 
         // Analyser les fichiers TypeScript/TSX
         const tsFilesInDir = findFiles(dirPath, TS_EXTENSIONS);
         for (const file of tsFilesInDir) {
-            const lines = countLines(file);
-            tsLines += lines;
+            const { codeLines, styleLines: fileStyleLines } = countLinesWithStyles(file);
+            tsLines += codeLines;
+            styleLines += fileStyleLines;
             tsFiles++;
             if (verbose) {
-                console.log(`   TS: ${path.relative(process.cwd(), file)} (${lines} lignes)`);
+                console.log(
+                    `   TS: ${path.relative(process.cwd(), file)} (${codeLines} lignes code, ${fileStyleLines} lignes style)`,
+                );
             }
         }
 
@@ -120,19 +171,25 @@ function analyzeCodebase(options = {}) {
         }
     }
 
-    const totalLines = jsLines + tsLines;
-    const jsPercentage = totalLines > 0 ? ((jsLines / totalLines) * 100).toFixed(2) : 0;
-    const tsPercentage = totalLines > 0 ? ((tsLines / totalLines) * 100).toFixed(2) : 0;
+    const totalCodeLines = jsLines + tsLines;
+    const totalLines = totalCodeLines + styleLines;
+    const jsTotalPercentage = totalCodeLines > 0 ? ((jsLines / totalLines) * 100).toFixed(2) : 0;
+    const tsTotalPercentage = totalCodeLines > 0 ? ((tsLines / totalLines) * 100).toFixed(2) : 0;
+    const styleTotalPercentage =
+        totalCodeLines > 0 ? ((styleLines / totalLines) * 100).toFixed(2) : 0;
+    const jsPercentage = totalCodeLines > 0 ? ((jsLines / totalCodeLines) * 100).toFixed(2) : 0;
+    const tsPercentage = totalCodeLines > 0 ? ((tsLines / totalCodeLines) * 100).toFixed(2) : 0;
 
     // Affichage des résultats
     console.log('📊 AVANCEMENT DE LA MIGRATION TYPESCRIPT');
     console.log('========================================');
     console.log(
-        `📄 Fichiers JavaScript/JSX: ${jsFiles} fichiers, ${jsLines} lignes (${jsPercentage}%)`,
+        `📄 Fichiers JavaScript/JSX: ${jsFiles} fichiers, ${jsLines} lignes (${jsTotalPercentage}%)`,
     );
     console.log(
-        `📄 Fichiers TypeScript/TSX: ${tsFiles} fichiers, ${tsLines} lignes (${tsPercentage}%)`,
+        `📄 Fichiers TypeScript/TSX: ${tsFiles} fichiers, ${tsLines} lignes (${tsTotalPercentage}%)`,
     );
+    console.log(`🎨 Style JSX/TSX: ${styleLines} lignes (${styleTotalPercentage}%)`);
     console.log(`📄 Total: ${jsFiles + tsFiles} fichiers, ${totalLines} lignes`);
     console.log('');
     console.log('📈 RÉPARTITION:');
@@ -141,7 +198,7 @@ function analyzeCodebase(options = {}) {
 
     // Génération d'une barre de progression visuelle
     const barLength = 50;
-    const jsBarLength = Math.round((jsLines / totalLines) * barLength);
+    const jsBarLength = Math.round((jsLines / totalCodeLines) * barLength);
     const tsBarLength = barLength - jsBarLength;
 
     console.log('');
@@ -160,9 +217,13 @@ function analyzeCodebase(options = {}) {
             lines: tsLines,
             percentage: parseFloat(tsPercentage),
         },
+        styles: {
+            lines: styleLines,
+        },
         total: {
             files: jsFiles + tsFiles,
             lines: totalLines,
+            codeLines: totalCodeLines,
         },
     };
 }
