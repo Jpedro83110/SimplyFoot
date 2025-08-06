@@ -20,12 +20,12 @@ export default function MessagesIndex() {
             return;
         }
 
-        const utilisateur = await getJoueurAndDechargesGeneralesByUtilisateurId(
+        const utilisateur = await getJoueurAndDechargesGeneralesByUtilisateurId({
             userId,
-            ['id'],
-            ['id'],
-            ['id', 'accepte_transport'],
-        );
+            fields: ['id'],
+            utilisateurFields: ['id'],
+            dechargeGeneraleFields: ['id', 'accepte_transport'],
+        });
 
         if (
             utilisateur.joueurs.decharges_generales.length > 0 &&

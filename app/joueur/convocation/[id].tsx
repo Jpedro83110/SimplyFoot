@@ -44,12 +44,7 @@ export default function ConvocationReponse() {
         try {
             const { data, error } = await supabase
                 .from('messages_besoin_transport')
-                .select(
-                    `
-          *, 
-          joueurs:joueur_id(nom, prenom, age)
-        `,
-                )
+                .select(`*, joueurs:joueur_id(nom, prenom, age)`)
                 .eq('evenement_id', id);
             if (error) throw error;
             setMessages(data || []);

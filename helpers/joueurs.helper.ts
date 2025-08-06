@@ -7,11 +7,16 @@ import {
     UtilisateurWithJoueurPicked,
 } from '@/types/Utilisateur';
 
-export const getJoueurByUtilisateurId = async <U extends UtilisateurFields, J extends JoueurFields>(
-    id: string,
-    fields?: J[],
-    utilisateurFields?: U[],
-): Promise<UtilisateurWithJoueurPicked<U, J>> => {
+export const getJoueurByUtilisateurId = async <
+    U extends UtilisateurFields,
+    J extends JoueurFields,
+>(args: {
+    userId: string;
+    fields?: J[];
+    utilisateurFields?: U[];
+}): Promise<UtilisateurWithJoueurPicked<U, J>> => {
+    let { userId, fields, utilisateurFields } = args;
+
     if (!fields || fields.length === 0) {
         fields = ['id'] as J[];
     }
@@ -23,13 +28,13 @@ export const getJoueurByUtilisateurId = async <U extends UtilisateurFields, J ex
     const { data, error } = await supabase
         .from('utilisateurs')
         .select(`${utilisateurFields.join(', ')}, joueurs:joueur_id(${fields.join(', ')})`)
-        .eq('id', id)
+        .eq('id', userId)
         .single();
 
     if (error) {
         throw error;
     } else if (!data) {
-        throw new Error(`Utilisateur with id ${id} not found`); // FIXME custom exception
+        throw new Error(`Utilisateur with id ${userId} not found`); // FIXME custom exception
     }
 
     return data as unknown as UtilisateurWithJoueurPicked<U, J>;
@@ -39,12 +44,14 @@ export const getJoueurAndDechargesGeneralesByUtilisateurId = async <
     U extends UtilisateurFields,
     J extends JoueurFields,
     D extends DechargeGeneraleFields,
->(
-    id: string,
-    fields?: J[],
-    utilisateurFields?: U[],
-    dechargeGeneraleFields?: D[],
-): Promise<UtilisateurWithJoueurAndDechargesGeneralesPicked<U, J, D>> => {
+>(args: {
+    userId: string;
+    fields?: J[];
+    utilisateurFields?: U[];
+    dechargeGeneraleFields?: D[];
+}): Promise<UtilisateurWithJoueurAndDechargesGeneralesPicked<U, J, D>> => {
+    let { userId, fields, utilisateurFields, dechargeGeneraleFields } = args;
+
     if (!fields || fields.length === 0) {
         fields = ['id'] as J[];
     }
@@ -62,13 +69,13 @@ export const getJoueurAndDechargesGeneralesByUtilisateurId = async <
         .select(
             `${utilisateurFields.join(', ')}, joueurs:joueur_id(${fields.join(', ')}, decharges_generales(${dechargeGeneraleFields.join(', ')}))`,
         )
-        .eq('id', id)
+        .eq('id', userId)
         .single();
 
     if (error) {
         throw error;
     } else if (!data) {
-        throw new Error(`Utilisateur with id ${id} not found`); // FIXME custom exception
+        throw new Error(`Utilisateur with id ${userId} not found`); // FIXME custom exception
     }
 
     return data as unknown as UtilisateurWithJoueurAndDechargesGeneralesPicked<U, J, D>;

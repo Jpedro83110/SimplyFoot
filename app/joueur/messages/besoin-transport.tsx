@@ -37,22 +37,22 @@ export default function BesoinTransportJoueur() {
                 return; // FIXME: manage error
             }
 
-            const fetchedUtilisateur = await getJoueurByUtilisateurId(
+            const fetchedUtilisateur = await getJoueurByUtilisateurId({
                 userId,
-                ['id', 'equipe_id'],
-                ['id', 'nom', 'prenom'],
-            );
+                fields: ['id', 'equipe_id'],
+                utilisateurFields: ['id', 'nom', 'prenom'],
+            });
 
             if (!fetchedUtilisateur.joueurs?.equipe_id) {
                 return; // FIXME: manage error
             }
 
-            const fetchedDemandes = await getMessagesBesoinTransportAndUtilisateurByEquipeId(
-                fetchedUtilisateur.joueurs.equipe_id,
-                ['id', 'adresse_demande', 'heure_demande', 'etat'],
-                ['id', 'titre', 'date', 'heure', 'lieu', 'equipe_id'],
-                ['id', 'prenom', 'nom'],
-            );
+            const fetchedDemandes = await getMessagesBesoinTransportAndUtilisateurByEquipeId({
+                equipeId: fetchedUtilisateur.joueurs.equipe_id,
+                fields: ['id', 'adresse_demande', 'heure_demande', 'etat'],
+                evenementFields: ['id', 'titre', 'date', 'heure', 'lieu', 'equipe_id'],
+                utilisateurFields: ['id', 'prenom', 'nom'],
+            });
 
             setDemandes(fetchedDemandes);
         } catch (error) {
