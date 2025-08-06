@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
-import { UtilisateurWithJoueurPicked } from '@/types/Utilisateur';
 import { COLOR_GREEN_300 } from '@/utils/styleContants.util';
 import { getJoueurByUtilisateurId } from '@/helpers/joueurs.helper';
 import { MessagesBesoinTransportWithEvenementAndUtilisateurPicked } from '@/types/MessagesBesoinTransport';
@@ -25,8 +24,6 @@ export default function BesoinTransportJoueur() {
             'id' | 'prenom' | 'nom'
         >[]
     >([]);
-    const [utilisateur, setUtilisateur] =
-        useState<UtilisateurWithJoueurPicked<'nom' | 'prenom', 'equipe_id'>>();
     const router = useRouter();
 
     async function fetchDemandes() {
@@ -45,8 +42,6 @@ export default function BesoinTransportJoueur() {
                 ['id', 'equipe_id'],
                 ['id', 'nom', 'prenom'],
             );
-
-            setUtilisateur(fetchedUtilisateur);
 
             if (!fetchedUtilisateur.joueurs?.equipe_id) {
                 return; // FIXME: manage error
@@ -75,14 +70,6 @@ export default function BesoinTransportJoueur() {
         <View style={styles.bg}>
             <ScrollView style={styles.container}>
                 <Text style={styles.title}>🚘 Demandes de transport - Équipe</Text>
-
-                {/* Debug info */}
-                {utilisateur && (
-                    <Text style={styles.debug}>
-                        👤 {utilisateur.prenom} {utilisateur.nom} | Équipe:{' '}
-                    </Text>
-                )}
-
                 {loading && <ActivityIndicator color={COLOR_GREEN_300} style={{ marginTop: 40 }} />}
 
                 {!loading && demandes.length === 0 && (
