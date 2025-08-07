@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import Slider from '@react-native-community/slider';
 import useCacheData from '../../../lib/cache';
+import { Utilisateur } from '@/types/Utilisateur';
 
 export default function EvaluationTechnique() {
     const { id } = useLocalSearchParams();
@@ -34,8 +35,8 @@ export default function EvaluationTechnique() {
     );
 
     const [valeurs, setValeurs] = useState(Object.fromEntries(criteres.map((c) => [c, 50])));
-    const [joueurInfo, setJoueurInfo] = useState(null);
-    const [joueurId, setJoueurId] = useState(null);
+    const [joueurInfo, setJoueurInfo] =
+        useState<Pick<Utilisateur, 'id' | 'nom' | 'prenom' | 'role' | 'joueur_id'>>();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -58,7 +59,6 @@ export default function EvaluationTechnique() {
 
                 if (utilisateur) {
                     setJoueurInfo(utilisateur);
-                    setJoueurId(utilisateur.id);
                 } else {
                     // Étape 2: Essayer de trouver par joueur_id
                     const { data: userByJoueurId, error: joueurError } = await supabase
@@ -73,7 +73,6 @@ export default function EvaluationTechnique() {
 
                     if (userByJoueurId) {
                         setJoueurInfo(userByJoueurId);
-                        setJoueurId(userByJoueurId.id);
                     } else {
                         Alert.alert('Erreur', 'Joueur introuvable dans le système');
                     }
@@ -93,15 +92,15 @@ export default function EvaluationTechnique() {
 
     // Charge les données d'évaluation si joueurId disponible
     const [evalData, refresh, loadingEval] = useCacheData(
-        joueurId ? `eval-technique-${joueurId}` : null,
+        joueurInfo?.id ? `eval-technique-${joueurInfo?.id}` : null,
         async () => {
-            if (!joueurId) return null;
+            if (!joueurInfo?.id) return null;
 
             try {
                 const { data, error } = await supabase
                     .from('evaluations_techniques')
                     .select('*')
-                    .eq('joueur_id', joueurId)
+                    .eq('joueur_id', joueurInfo?.id)
                     .maybeSingle();
 
                 if (error) {
@@ -149,14 +148,15 @@ export default function EvaluationTechnique() {
                 return;
             }
 
-            if (!joueurId) {
+            if (!joueurInfo?.id) {
                 Alert.alert('Erreur', 'Joueur introuvable');
                 return;
             }
 
             // Objet complet avec tous les champs nécessaires
-            const updates = {
-                joueur_id: joueurId,
+            const updates: any = {
+                // FIXME any
+                joueur_id: joueurInfo?.id,
                 coach_id: session.user.id,
                 moyenne: moyenne,
                 updated_at: new Date().toISOString(),
@@ -171,7 +171,7 @@ export default function EvaluationTechnique() {
             const { data: updateData, error: updateError } = await supabase
                 .from('evaluations_techniques')
                 .update(updates)
-                .eq('joueur_id', joueurId)
+                .eq('joueur_id', joueurInfo?.id)
                 .eq('coach_id', session.user.id)
                 .select();
 
@@ -208,12 +208,16 @@ export default function EvaluationTechnique() {
                 {
                     text: 'OK',
                     onPress: () => {
-                        router.replace(`/coach/joueur/${joueurId}`);
+                        router.replace(`/coach/joueur/${joueurInfo?.joueur_id}`);
                     },
                 },
             ]);
+
+            if (Platform.OS === 'web') {
+                router.replace(`/coach/joueur/${joueurInfo?.joueur_id}`);
+            }
         } catch (error) {
-            Alert.alert('Erreur', `Erreur inattendue: ${error.message}`);
+            Alert.alert('Erreur', `Erreur inattendue: ${(error as Error).message}`);
         } finally {
             setSaving(false);
         }

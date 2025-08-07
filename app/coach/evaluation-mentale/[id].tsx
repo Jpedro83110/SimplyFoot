@@ -30,7 +30,6 @@ export default function EvaluationMentale() {
 
     const [joueurInfo, setJoueurInfo] =
         useState<Pick<Utilisateur, 'id' | 'nom' | 'prenom' | 'role' | 'joueur_id'>>();
-    const [joueurId, setJoueurId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -53,7 +52,6 @@ export default function EvaluationMentale() {
 
                 if (utilisateur) {
                     setJoueurInfo(utilisateur);
-                    setJoueurId(utilisateur.id);
                 } else {
                     // Étape 2: Essayer de trouver par joueur_id
                     const { data: userByJoueurId, error: joueurError } = await supabase
@@ -68,7 +66,6 @@ export default function EvaluationMentale() {
 
                     if (userByJoueurId) {
                         setJoueurInfo(userByJoueurId);
-                        setJoueurId(userByJoueurId.id);
                     } else {
                         Alert.alert('Erreur', 'Joueur introuvable dans le système');
                     }
@@ -86,17 +83,17 @@ export default function EvaluationMentale() {
         }
     }, [id]);
 
-    // Charge les données d'éval si joueurId dispo
+    // Charge les données d'éval si utilisateurId dispo
     const [evalData, refresh, loadingEval] = useCacheData(
-        joueurId ? `eval-mentale-${joueurId}` : null,
+        joueurInfo?.id ? `eval-mentale-${joueurInfo?.id}` : null,
         async () => {
-            if (!joueurId) return null;
+            if (!joueurInfo?.id) return null;
 
             try {
                 const { data, error } = await supabase
                     .from('evaluations_mentales')
                     .select('*')
-                    .eq('joueur_id', joueurId)
+                    .eq('joueur_id', joueurInfo?.id)
                     .maybeSingle(); // Utilise maybeSingle au lieu de single pour éviter les erreurs si pas de résultat
 
                 if (error) {
@@ -151,14 +148,14 @@ export default function EvaluationMentale() {
                 return;
             }
 
-            if (!joueurId) {
+            if (!joueurInfo?.id) {
                 Alert.alert('Erreur', 'Joueur introuvable');
                 return;
             }
 
             // Objet complet avec tous les champs nécessaires
             const updates = {
-                joueur_id: joueurId,
+                joueur_id: joueurInfo?.id,
                 coach_id: session.user.id,
                 date: new Date().toISOString().split('T')[0],
                 motivation: valeurs.motivation,
@@ -178,7 +175,7 @@ export default function EvaluationMentale() {
             const { data: updateData, error: updateError } = await supabase
                 .from('evaluations_mentales')
                 .update(updates)
-                .eq('joueur_id', joueurId)
+                .eq('joueur_id', joueurInfo?.id)
                 .eq('coach_id', session.user.id)
                 .select();
 
@@ -215,10 +212,14 @@ export default function EvaluationMentale() {
                 {
                     text: 'OK',
                     onPress: () => {
-                        router.replace(`/coach/joueur/${joueurId}`);
+                        router.replace(`/coach/joueur/${joueurInfo?.joueur_id}`);
                     },
                 },
             ]);
+
+            if (Platform.OS === 'web') {
+                router.replace(`/coach/joueur/${joueurInfo?.joueur_id}`);
+            }
         } catch (error) {
             Alert.alert('Erreur', `Erreur inattendue: ${(error as Error).message}`);
         } finally {
