@@ -206,7 +206,7 @@ export default function ConvocationReponse() {
         }
     };
 
-    if (loading || !event)
+    if (loading)
         return (
             <View style={styles.container}>
                 <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />
