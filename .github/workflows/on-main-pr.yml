@@ -86,7 +86,7 @@ jobs:
               id: test-coverage
               run: |
                   echo "TEST_OUTPUT<<EOF" >> $GITHUB_OUTPUT
-                  npm run test:coverage | grep 'All files' | awk -F'|' '{ print $1 "|" $2 "|" $3 "|" $4 "|" $5 }' >> $GITHUB_OUTPUT
+                  npm run test:coverage | grep 'All files' | awk -F'|' '{ print "Statements" $2 "%\nBranches" $3 "%\nFunctions" $4 "%\nLines" $5 "%" }' | column -t >> $GITHUB_OUTPUT
                   echo "EOF" >> $GITHUB_OUTPUT
 
             - name: Comment PR with coverage
