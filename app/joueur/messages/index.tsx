@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useEffectOnce } from 'react-use';
+import useEffectOnce from 'react-use/lib/useEffectOnce';
 import { Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

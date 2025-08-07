@@ -16,6 +16,14 @@ module.exports = defineConfig([
                     endOfLine: 'auto',
                 },
             ],
+            'no-restricted-imports': [
+                'error',
+                {
+                    name: 'react-use',
+                    message:
+                        "Please import the specific function from react-use instead of the whole library (e.g. import useTimeout from 'react-use/lib/useTimeout')",
+                },
+            ],
         },
     },
 ]);

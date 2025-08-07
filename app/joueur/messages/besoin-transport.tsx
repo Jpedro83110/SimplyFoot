@@ -13,7 +13,7 @@ import { COLOR_GREEN_300 } from '@/utils/styleContants.util';
 import { getJoueurByUtilisateurId } from '@/helpers/joueurs.helper';
 import { MessagesBesoinTransportWithEvenementAndUtilisateurPicked } from '@/types/MessagesBesoinTransport';
 import { getMessagesBesoinTransportAndUtilisateurByEquipeId } from '@/helpers/messagesBesoinTransport.helper';
-import { useEffectOnce } from 'react-use';
+import useEffectOnce from 'react-use/lib/useEffectOnce';
 
 export default function BesoinTransportJoueur() {
     const [loading, setLoading] = useState(true);
