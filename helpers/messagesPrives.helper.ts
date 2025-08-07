@@ -1,5 +1,21 @@
 import { supabase } from '@/lib/supabase';
 
+export const getCoachMessagesPrives = async (args: { coachId: string }) => {
+    const { coachId } = args;
+
+    const { data, error } = await supabase
+        .from('messages_prives')
+        .select('id, emetteur_id, recepteur_id, texte, created_at, auteur')
+        .or(`emetteur_id.eq.${coachId},recepteur_id.eq.${coachId}`)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        throw error;
+    } // FIXME custom exception
+
+    return data;
+};
+
 // FIXME: replace by a true ttl in bdd
 export const deleteMessagesPrivesOneWeekOld = async () => {
     await supabase

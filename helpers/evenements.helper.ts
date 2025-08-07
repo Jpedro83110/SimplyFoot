@@ -16,7 +16,7 @@ export const getEvenementByCoachId = async (args: { coachId: string; filterDate?
 
     if (error) {
         throw error;
-    }
+    } // FIXME custom exception
 
     return data;
 };

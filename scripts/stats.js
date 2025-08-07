@@ -19,7 +19,35 @@ function isTestFile(filePath) {
 }
 
 /**
- * Counts lines by separating logical code from styles
+ * Checks if a line should be excluded from code counting
+ */
+function shouldExcludeLine(trimmedLine) {
+    // Exclude empty lines
+    if (trimmedLine.length === 0) {
+        return true;
+    }
+
+    // Exclude comment lines (single-line and multi-line)
+    if (
+        trimmedLine.startsWith('//') ||
+        trimmedLine.startsWith('/*') ||
+        trimmedLine.startsWith('*') ||
+        trimmedLine.endsWith('*/')
+    ) {
+        return true;
+    }
+
+    // Exclude lines containing only console statements
+    const consoleRegex = /^\s*console\.(log|warn|error|info|debug)\s*\([^)]*\)\s*;?\s*$/;
+    if (consoleRegex.test(trimmedLine)) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Counts lines by separating logical code from styles, excluding comments and console statements
  */
 function countLinesWithStyles(filePath) {
     try {
@@ -29,14 +57,27 @@ function countLinesWithStyles(filePath) {
         let codeLines = 0;
         let styleLines = 0;
         let inStyleSheet = false;
+        let inMultiLineComment = false;
         let braceCount = 0;
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             const trimmedLine = line.trim();
 
-            // Ignore empty lines
-            if (trimmedLine.length === 0) {
+            // Handle multi-line comments
+            if (trimmedLine.includes('/*') && !trimmedLine.includes('*/')) {
+                inMultiLineComment = true;
+                continue;
+            }
+            if (inMultiLineComment) {
+                if (trimmedLine.includes('*/')) {
+                    inMultiLineComment = false;
+                }
+                continue;
+            }
+
+            // Check if line should be excluded
+            if (shouldExcludeLine(trimmedLine)) {
                 continue;
             }
 
@@ -125,7 +166,7 @@ function analyzeCodebase(options = {}) {
     const fileDetails = []; // New: to store details of each file
 
     if (verbose) {
-        console.log('🔍 Analyzing source files...\n');
+        console.log('🔍 Analyzing source files (excluding comments and console statements)...\n');
     }
 
     for (const sourceDir of SOURCE_DIRS) {
@@ -235,8 +276,8 @@ function analyzeCodebase(options = {}) {
     const top5Files = fileDetails.sort((a, b) => b.lines - a.lines).slice(0, 5);
 
     // Display results
-    console.log('📊 CODE LINE STATISTICS');
-    console.log('=======================');
+    console.log('📊 CODE LINE STATISTICS (excluding comments and console statements)');
+    console.log('====================================================================');
     console.log(`📄 JavaScript/JSX: ${jsFiles} files, ${jsLines} lines (${jsTotalPercentage}%)`);
     console.log(`📄 TypeScript/TSX: ${tsFiles} files, ${tsLines} lines (${tsTotalPercentage}%)`);
     console.log(`🎨 Style JSX/TSX: ${styleLines} lines (${styleTotalPercentage}%)`);
