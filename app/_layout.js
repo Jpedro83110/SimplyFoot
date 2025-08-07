@@ -8,6 +8,7 @@ import Toast from 'react-native-toast-message';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import { deleteMessagesPrivesOneWeekOld } from '@/helpers/messagesPrives.helper';
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -48,10 +49,7 @@ export default function GlobalLayout() {
             if (!session) return;
 
             try {
-                await supabase
-                    .from('messages_prives')
-                    .delete()
-                    .lt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+                await deleteMessagesPrivesOneWeekOld();
             } catch (e) {
                 // FIXME: seems useless, never called on 4XX errors
                 // FIXME: implements messages_prives real ttl
