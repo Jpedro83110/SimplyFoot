@@ -49,7 +49,9 @@ export default function CompositionDragDrop({ evenementId }) {
                 // 2. Récupère toutes les participations à cet événement
                 const { data: participations, error: partError } = await supabase
                     .from('participations_evenement')
-                    .select('utilisateur_id, reponse, besoin_transport')
+                    .select(
+                        'utilisateur_id, reponse, besoin_transport, utilisateurs:utilisateur_id(joueurs:joueur_id(id))',
+                    )
                     .eq('evenement_id', evenementId);
 
                 console.log(
@@ -114,6 +116,7 @@ export default function CompositionDragDrop({ evenementId }) {
                 // 5. 🎯 CORRECTION : Traiter les participations avec la bonne logique
                 const presentsData = [];
                 const absentsData = [];
+                const indecisData = [];
 
                 (participations || []).forEach((participation) => {
                     console.log(`🎨 COMPOSITION: Traitement participation:`, participation);
@@ -143,22 +146,12 @@ export default function CompositionDragDrop({ evenementId }) {
                             } else if (participation.reponse === 'absent') {
                                 console.log(`🎨 COMPOSITION: ${joueurInfo.nom} -> ABSENT`);
                                 absentsData.push(joueurComplet);
+                            } else {
+                                indecisData.push(joueurComplet);
                             }
                         }
                     }
                 });
-
-                // 6. Générer la liste des indécis (joueurs sans participation)
-                const participantsJoueursIds = (participations || [])
-                    .map((p) => utilisateursMap[p.utilisateur_id])
-                    .filter(Boolean);
-
-                const indecisData = (allJoueurs || [])
-                    .filter((j) => !participantsJoueursIds.includes(j.id))
-                    .map((j) => ({
-                        ...j,
-                        besoin_transport: false,
-                    }));
 
                 console.log('🎨 COMPOSITION: Résultats finaux:');
                 console.log(

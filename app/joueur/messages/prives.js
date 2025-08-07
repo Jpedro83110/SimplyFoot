@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
+import { deleteMessagesPrivesOneWeekOld } from '@/helpers/messagesPrives.helper';
 
 const DARK = '#101415';
 
@@ -20,11 +21,9 @@ export default function MessagesPrivesJoueur() {
     const [filMessages, setFilMessages] = useState([]);
     const [message, setMessage] = useState('');
 
-    // Purge messages vieux de +7 jours à chaque ouverture
     useEffect(() => {
         const purgeOldMessages = async () => {
-            const septJours = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-            await supabase.from('messages_prives').delete().lt('created_at', septJours);
+            await deleteMessagesPrivesOneWeekOld();
         };
         purgeOldMessages();
     }, []);
