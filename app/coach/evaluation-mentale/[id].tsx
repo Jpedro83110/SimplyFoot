@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import Slider from '@react-native-community/slider';
 import useCacheData from '../../../lib/cache';
+import { Utilisateur } from '@/types/Utilisateur';
 
 export default function EvaluationMentale() {
     const { id } = useLocalSearchParams();
@@ -27,7 +28,8 @@ export default function EvaluationMentale() {
         respect: 50,
     });
 
-    const [joueurInfo, setJoueurInfo] = useState(null);
+    const [joueurInfo, setJoueurInfo] =
+        useState<Pick<Utilisateur, 'id' | 'nom' | 'prenom' | 'role' | 'joueur_id'>>();
     const [joueurId, setJoueurId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -124,7 +126,7 @@ export default function EvaluationMentale() {
         }
     }, [evalData]);
 
-    const handleSliderChange = (key, value) => {
+    const handleSliderChange = (key: string, value: string) => {
         setValeurs((prev) => ({
             ...prev,
             [key]: Math.max(0, Math.min(100, parseInt(value) || 0)),
@@ -218,7 +220,7 @@ export default function EvaluationMentale() {
                 },
             ]);
         } catch (error) {
-            Alert.alert('Erreur', `Erreur inattendue: ${error.message}`);
+            Alert.alert('Erreur', `Erreur inattendue: ${(error as Error).message}`);
         } finally {
             setSaving(false);
         }
@@ -287,7 +289,7 @@ export default function EvaluationMentale() {
                                 minimumTrackTintColor="#00ff88"
                                 maximumTrackTintColor="#555"
                                 thumbTintColor="#00ff88"
-                                onValueChange={(v) => handleSliderChange(key, v)}
+                                onValueChange={(value) => handleSliderChange(key, value.toString())}
                             />
                             <Text
                                 style={[

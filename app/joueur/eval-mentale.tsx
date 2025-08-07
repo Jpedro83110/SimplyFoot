@@ -3,14 +3,35 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-nat
 import { useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 
+const defaultEvalData = {
+    motivation: 50,
+    rigueur: 50,
+    ponctualite: 50,
+    attitude: 50,
+    respect: 50,
+};
+
+interface Critere {
+    key: keyof typeof defaultEvalData;
+    label: string;
+    color: string;
+}
+
 export default function EvalMentale() {
     const { user } = useLocalSearchParams();
-    const [evalData, setEvalData] = useState(null);
+    const [evalData, setEvalData] = useState<{
+        note_globale?: any;
+        motivation: any;
+        rigueur: any;
+        ponctualite: any;
+        attitude: any;
+        respect: any;
+    }>();
     const [loading, setLoading] = useState(true);
     const [role, setRole] = useState('');
     const [error, setError] = useState('');
 
-    const criteres = useMemo(
+    const criteres = useMemo<Critere[]>(
         () => [
             { key: 'motivation', label: 'Motivation', color: '#00ff88' },
             { key: 'rigueur', label: 'Rigueur', color: '#4fd1c5' },
@@ -43,16 +64,15 @@ export default function EvalMentale() {
 
                 const { data, error } = await supabase
                     .from('evaluations_mentales')
-                    .select('*')
+                    .select('note_globale, motivation, rigueur, ponctualite, attitude, respect')
                     .eq('joueur_id', joueurId)
                     .single();
 
-                const defaultData = Object.fromEntries(criteres.map((c) => [c.key, 50]));
                 if (error && error.code !== 'PGRST116')
                     throw new Error("Impossible de charger l'évaluation.");
-                setEvalData(data || defaultData);
-            } catch (e) {
-                setError(e.message);
+                setEvalData(data || defaultEvalData);
+            } catch (error) {
+                setError((error as Error).message);
             } finally {
                 setLoading(false);
             }
@@ -63,8 +83,11 @@ export default function EvalMentale() {
 
     // Calcul dynamique de la note globale au cas où elle n'existe pas
     const computeNoteGlobale = () => {
-        if (!evalData) return 0;
-        const notes = criteres.map((c) => Number(evalData[c.key]) || 0);
+        if (!evalData) {
+            return 0;
+        }
+
+        const notes = Object.values(evalData).filter((value) => Number(value));
         return Math.round(notes.reduce((a, b) => a + b, 0) / notes.length);
     };
 
