@@ -20,13 +20,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { TeamCard } from '../../components/business/TeamCard';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
-import { Club } from '@/types/club';
-import { Staff } from '@/types/staff';
-import { Stage } from '@/types/stage';
-import { Evenement } from '@/types/evenement';
-import { ParticipationEvenement } from '@/types/ParticipationEvenement';
+import { Club } from '@/types/Club';
+import { Staff } from '@/types/Staff';
+import { Stage } from '@/types/Stage';
+import { Evenement } from '@/types/Evenement';
+import { ParticipationsEvenement } from '@/types/ParticipationsEvenement';
 import { useCachedApi } from '@/hooks/useCachedApi';
-import { EquipeWithJoueurs } from '@/types/equipe';
+import { EquipeWithJoueurs } from '@/types/Equipe';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GREEN = '#00ff88';
@@ -143,9 +143,11 @@ export default function CoachDashboard() {
         [evenements],
     );
 
-    const [participations, , fetchEvenementParticipations] = useCachedApi<ParticipationEvenement[]>(
+    const [participations, , fetchEvenementParticipations] = useCachedApi<
+        ParticipationsEvenement[]
+    >(
         'fetch_evenement_participations',
-        useCallback(async (): Promise<ParticipationEvenement[]> => {
+        useCallback(async (): Promise<ParticipationsEvenement[]> => {
             if (!evenement?.id) return [];
 
             const { data } = await supabase

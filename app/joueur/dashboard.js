@@ -187,7 +187,7 @@ export default function JoueurDashboard() {
             const { data: participData } = await supabase
                 .from('participations_evenement')
                 .select('*')
-                .eq('joueur_id', joueurData.id);
+                .eq('utilisateur_id', joueurData.id);
             setParticipations(participData || []);
             const lastViewed = await AsyncStorage.getItem(LAST_MESSAGES_VIEWED);
             const lastDate = lastViewed ? new Date(lastViewed) : new Date(0);

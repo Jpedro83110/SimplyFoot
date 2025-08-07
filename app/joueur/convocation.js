@@ -50,11 +50,11 @@ export default function ConvocationsJoueur() {
                 }
 
                 // 🎯 CORRECTION : Utiliser l'ID utilisateur directement
-                // car participations_evenement.joueur_id contient maintenant des IDs d'utilisateurs
+                // car participations_evenement.utilisateur_id contient maintenant des IDs d'utilisateurs
                 const { data: participations, error: partError } = await supabase
                     .from('participations_evenement')
-                    .select('evenement_id, reponse, joueur_id')
-                    .eq('joueur_id', utilisateurId); // Utiliser directement l'ID utilisateur
+                    .select('evenement_id, reponse, utilisateur_id')
+                    .eq('utilisateur_id', utilisateurId); // Utiliser directement l'ID utilisateur
 
                 console.log('🎯 Participations trouvées:', participations);
 
@@ -95,7 +95,7 @@ export default function ConvocationsJoueur() {
                     return {
                         ...evt,
                         reponse: participation?.reponse || null,
-                        participation_id: participation?.joueur_id,
+                        participation_id: participation?.utilisateur_id,
                     };
                 });
 

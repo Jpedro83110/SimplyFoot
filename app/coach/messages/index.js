@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { DARK_GRADIENT } from '@/utils/styleContants.util';
 
 const GREEN = '#00ff88';
 
@@ -30,7 +31,7 @@ export default function MessagesIndex() {
             style={styles.background}
             resizeMode="cover"
         >
-            <LinearGradient colors={['#121212cc', '#121212dd']} style={styles.container}>
+            <LinearGradient colors={DARK_GRADIENT} style={styles.container}>
                 <Text style={styles.title}>💬 Messagerie Coach</Text>
 
                 <TouchableOpacity

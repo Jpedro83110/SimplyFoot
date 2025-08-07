@@ -440,7 +440,7 @@ export default function TransportDetail() {
                                 )}
 
                                 {/* Validation demandeur (joueur) */}
-                                {demande.joueur_id === userId && !prop.accepte && (
+                                {demande.utilisateur_id === userId && !prop.accepte && (
                                     <TouchableOpacity
                                         style={styles.acceptBtn}
                                         onPress={() => accepterProposition(prop)}
