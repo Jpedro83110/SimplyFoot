@@ -254,7 +254,7 @@ export default function CreateEvent() {
                 const participations = selectedJoueurs
                     .filter((userId) => !dejaIds.includes(userId))
                     .map((userId) => ({
-                        joueur_id: userId, // Maintenant c'est l'ID utilisateur
+                        utilisateur_id: userId,
                         evenement_id: nouvelEvenement.id,
                         reponse: null,
                         besoin_transport: false,
@@ -266,9 +266,7 @@ export default function CreateEvent() {
                     // ✅ CORRECTION : Syntaxe correcte pour Supabase upsert
                     const { error: partError } = await supabase
                         .from('participations_evenement')
-                        .upsert(participations, {
-                            onConflict: 'joueur_id,evenement_id', // STRING au lieu d'array
-                        });
+                        .upsert(participations);
 
                     if (partError) {
                         console.error('❌ Erreur participations:', partError);

@@ -54,6 +54,8 @@ export default function ConvocationReponse() {
                     utilisateurId,
                 });
 
+                console.log('Fetched Evenement Infos:', fetchedEvenementInfos);
+
                 setEvenementInfos(fetchedEvenementInfos);
             } catch (error) {
                 Alert.alert(
@@ -72,8 +74,10 @@ export default function ConvocationReponse() {
         try {
             setReponseLoading(true);
 
-            const utilisateurId = evenementInfos?.participations_evenement[0]?.utilisateurs[0].id;
-            const accepteTransport = evenementInfos?.participations_evenement[0]?.besoin_transport;
+            const utilisateurId = evenementInfos?.participations_evenement[0]?.utilisateurs[0]?.id;
+            const accepteTransport =
+                evenementInfos?.participations_evenement[0]?.utilisateurs[0]?.joueurs[0]
+                    ?.decharges_generales[0]?.accepte_transport;
 
             if (!utilisateurId || !evenementId || !valeur) {
                 Alert.alert('Erreur', 'Données manquantes (utilisateur ou événement).');
@@ -120,7 +124,7 @@ export default function ConvocationReponse() {
         try {
             setSendingProposition(true);
 
-            const utilisateurId = evenementInfos?.participations_evenement[0]?.utilisateurs[0].id;
+            const utilisateurId = evenementInfos?.participations_evenement[0]?.utilisateurs[0]?.id;
             const { error } = await supabase.from('messages_besoin_transport').insert({
                 evenement_id: evenementId,
                 utilisateur_id: utilisateurId,
@@ -163,7 +167,7 @@ export default function ConvocationReponse() {
             setNouvelleHeure('');
             // await fetchTransportMessages(); // FIXME
         } catch (error) {
-            Alert.alert('Erreur', "Impossible d'envoyer la proposition.");
+            Alert.alert('Erreur', (error as Error).message);
         } finally {
             setSendingProposition(false);
         }
@@ -196,7 +200,7 @@ export default function ConvocationReponse() {
             if (error) throw error;
             // await fetchTransportMessages(); // FIXME
         } catch (error) {
-            Alert.alert('Erreur', 'Impossible de signer.');
+            Alert.alert('Erreur', (error as Error).message);
         }
     };
 
@@ -312,8 +316,8 @@ export default function ConvocationReponse() {
                 </TouchableOpacity>
             </View>
 
-            {
-                // FIXME accepte transport
+            {evenementInfos?.participations_evenement[0]?.utilisateurs[0]?.joueurs[0]
+                ?.decharges_generales[0]?.accepte_transport &&
                 evenementInfos?.participations_evenement[0].reponse === 'present' && (
                     <View style={styles.switchBlock}>
                         <Text style={styles.label}>Je n&apos;ai pas de moyen de transport</Text>
@@ -327,8 +331,7 @@ export default function ConvocationReponse() {
                             }
                         />
                     </View>
-                )
-            }
+                )}
 
             {/* Affiche le bouton transport SEULEMENT si besoinTransport === true ET reponse === 'present' */}
             {evenementInfos?.participations_evenement[0].reponse === 'present' &&
