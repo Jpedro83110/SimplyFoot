@@ -24,10 +24,10 @@ function useCacheData<T>(
     const [data, setData] = useState<T | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
 
-    const isValidCache = (entry: CacheEntry<T>): boolean => {
+    const isValidCache = useCallback((entry: CacheEntry<T>): boolean => {
         const now = Date.now();
         return now - entry.timestamp < entry.ttl * 1000;
-    };
+    }, []);
 
     const fetchData = useCallback(async (): Promise<void> => {
         if (!key || loading) return;
@@ -59,13 +59,13 @@ function useCacheData<T>(
         } finally {
             setLoading(false);
         }
-    }, [key, fetchFunction, ttl, isValidCache]);
+    }, [key, loading, isValidCache, fetchFunction, ttl]);
 
     useEffect(() => {
         if (data === null) {
             fetchData();
         }
-    }, [fetchData]);
+    }, [data, fetchData]);
 
     const refresh = useCallback(async (): Promise<void> => {
         if (key) {

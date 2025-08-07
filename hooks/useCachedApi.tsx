@@ -21,7 +21,7 @@ const cache = new Map<string, CacheEntry<any>>(); // FIXME: use a context or a m
 function useCachedApi<T>(
     key: string,
     fetchData: () => Promise<T | undefined>,
-    ttl: number = 1000 * 60 * 5,
+    ttl: number = 60 * 5,
 ): UseCachedApiReturn<T | undefined> {
     const [data, setData] = useState<T | undefined>();
     const [loading, setLoading] = useState<boolean>(false);
