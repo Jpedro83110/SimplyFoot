@@ -1,5 +1,25 @@
 import { supabase } from '@/lib/supabase';
-import { Utilisateur } from '@/types/Utilisateur';
+
+export const getEvenementByCoachId = async (args: { coachId: string; filterDate?: string }) => {
+    const { coachId, filterDate } = args;
+
+    let request = supabase
+        .from('evenements')
+        .select('id, titre, date, heure, lieu')
+        .eq('coach_id', coachId);
+
+    if (filterDate) {
+        request = request.gte('date', filterDate);
+    }
+
+    const { data, error } = await request.order('date', { ascending: true });
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
 
 export const getEvenementInfosByUtilisateurId = async (args: {
     evenementId: string;

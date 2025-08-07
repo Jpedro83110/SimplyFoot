@@ -30,6 +30,7 @@ export default function ConvocationReponse() {
 
     const [loading, setLoading] = useState(true);
     const [besoinTransport, setBesoinTransport] = useState(false);
+    const [reponse, setReponse] = useState<ParticipationsEvenementReponse>();
     const [reponseLoading, setReponseLoading] = useState(false);
     const [showTransportModal, setShowTransportModal] = useState(false);
 
@@ -106,6 +107,7 @@ export default function ConvocationReponse() {
                 return;
             }
 
+            setReponse(valeur);
             setBesoinTransport(besoinTransportFinal);
             setReponseLoading(false);
             // await fetchTransportMessages(); // FIXME
@@ -237,8 +239,9 @@ export default function ConvocationReponse() {
 
             {/* Debug info */}
             <Text style={styles.debugText}>
-                Réponse actuelle: {evenementInfos?.participations_evenement[0].reponse || 'Aucune'}{' '}
-                | Transport: {besoinTransport ? 'Oui' : 'Non'}
+                Réponse actuelle:{' '}
+                {(reponse ?? evenementInfos?.participations_evenement[0].reponse) || 'Aucune'} |
+                Transport: {besoinTransport ? 'Oui' : 'Non'}
             </Text>
 
             {evenementInfos?.latitude && evenementInfos?.longitude && (
@@ -270,8 +273,8 @@ export default function ConvocationReponse() {
                 <TouchableOpacity
                     style={[
                         styles.button,
-                        evenementInfos?.participations_evenement[0].reponse === 'present' &&
-                            styles.selected,
+                        (reponse ?? evenementInfos?.participations_evenement[0].reponse) ===
+                            'present' && styles.selected,
                     ]}
                     onPress={() => {
                         setBesoinTransport(false);
@@ -282,7 +285,8 @@ export default function ConvocationReponse() {
                     <Text
                         style={[
                             styles.buttonText,
-                            evenementInfos?.participations_evenement[0].reponse === 'present' && {
+                            (reponse ?? evenementInfos?.participations_evenement[0].reponse) ===
+                                'present' && {
                                 color: '#111',
                             },
                         ]}
@@ -294,8 +298,8 @@ export default function ConvocationReponse() {
                 <TouchableOpacity
                     style={[
                         styles.button,
-                        evenementInfos?.participations_evenement[0].reponse === 'absent' &&
-                            styles.selected,
+                        (reponse ?? evenementInfos?.participations_evenement[0].reponse) ===
+                            'absent' && styles.selected,
                     ]}
                     onPress={() => {
                         setBesoinTransport(false);
@@ -306,7 +310,8 @@ export default function ConvocationReponse() {
                     <Text
                         style={[
                             styles.buttonText,
-                            evenementInfos?.participations_evenement[0].reponse === 'absent' && {
+                            (reponse ?? evenementInfos?.participations_evenement[0].reponse) ===
+                                'absent' && {
                                 color: '#111',
                             },
                         ]}
@@ -318,7 +323,7 @@ export default function ConvocationReponse() {
 
             {evenementInfos?.participations_evenement[0]?.utilisateurs[0]?.joueurs[0]
                 ?.decharges_generales[0]?.accepte_transport &&
-                evenementInfos?.participations_evenement[0].reponse === 'present' && (
+                (reponse ?? evenementInfos?.participations_evenement[0].reponse) === 'present' && (
                     <View style={styles.switchBlock}>
                         <Text style={styles.label}>Je n&apos;ai pas de moyen de transport</Text>
                         <Switch
@@ -327,14 +332,15 @@ export default function ConvocationReponse() {
                             thumbColor={besoinTransport ? '#00ff88' : '#666'}
                             trackColor={{ false: '#333', true: '#00ff8860' }}
                             disabled={
-                                evenementInfos?.participations_evenement[0].reponse !== 'present'
+                                (reponse ?? evenementInfos?.participations_evenement[0].reponse) !==
+                                'present'
                             }
                         />
                     </View>
                 )}
 
             {/* Affiche le bouton transport SEULEMENT si besoinTransport === true ET reponse === 'present' */}
-            {evenementInfos?.participations_evenement[0].reponse === 'present' &&
+            {(reponse ?? evenementInfos?.participations_evenement[0].reponse) === 'present' &&
                 besoinTransport && (
                     <TouchableOpacity
                         style={styles.transportBtn}

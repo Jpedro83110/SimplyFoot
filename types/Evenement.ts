@@ -1,4 +1,7 @@
-import { getEvenementInfosByUtilisateurId } from '@/helpers/evenements.helper';
+import {
+    getEvenementByCoachId,
+    getEvenementInfosByUtilisateurId,
+} from '@/helpers/evenements.helper';
 
 export type EvenementFields = keyof Evenement;
 
@@ -23,4 +26,5 @@ export interface Evenement {
     lieu_complement?: string;
 }
 
+export type CoachEvenements = Awaited<ReturnType<typeof getEvenementByCoachId>>;
 export type EvenementInfos = Awaited<ReturnType<typeof getEvenementInfosByUtilisateurId>>;
