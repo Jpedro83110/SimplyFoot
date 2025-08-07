@@ -75,9 +75,7 @@ export default function MessagesPrivesCoach() {
         );
 
     useEffect(() => {
-        if (selectedJoueurId) {
-            fetchCoachMessages();
-        }
+        fetchCoachMessages();
     }, [fetchCoachMessages, selectedJoueurId]);
 
     const handleEnvoyer = async () => {
@@ -169,7 +167,15 @@ export default function MessagesPrivesCoach() {
                         value={message}
                         onChangeText={setMessage}
                     />
-                    <Pressable onPress={handleEnvoyer} style={styles.bouton}>
+                    <Pressable
+                        onPress={handleEnvoyer}
+                        disabled={selectedJoueurId === undefined || message.trim() === ''}
+                        style={
+                            selectedJoueurId === undefined || message.trim() === ''
+                                ? styles.boutonDisabled
+                                : styles.bouton
+                        }
+                    >
                         <Ionicons name="send" size={18} color="#111" />
                         <Text style={styles.boutonText}>Envoyer</Text>
                     </Pressable>
@@ -211,6 +217,15 @@ const styles = StyleSheet.create({
     },
     bouton: {
         backgroundColor: '#00ff88',
+        borderRadius: 8,
+        paddingVertical: 10,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+    },
+    boutonDisabled: {
+        backgroundColor: '#555',
         borderRadius: 8,
         paddingVertical: 10,
         flexDirection: 'row',
