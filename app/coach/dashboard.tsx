@@ -97,6 +97,7 @@ export default function CoachDashboard() {
 
             return data as EquipeWithJoueurs[];
         }, [userId]),
+        1,
     );
 
     const [stage, , fetchClubStage] = useCachedApi<Stage>(

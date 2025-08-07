@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
-import useCacheData, { saveToCache } from '../../lib/cache';
+import useCacheData from '../../lib/cache';
 
 // Fonction utilitaire pour générer un code équipe unique
 function generateCodeEquipe(length = 6) {
@@ -50,22 +50,29 @@ export default function CreationEquipe() {
     const [loading, setLoading] = useState(false);
 
     // Ajout du cache : on tente d'abord cache, puis fallback Supabase si rien trouvé
-    const [userInfo, , loadingUserInfo] = useCacheData(
+    const [userInfo, , loadingUserInfo] = useCacheData<{
+        club_id: any;
+        coach_id: any;
+    }>(
         'coach_user_info',
         async () => {
             const { data: sessionData } = await supabase.auth.getSession();
             const id = sessionData?.session?.user?.id;
-            if (!id) return {};
+
+            if (!id) {
+                return null;
+            }
+
             const { data: userInfo } = await supabase
                 .from('utilisateurs')
                 .select('club_id')
                 .eq('id', id)
                 .single();
             if (userInfo) {
-                saveToCache('coach_user_info', userInfo); // Pour remplir dès prochain boot
                 return { ...userInfo, coach_id: id };
             }
-            return {};
+
+            return null;
         },
         1800, // 30 min de cache, tu adaptes si besoin
     );
