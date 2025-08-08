@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -9,36 +9,57 @@ import {
     KeyboardAvoidingView,
     Platform,
     StatusBar,
-    ScrollView,
     ActivityIndicator,
+    Switch,
+    ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSession } from '@/hooks/useSession';
 
-export default function LoginClub() {
+export default function LoginJoueur() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [rememberMe, setRememberMe] = useState(true);
+    const [showPassword, setShowPassword] = useState(false);
 
     const { signIn } = useSession();
 
+    // Charger email enregistré si "Se souvenir de moi"
+    useEffect(() => {
+        AsyncStorage.getItem('remembered-email').then((savedEmail) => {
+            if (savedEmail) {
+                setEmail(savedEmail);
+            }
+        });
+    }, []);
+
+    // GESTION OUBLI MOT DE PASSE
     const handleForgotPassword = async () => {
         if (!email) {
             Alert.alert(
                 'Erreur',
                 "Entrez d'abord votre email pour recevoir un lien de réinitialisation.",
             );
+            console.log(
+                'Erreur',
+                "Entrez d'abord votre email pour recevoir un lien de réinitialisation.",
+            );
             return;
         }
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+            redirectTo: 'http://localhost:8081/auth/reset-password', // FIXME
+        });
         if (error) {
             Alert.alert('Erreur', error.message);
+            console.log('Erreur', error.message);
         } else {
             Alert.alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
+            console.log('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
         }
     };
 
@@ -50,64 +71,8 @@ export default function LoginClub() {
 
         try {
             await signIn(email, password);
-            // const trimmedEmail = email.trim().toLowerCase();
-            // const trimmedPassword = password.trim();
-
-            // // Authentification Supabase
-            // const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            //     email: trimmedEmail,
-            //     password: trimmedPassword,
-            // });
-
-            // if (authError || !authData?.user) {
-            //     Alert.alert(
-            //         'Erreur',
-            //         authError?.message === 'Invalid login credentials'
-            //             ? 'Email ou mot de passe incorrect.'
-            //             : `Erreur : ${authError?.message || 'Connexion impossible.'}`,
-            //     );
-            //     setLoading(false);
-            //     return;
-            // }
-
-            // // Récupération du rôle utilisateur
-            // const { data: userData, error: userError } = await supabase
-            //     .from('utilisateurs')
-            //     .select('role')
-            //     .eq('id', authData.user.id)
-            //     .single();
-
-            // if (userError || !userData?.role) {
-            //     console.log('Erreur récupération rôle:', userError, userData);
-            //     Alert.alert('Erreur', 'Impossible de récupérer le rôle utilisateur.');
-            //     setLoading(false);
-            //     return;
-            // }
-
-            // const role = userData.role;
-
-            // switch (role) {
-            //     case 'admin':
-            //         router.replace('/admin/dashboard');
-            //         break;
-            //     case 'president':
-            //         router.replace('/president/dashboard');
-            //         break;
-            //     case 'coach':
-            //     case 'staff':
-            //         router.replace('/coach/dashboard');
-            //         break;
-            //     case 'joueur':
-            //     case 'parent':
-            //         router.replace('/joueur/dashboard');
-            //         break;
-            //     default:
-            //         Alert.alert('Erreur', `Rôle non reconnu : ${role}`);
-            //         setLoading(false);
-            //         return;
-            // }
-        } catch (err) {
-            console.log('Erreur générale', err);
+        } catch (error) {
+            console.log('Erreur générale', error);
             Alert.alert('Erreur', 'Problème de connexion, réessaie plus tard.');
         } finally {
             setLoading(false);
@@ -117,14 +82,14 @@ export default function LoginClub() {
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1 }}
+            style={styles.container}
         >
             <StatusBar barStyle="light-content" />
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
             >
-                <Text style={styles.title}>Connexion Club</Text>
+                <Text style={styles.title}>Connexion Joueur / Parent</Text>
                 <TextInput
                     style={styles.input}
                     placeholder="Email"
@@ -158,6 +123,16 @@ export default function LoginClub() {
                     </TouchableOpacity>
                 </View>
 
+                <View style={styles.rememberContainer}>
+                    <Switch
+                        value={rememberMe}
+                        onValueChange={setRememberMe}
+                        thumbColor={rememberMe ? '#00ff88' : '#555'}
+                        trackColor={{ false: '#555', true: '#1e1e1e' }}
+                    />
+                    <Text style={styles.rememberText}>Se souvenir de moi</Text>
+                </View>
+
                 <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
                     {loading ? (
                         <ActivityIndicator color="#000" />
@@ -170,12 +145,10 @@ export default function LoginClub() {
                     <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => router.push('/auth/inscription-coach')}>
-                    <Text style={styles.switchText}>Créer un compte Coach</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => router.push('/auth/inscription-president')}>
-                    <Text style={styles.switchText}>Créer un nouveau club (Président)</Text>
+                <TouchableOpacity onPress={() => router.push('/auth/inscription-joueur')}>
+                    <Text style={styles.switchText}>
+                        Pas encore de compte ? Créer un compte Joueur
+                    </Text>
                 </TouchableOpacity>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -235,16 +208,28 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontSize: 16,
     },
+    rememberContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        marginBottom: 18,
+        marginTop: 8,
+    },
+    rememberText: {
+        color: '#00ff88',
+        fontSize: 14,
+        marginLeft: 10,
+    },
     forgotText: {
         color: '#00bfff',
-        marginTop: 22,
+        marginTop: 18,
         fontSize: 15,
         textAlign: 'center',
         textDecorationLine: 'underline',
     },
     switchText: {
         color: '#00ff88',
-        marginTop: 30,
+        marginTop: 28,
         textDecorationLine: 'underline',
         fontSize: 14,
         textAlign: 'center',
