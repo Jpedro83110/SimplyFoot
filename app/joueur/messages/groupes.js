@@ -40,7 +40,9 @@ export default function MessagesGroupesJoueur() {
                 .select('joueur_id')
                 .eq('id', userId)
                 .single();
-            if (!user?.joueur_id) return;
+            if (!user?.joueur_id) {
+                return;
+            }
             const { data: joueur } = await supabase
                 .from('joueurs')
                 .select('equipe_id')
@@ -75,7 +77,9 @@ export default function MessagesGroupesJoueur() {
                 .order('created_at', { ascending: true });
             const regroupees = {};
             for (let rep of reps || []) {
-                if (!regroupees[rep.message_id]) regroupees[rep.message_id] = [];
+                if (!regroupees[rep.message_id]) {
+                    regroupees[rep.message_id] = [];
+                }
                 regroupees[rep.message_id].push(rep);
             }
             setReponses(regroupees);

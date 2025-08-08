@@ -34,7 +34,9 @@ export default function SuiviJoueur() {
             } else {
                 const { data: sessionData } = await supabase.auth.getSession();
                 const joueurId = sessionData?.session?.user?.id;
-                if (!joueurId) return;
+                if (!joueurId) {
+                    return;
+                }
 
                 const { data, error } = await supabase
                     .from('suivis_personnalises')
@@ -44,8 +46,11 @@ export default function SuiviJoueur() {
                     .limit(1)
                     .single();
 
-                if (error) console.error(error);
-                else setSuivi(data);
+                if (error) {
+                    console.error(error);
+                } else {
+                    setSuivi(data);
+                }
 
                 setLoading(false);
             }
@@ -53,7 +58,9 @@ export default function SuiviJoueur() {
         fetchSuivi();
     }, []);
 
-    if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    if (loading) {
+        return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    }
 
     return (
         <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>

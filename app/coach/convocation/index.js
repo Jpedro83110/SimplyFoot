@@ -56,7 +56,9 @@ export default function ConvocationsList() {
     const handleDelete = (eventId) => {
         const confirmMsg = 'Supprimer définitivement cet événement et toutes ses participations ?';
         if (Platform.OS === 'web') {
-            if (!window.confirm(confirmMsg)) return;
+            if (!window.confirm(confirmMsg)) {
+                return;
+            }
             doDelete(eventId);
         } else {
             Alert.alert("Supprimer l'événement", confirmMsg, [
@@ -99,7 +101,9 @@ export default function ConvocationsList() {
         setLoading(false);
     };
 
-    if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    if (loading) {
+        return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    }
 
     return (
         <ScrollView style={styles.container}>

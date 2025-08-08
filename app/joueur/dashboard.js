@@ -53,13 +53,17 @@ export default function JoueurDashboard() {
     const router = useRouter();
 
     const getImageUrlWithCacheBuster = (url) => {
-        if (!url) return url;
+        if (!url) {
+            return url;
+        }
         const separator = url.includes('?') ? '&' : '?';
         return `${url}${separator}v=${refreshKey}`;
     };
 
     const sendNotificationToStaff = useCallback(async () => {
-        if (!joueur || !equipe) return;
+        if (!joueur || !equipe) {
+            return;
+        }
         try {
             const { data: staffData } = await supabase
                 .from('utilisateurs')
@@ -140,13 +144,17 @@ export default function JoueurDashboard() {
         try {
             const { data: sessionData } = await supabase.auth.getSession();
             const session = sessionData?.session;
-            if (!session) throw new Error('Session expirée, reconnectez-vous.');
+            if (!session) {
+                throw new Error('Session expirée, reconnectez-vous.');
+            }
             const { data: userData } = await supabase
                 .from('utilisateurs')
                 .select('*')
                 .eq('id', session.user.id)
                 .single();
-            if (!userData?.joueur_id) throw new Error('Utilisateur non lié à un joueur.');
+            if (!userData?.joueur_id) {
+                throw new Error('Utilisateur non lié à un joueur.');
+            }
             setUser(userData);
             const { data: joueurData } = await supabase
                 .from('joueurs')
@@ -261,23 +269,29 @@ export default function JoueurDashboard() {
                     if (Platform.OS === 'web') {
                         const response = await fetch(image.uri);
                         fileData = await response.blob();
-                        if (image.uri.includes('.png')) fileExt = 'png';
-                        else if (image.uri.includes('.jpeg') || image.uri.includes('.jpg'))
-                            fileExt = 'jpg';
-                        else if (image.uri.includes('.gif')) fileExt = 'gif';
-                    } else {
-                        if (!image.base64) throw new Error('Pas de données base64 disponibles');
-                        fileData = decode(image.base64);
-                        if (image.uri.includes('png') || image.type?.includes('png'))
+                        if (image.uri.includes('.png')) {
                             fileExt = 'png';
-                        else if (
+                        } else if (image.uri.includes('.jpeg') || image.uri.includes('.jpg')) {
+                            fileExt = 'jpg';
+                        } else if (image.uri.includes('.gif')) {
+                            fileExt = 'gif';
+                        }
+                    } else {
+                        if (!image.base64) {
+                            throw new Error('Pas de données base64 disponibles');
+                        }
+                        fileData = decode(image.base64);
+                        if (image.uri.includes('png') || image.type?.includes('png')) {
+                            fileExt = 'png';
+                        } else if (
                             image.uri.includes('jpeg') ||
                             image.uri.includes('jpg') ||
                             image.type?.includes('jpeg')
-                        )
+                        ) {
                             fileExt = 'jpg';
-                        else if (image.uri.includes('gif') || image.type?.includes('gif'))
+                        } else if (image.uri.includes('gif') || image.type?.includes('gif')) {
                             fileExt = 'gif';
+                        }
                     }
                     const fileName = `photos_profils_joueurs/${user.id}_${Date.now()}.${fileExt}`;
                     const { error: uploadError } = await supabase.storage
@@ -286,7 +300,9 @@ export default function JoueurDashboard() {
                             contentType: `image/${fileExt}`,
                             upsert: true,
                         });
-                    if (uploadError) throw new Error(`Upload échoué: ${uploadError.message}`);
+                    if (uploadError) {
+                        throw new Error(`Upload échoué: ${uploadError.message}`);
+                    }
                     const { data: urlData } = supabase.storage
                         .from('fichiers')
                         .getPublicUrl(fileName);
@@ -295,7 +311,9 @@ export default function JoueurDashboard() {
                         .from('joueurs')
                         .update({ photo_profil_url: basePhotoUrl })
                         .eq('id', joueur.id);
-                    if (updateError) throw new Error(`Sauvegarde échouée: ${updateError.message}`);
+                    if (updateError) {
+                        throw new Error(`Sauvegarde échouée: ${updateError.message}`);
+                    }
                     setJoueur((prev) => ({ ...prev, photo_profil_url: basePhotoUrl }));
                     setEditData((prev) => ({ ...prev, photo_profil_url: basePhotoUrl }));
                     setRefreshKey(Date.now());
@@ -327,7 +345,9 @@ export default function JoueurDashboard() {
                 equipement: editData.equipement ? 'Complet' : 'En attente',
             };
             const { error } = await supabase.from('joueurs').update(updateData).eq('id', joueur.id);
-            if (error) throw error;
+            if (error) {
+                throw error;
+            }
             setJoueur((prev) => ({ ...prev, ...updateData }));
             setShowEditModal(false);
             Alert.alert('Succès', 'Informations mises à jour !');

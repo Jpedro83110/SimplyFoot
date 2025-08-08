@@ -60,7 +60,9 @@ export default function AuthLayout() {
         };
 
         const redirectUser = async () => {
-            if (!session?.user || redirecting || !shouldRedirect()) return;
+            if (!session?.user || redirecting || !shouldRedirect()) {
+                return;
+            }
 
             const userEmail = session.user.email;
             console.log('[AUTH] Email détecté :', userEmail);

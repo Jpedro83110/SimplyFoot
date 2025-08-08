@@ -69,7 +69,9 @@ export default function Infos() {
     );
 
     useEffect(() => {
-        if (infosClub) setForm(infosClub);
+        if (infosClub) {
+            setForm(infosClub);
+        }
     }, [infosClub]);
 
     const handleSave = async () => {
@@ -95,7 +97,9 @@ export default function Infos() {
         }
     };
 
-    if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    if (loading) {
+        return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    }
 
     return (
         <ScrollView

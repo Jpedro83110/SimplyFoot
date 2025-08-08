@@ -56,30 +56,41 @@ export default function NoteGlobaleEquipe() {
 
     // Moyenne générale sur 100 (ignore les nulls)
     function calcMoyenneGen(m, t) {
-        if (m !== null && t !== null) return Math.round((Number(m) + Number(t)) / 2);
-        if (m !== null) return Math.round(Number(m));
-        if (t !== null) return Math.round(Number(t));
+        if (m !== null && t !== null) {
+            return Math.round((Number(m) + Number(t)) / 2);
+        }
+        if (m !== null) {
+            return Math.round(Number(m));
+        }
+        if (t !== null) {
+            return Math.round(Number(t));
+        }
         return null;
     }
     const moyenneGen = calcMoyenneGen(notes.mentale, notes.technique);
 
     // Choix du badge selon la moyenne générale
     function getBadge(n) {
-        if (n === null) return null;
-        if (n >= 95)
+        if (n === null) {
+            return null;
+        }
+        if (n >= 95) {
             return {
                 icon: require('../../assets/badges/platine.png'),
                 label: 'PLATINE',
                 color: '#9eeaff',
             };
-        if (n >= 80)
+        }
+        if (n >= 80) {
             return { icon: require('../../assets/badges/or.png'), label: 'OR', color: '#ffe773' };
-        if (n >= 60)
+        }
+        if (n >= 60) {
             return {
                 icon: require('../../assets/badges/argent.png'),
                 label: 'ARGENT',
                 color: '#bfcbd6',
             };
+        }
         return {
             icon: require('../../assets/badges/bronze.png'),
             label: 'BRONZE',
@@ -88,7 +99,9 @@ export default function NoteGlobaleEquipe() {
     }
     const badge = getBadge(moyenneGen);
 
-    if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    if (loading) {
+        return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    }
 
     // Responsive design
     const isMobile = screenWidth < 600;

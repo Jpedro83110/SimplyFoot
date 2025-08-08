@@ -87,7 +87,9 @@ export default function EvaluationMentale() {
     const [evalData, refresh, loadingEval] = useCacheData(
         joueurInfo?.id ? `eval-mentale-${joueurInfo?.id}` : null,
         async () => {
-            if (!joueurInfo?.id) return null;
+            if (!joueurInfo?.id) {
+                return null;
+            }
 
             try {
                 const { data, error } = await supabase

@@ -9,7 +9,9 @@ export default function Accueil() {
 
     const redirectUser = useCallback(
         async (session) => {
-            if (!session?.user) return;
+            if (!session?.user) {
+                return;
+            }
 
             try {
                 const { data, error } = await supabase

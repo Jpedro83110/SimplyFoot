@@ -32,7 +32,9 @@ export default function ListeEquipesCoach() {
             try {
                 const { data: sessionData } = await supabase.auth.getSession();
                 const coachId = sessionData?.session?.user?.id;
-                if (!coachId) return setEquipes([]);
+                if (!coachId) {
+                    return setEquipes([]);
+                }
 
                 // Récupère toutes les équipes où le coach est owner
                 const { data, error } = await supabase
@@ -40,14 +42,22 @@ export default function ListeEquipesCoach() {
                     .select('id, nom, categorie, code_equipe')
                     .eq('coach_id', coachId)
                     .order('categorie', { ascending: true });
-                if (error) throw error;
+                if (error) {
+                    throw error;
+                }
 
-                if (mounted) setEquipes(data || []);
+                if (mounted) {
+                    setEquipes(data || []);
+                }
             } catch (error) {
                 console.error('Erreur lors du chargement des équipes:', error);
-                if (mounted) setEquipes([]);
+                if (mounted) {
+                    setEquipes([]);
+                }
             } finally {
-                if (mounted) setLoading(false);
+                if (mounted) {
+                    setLoading(false);
+                }
             }
         }
         fetchEquipes();
@@ -58,7 +68,9 @@ export default function ListeEquipesCoach() {
 
     // Copie du code équipe dans le presse-papier
     const copierCode = (code) => {
-        if (!code) return;
+        if (!code) {
+            return;
+        }
         Clipboard.setStringAsync(code);
         Alert.alert('Copié !', 'Le code équipe a été copié.');
     };

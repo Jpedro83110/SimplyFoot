@@ -215,13 +215,14 @@ export default function JoueurDetail() {
         );
     };
 
-    if (loading || !joueur)
+    if (loading || !joueur) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />
                 <Text style={styles.loadingText}>Chargement des données...</Text>
             </View>
         );
+    }
 
     return (
         <ScrollView contentContainerStyle={styles.container}>

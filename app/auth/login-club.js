@@ -40,7 +40,9 @@ export default function LoginClub() {
     };
 
     const handleLogin = async () => {
-        if (loading) return;
+        if (loading) {
+            return;
+        }
         setLoading(true);
 
         try {

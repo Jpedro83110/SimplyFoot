@@ -35,7 +35,9 @@ export default function Evenements() {
             .select('id')
             .eq('created_by', userId)
             .single();
-        if (clubByCreator) return clubByCreator.id;
+        if (clubByCreator) {
+            return clubByCreator.id;
+        }
 
         // 2. Sinon tente via table utilisateurs (si le président est lié à un club par club_id)
         const { data: user } = await supabase
@@ -43,7 +45,9 @@ export default function Evenements() {
             .select('club_id')
             .eq('id', userId)
             .single();
-        if (user?.club_id) return user.club_id;
+        if (user?.club_id) {
+            return user.club_id;
+        }
 
         // Rien trouvé
         return null;
@@ -68,8 +72,11 @@ export default function Evenements() {
             .eq('club_id', foundClubId)
             .order('date', { ascending: true });
 
-        if (error) Alert.alert('Erreur', error.message);
-        else setEvents(data);
+        if (error) {
+            Alert.alert('Erreur', error.message);
+        } else {
+            setEvents(data);
+        }
 
         setLoading(false);
     }, []);

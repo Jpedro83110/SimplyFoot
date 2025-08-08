@@ -68,8 +68,12 @@ export default function CreateEvent() {
         setCoords(null);
         setMeteo('');
         setLieuxResultats([]);
-        if (timerLieu.current) clearTimeout(timerLieu.current);
-        if (text.length < 3) return;
+        if (timerLieu.current) {
+            clearTimeout(timerLieu.current);
+        }
+        if (text.length < 3) {
+            return;
+        }
         setFetchingLieu(true);
         timerLieu.current = setTimeout(async () => {
             try {

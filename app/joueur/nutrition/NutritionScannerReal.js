@@ -24,7 +24,9 @@ export default function NutritionScannerReal() {
     }, [permission, requestPermission]);
 
     const handleBarCodeScanned = async ({ type, data }) => {
-        if (scanned) return;
+        if (scanned) {
+            return;
+        }
 
         setScanned(true);
         setLoading(true);
@@ -208,7 +210,9 @@ export default function NutritionScannerReal() {
     };
 
     const formatNutrition = (value) => {
-        if (!value) return 'N/A';
+        if (!value) {
+            return 'N/A';
+        }
         return value < 1 ? `${(value * 1000).toFixed(0)}mg` : `${value.toFixed(1)}g`;
     };
 

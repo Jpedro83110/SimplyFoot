@@ -134,7 +134,9 @@ export default function CoachDashboard() {
                 .eq('coach_id', userId)
                 .gte('date', filterDate)
                 .order('date', { ascending: true });
-            if (error) throw error;
+            if (error) {
+                throw error;
+            }
             return data || [];
         }, [userId]),
     );
@@ -149,7 +151,9 @@ export default function CoachDashboard() {
     >(
         'fetch_evenement_participations',
         useCallback(async (): Promise<ParticipationsEvenement[]> => {
-            if (!evenement?.id) return [];
+            if (!evenement?.id) {
+                return [];
+            }
 
             const { data } = await supabase
                 .from('participations_evenement')
@@ -178,7 +182,9 @@ export default function CoachDashboard() {
     // TODO: move this to a separate utilities file
     const getImageUrlWithCacheBuster = useCallback(
         (url?: string): string | undefined => {
-            if (!url) return url;
+            if (!url) {
+                return url;
+            }
 
             // Si l'URL contient déjà un paramètre, ajouter avec &, sinon avec ?
             const separator = url.includes('?') ? '&' : '?';
@@ -304,10 +310,13 @@ export default function CoachDashboard() {
                         const response = await fetch(image.uri);
                         fileData = await response.blob();
 
-                        if (image.uri.includes('.png')) fileExt = 'png';
-                        else if (image.uri.includes('.jpeg') || image.uri.includes('.jpg'))
+                        if (image.uri.includes('.png')) {
+                            fileExt = 'png';
+                        } else if (image.uri.includes('.jpeg') || image.uri.includes('.jpg')) {
                             fileExt = 'jpg';
-                        else if (image.uri.includes('.gif')) fileExt = 'gif';
+                        } else if (image.uri.includes('.gif')) {
+                            fileExt = 'gif';
+                        }
                     } else {
                         if (!image.base64) {
                             throw new Error('Pas de données base64 disponibles');
@@ -315,16 +324,17 @@ export default function CoachDashboard() {
 
                         fileData = decode(image.base64);
 
-                        if (image.uri.includes('png') || image.type?.includes('png'))
+                        if (image.uri.includes('png') || image.type?.includes('png')) {
                             fileExt = 'png';
-                        else if (
+                        } else if (
                             image.uri.includes('jpeg') ||
                             image.uri.includes('jpg') ||
                             image.type?.includes('jpeg')
-                        )
+                        ) {
                             fileExt = 'jpg';
-                        else if (image.uri.includes('gif') || image.type?.includes('gif'))
+                        } else if (image.uri.includes('gif') || image.type?.includes('gif')) {
                             fileExt = 'gif';
+                        }
                     }
 
                     // 3. Nom de fichier avec timestamp
@@ -429,7 +439,9 @@ export default function CoachDashboard() {
                 .update(updateData)
                 .eq('utilisateur_id', userId);
 
-            if (error) throw error;
+            if (error) {
+                throw error;
+            }
 
             refreshCoach();
             setShowEditModal(false);
@@ -462,22 +474,27 @@ export default function CoachDashboard() {
 
     // Calculer âge
     const calculAge = (date?: string): string | null => {
-        if (!date) return null;
+        if (!date) {
+            return null;
+        }
         const birth = new Date(date);
         const today = new Date();
         let age = today.getFullYear() - birth.getFullYear();
         const m = today.getMonth() - birth.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+            age--;
+        }
         return age + ' ans';
     };
 
-    if (loading)
+    if (loading) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator color="#00ff88" size="large" />
                 <Text style={styles.loadingText}>Chargement...</Text>
             </View>
         );
+    }
 
     const actionsData = [
         { label: 'Créer équipe', icon: 'people', route: '/coach/creation-equipe' },

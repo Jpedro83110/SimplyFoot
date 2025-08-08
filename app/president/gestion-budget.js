@@ -43,7 +43,9 @@ export default function GestionBudget() {
                 .select('id')
                 .eq('created_by', userId)
                 .single();
-            if (!error && data) setClubId(data.id);
+            if (!error && data) {
+                setClubId(data.id);
+            }
         };
         fetchClubId();
     }, []);
@@ -55,9 +57,13 @@ export default function GestionBudget() {
             .select('*')
             .eq('club_id', clubId)
             .order('date', { ascending: false });
-        if (filtreMois) query = query.filter('date', 'like', `${filtreMois}-%`);
+        if (filtreMois) {
+            query = query.filter('date', 'like', `${filtreMois}-%`);
+        }
         const { data, error } = await query;
-        if (error) throw new Error(error.message);
+        if (error) {
+            throw new Error(error.message);
+        }
         return data || [];
     };
 
@@ -84,7 +90,9 @@ export default function GestionBudget() {
             return;
         }
         // Si pas de date, on met maintenant (ISO avec heure min, utilisée pour le format FR ensuite)
-        if (!date) date = new Date().toISOString();
+        if (!date) {
+            date = new Date().toISOString();
+        }
 
         const { error } = await supabase.from('budgets').insert([
             {
@@ -165,8 +173,9 @@ export default function GestionBudget() {
     const archiverEtVider = async () => {
         await exporterCSV();
         const { error } = await supabase.from('budgets').delete().eq('club_id', clubId);
-        if (error) Alert.alert('Erreur lors de la suppression', error.message);
-        else {
+        if (error) {
+            Alert.alert('Erreur lors de la suppression', error.message);
+        } else {
             Alert.alert('Archivé', 'Les données ont été exportées et supprimées.');
             refreshLignes();
         }

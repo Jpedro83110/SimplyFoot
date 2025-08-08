@@ -26,7 +26,9 @@ export default function NutritionScanner() {
     }, [permission, requestPermission]);
 
     const handleBarCodeScanned = async ({ type, data }) => {
-        if (scanned) return;
+        if (scanned) {
+            return;
+        }
 
         setScanned(true);
         setLoading(true);
@@ -69,7 +71,9 @@ export default function NutritionScanner() {
     };
 
     const interpreteNutriScore = (score) => {
-        if (!score) return 'Nutri-Score inconnu pour ce produit.';
+        if (!score) {
+            return 'Nutri-Score inconnu pour ce produit.';
+        }
         switch (score.toUpperCase()) {
             case 'A':
                 return '✅ Excellent choix pour un sportif !';
@@ -121,11 +125,21 @@ export default function NutritionScanner() {
     };
 
     const renderStepMessage = () => {
-        if (loading) return '🔍 Recherche des infos nutritionnelles...';
-        if (error) return error;
-        if (scanned && !productData) return '❌ Aucun produit trouvé. Essaie à nouveau.';
-        if (productData) return '✅ Produit analysé !';
-        if (!scanned) return '📷 Place le code-barres dans le cadre';
+        if (loading) {
+            return '🔍 Recherche des infos nutritionnelles...';
+        }
+        if (error) {
+            return error;
+        }
+        if (scanned && !productData) {
+            return '❌ Aucun produit trouvé. Essaie à nouveau.';
+        }
+        if (productData) {
+            return '✅ Produit analysé !';
+        }
+        if (!scanned) {
+            return '📷 Place le code-barres dans le cadre';
+        }
         return '';
     };
 

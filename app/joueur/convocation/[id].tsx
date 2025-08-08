@@ -164,7 +164,9 @@ export default function ConvocationReponse() {
                     etat: 'proposition_faite',
                 })
                 .eq('id', messageBesoinTransportId);
-            if (error) throw error;
+            if (error) {
+                throw error;
+            }
             setNouvelleAdresse('');
             setNouvelleHeure('');
             // await fetchTransportMessages(); // FIXME
@@ -199,14 +201,16 @@ export default function ConvocationReponse() {
                 .from('messages_besoin_transport')
                 .update(fields)
                 .eq('id', messageBesoinTransportId);
-            if (error) throw error;
+            if (error) {
+                throw error;
+            }
             // await fetchTransportMessages(); // FIXME
         } catch (error) {
             Alert.alert('Erreur', (error as Error).message);
         }
     };
 
-    if (loading)
+    if (loading) {
         return (
             <View style={styles.container}>
                 <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />
@@ -215,6 +219,7 @@ export default function ConvocationReponse() {
                 </Text>
             </View>
         );
+    }
 
     return (
         <ScrollView style={styles.container}>
@@ -256,8 +261,11 @@ export default function ConvocationReponse() {
                     }}
                     onPress={() => {
                         const url = `https://www.google.com/maps/search/?api=1&query=${evenementInfos.latitude},${evenementInfos.longitude}`;
-                        if (Platform.OS === 'web') window.open(url, '_blank');
-                        else Linking.openURL(url);
+                        if (Platform.OS === 'web') {
+                            window.open(url, '_blank');
+                        } else {
+                            Linking.openURL(url);
+                        }
                     }}
                 >
                     <Text style={{ color: '#00ff88', fontSize: 14 }}>

@@ -111,7 +111,9 @@ export default function TransportDetail() {
                 .single();
             console.log('🔥 Équipe coach_id:', equipe?.coach_id);
             console.log('🔥 Est coach?', equipe?.coach_id === connectedId);
-            if (equipe?.coach_id === connectedId) isAuthorized = true;
+            if (equipe?.coach_id === connectedId) {
+                isAuthorized = true;
+            }
         }
 
         // Vérifier la décharge du joueur CONNECTÉ (Lyam), pas du demandeur (Lisandro)
@@ -245,7 +247,9 @@ export default function TransportDetail() {
                         .from('propositions_transport')
                         .delete()
                         .eq('id', propId);
-                    if (error) Alert.alert('Erreur', error.message);
+                    if (error) {
+                        Alert.alert('Erreur', error.message);
+                    }
                     fetchAll();
                 },
             },
@@ -255,8 +259,12 @@ export default function TransportDetail() {
     // Signature
     async function signer(prop, role) {
         let data = { proposition_id: prop.id, date_signature: new Date(), status: 'signed' };
-        if (role === 'demandeur') data.parent1_id = userId;
-        if (role === 'conducteur') data.parent2_id = userId;
+        if (role === 'demandeur') {
+            data.parent1_id = userId;
+        }
+        if (role === 'conducteur') {
+            data.parent2_id = userId;
+        }
 
         const { data: exists } = await supabase
             .from('signatures_transport')

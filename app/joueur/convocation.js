@@ -110,7 +110,7 @@ export default function ConvocationsJoueur() {
         fetchConvocations();
     }, []);
 
-    if (loading)
+    if (loading) {
         return (
             <View style={styles.container}>
                 <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />
@@ -119,6 +119,7 @@ export default function ConvocationsJoueur() {
                 </Text>
             </View>
         );
+    }
 
     return (
         <View style={styles.container}>

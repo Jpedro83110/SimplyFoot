@@ -148,7 +148,9 @@ export default function Equipe() {
         fetchData();
     }, []);
 
-    if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    if (loading) {
+        return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    }
 
     return (
         <ScrollView style={styles.container}>

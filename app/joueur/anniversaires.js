@@ -14,7 +14,9 @@ export default function JoueurAnniversaires() {
                 // 1. Utilisateur connecté
                 const { data: userData } = await supabase.auth.getUser();
                 const userId = userData?.user?.id;
-                if (!userId) throw new Error('Utilisateur non authentifié');
+                if (!userId) {
+                    throw new Error('Utilisateur non authentifié');
+                }
 
                 // 2. Son entrée dans utilisateurs
                 const { data: user, error: errorUser } = await supabase
@@ -22,7 +24,9 @@ export default function JoueurAnniversaires() {
                     .select('id, joueur_id, club_id')
                     .eq('id', userId)
                     .single();
-                if (errorUser || !user) throw new Error('Utilisateur introuvable.');
+                if (errorUser || !user) {
+                    throw new Error('Utilisateur introuvable.');
+                }
 
                 // 3. Son entrée dans joueurs (pour equipe_id)
                 const { data: joueur, error: errorJoueur } = await supabase
@@ -30,7 +34,9 @@ export default function JoueurAnniversaires() {
                     .select('id, equipe_id')
                     .eq('id', user.joueur_id)
                     .single();
-                if (errorJoueur || !joueur) throw new Error('Profil joueur introuvable.');
+                if (errorJoueur || !joueur) {
+                    throw new Error('Profil joueur introuvable.');
+                }
 
                 // 4. Tous les joueurs de l'équipe (avec photo)
                 const { data: joueurs } = await supabase
@@ -55,7 +61,7 @@ export default function JoueurAnniversaires() {
 
                 // 7. Fusionne la liste
                 let membres = [];
-                if (joueurs)
+                if (joueurs) {
                     membres = membres.concat(
                         joueurs.map((j) => ({
                             ...j,
@@ -63,7 +69,8 @@ export default function JoueurAnniversaires() {
                             photo_url: j.photo_profil_url || null,
                         })),
                     );
-                if (coachs)
+                }
+                if (coachs) {
                     membres = membres.concat(
                         coachs.map((c) => ({
                             ...c,
@@ -71,7 +78,8 @@ export default function JoueurAnniversaires() {
                             photo_url: c.photo_url || null,
                         })),
                     );
-                if (presidents)
+                }
+                if (presidents) {
                     membres = membres.concat(
                         presidents.map((p) => ({
                             ...p,
@@ -79,6 +87,7 @@ export default function JoueurAnniversaires() {
                             photo_url: null, // On laisse null => affichera avatar initiales
                         })),
                     );
+                }
 
                 // 8. Filtrer ceux qui ont une date de naissance
                 membres = membres.filter((m) => !!m.date_naissance);

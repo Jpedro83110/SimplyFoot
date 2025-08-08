@@ -27,7 +27,9 @@ export default function GlobalLayout() {
             const {
                 data: { session },
             } = await supabase.auth.getSession();
-            if (!session) return setLoading(false);
+            if (!session) {
+                return setLoading(false);
+            }
 
             const { data: user, error } = await supabase
                 .from('utilisateurs')
@@ -46,7 +48,9 @@ export default function GlobalLayout() {
             const {
                 data: { session },
             } = await supabase.auth.getSession();
-            if (!session) return;
+            if (!session) {
+                return;
+            }
 
             try {
                 await deleteMessagesPrivesOneWeekOld();
@@ -58,7 +62,9 @@ export default function GlobalLayout() {
         };
 
         const setupPushToken = async () => {
-            if (!Device.isDevice || Platform.OS === 'web') return;
+            if (!Device.isDevice || Platform.OS === 'web') {
+                return;
+            }
             const { status: existingStatus } = await Notifications.getPermissionsAsync();
             let finalStatus = existingStatus;
 
@@ -67,7 +73,9 @@ export default function GlobalLayout() {
                 finalStatus = status;
             }
 
-            if (finalStatus !== 'granted') return;
+            if (finalStatus !== 'granted') {
+                return;
+            }
 
             // Pour éviter une erreur si expoConfig est undefined en build prod
             const projectId =

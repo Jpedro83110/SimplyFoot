@@ -42,7 +42,9 @@ export default function ListeDemandesTransport() {
 
             // Garder les demandes dont la date d'événement est aujourd'hui ou à venir
             const demandesFiltrees = data.filter((d) => {
-                if (!d.evenement || !d.evenement.date) return false;
+                if (!d.evenement || !d.evenement.date) {
+                    return false;
+                }
                 const eventDate = new Date(d.evenement.date.slice(0, 10));
                 eventDate.setHours(0, 0, 0, 0);
                 return eventDate >= today;

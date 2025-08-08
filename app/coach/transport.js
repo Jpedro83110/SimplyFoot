@@ -31,7 +31,9 @@ export default function TransportManquant() {
     }, []);
 
     useEffect(() => {
-        if (!userId && !email) return;
+        if (!userId && !email) {
+            return;
+        }
 
         async function fetchParticipants() {
             const { data, error } = await supabase
@@ -60,8 +62,9 @@ export default function TransportManquant() {
                         .single();
 
                     // Affiche tout pour admin, sinon filtre coach_id
-                    if (!evt || (email !== 'demo@simplyfoot.fr' && evt.coach_id !== userId))
+                    if (!evt || (email !== 'demo@simplyfoot.fr' && evt.coach_id !== userId)) {
                         return null;
+                    }
 
                     return {
                         id: p.id,
@@ -86,14 +89,17 @@ export default function TransportManquant() {
             .update({ transport_valide_par: userId })
             .eq('id', participation_id);
 
-        if (confirm.error) Alert.alert('Erreur', confirm.error.message);
-        else {
+        if (confirm.error) {
+            Alert.alert('Erreur', confirm.error.message);
+        } else {
             Alert.alert('✅ Confirmé', 'Transport pris en charge.');
             setParticipants((prev) => prev.filter((p) => p.id !== participation_id));
         }
     };
 
-    if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    if (loading) {
+        return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    }
 
     return (
         <ScrollView style={styles.container}>

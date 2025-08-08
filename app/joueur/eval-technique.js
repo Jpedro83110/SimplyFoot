@@ -35,7 +35,9 @@ export default function EvalTechnique() {
             try {
                 const { data: sessionData } = await supabase.auth.getSession();
                 const userId = sessionData?.session?.user?.id;
-                if (!userId) throw new Error('Utilisateur non identifié.');
+                if (!userId) {
+                    throw new Error('Utilisateur non identifié.');
+                }
 
                 const { data } = await supabase
                     .from('evaluations_techniques')
@@ -57,15 +59,19 @@ export default function EvalTechnique() {
 
     // Calcul dynamique de la moyenne
     const computeMoyenne = () => {
-        if (!evalData) return 0;
+        if (!evalData) {
+            return 0;
+        }
         const notes = criteres.map((c) => Number(evalData[c.key]) || 0);
         return Math.round(notes.reduce((a, b) => a + b, 0) / criteres.length);
     };
 
-    if (loading)
+    if (loading) {
         return <ActivityIndicator size="large" color="#00ff88" style={{ marginTop: 50 }} />;
-    if (error)
+    }
+    if (error) {
         return <Text style={{ color: 'red', margin: 30, textAlign: 'center' }}>{error}</Text>;
+    }
 
     return (
         <ScrollView contentContainerStyle={styles.container}>

@@ -47,7 +47,9 @@ export default function MessagesGroupesCoach() {
     const [cachedMsgs, refreshMsgs] = useCacheData(
         cacheKey,
         async () => {
-            if (!equipeId) return [];
+            if (!equipeId) {
+                return [];
+            }
             const septJours = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
             const { data: msgs } = await supabase
                 .from('messages_groupe_coach')
@@ -81,7 +83,9 @@ export default function MessagesGroupesCoach() {
                     .order('created_at', { ascending: true });
                 const regroupees = {};
                 for (let rep of reps || []) {
-                    if (!regroupees[rep.message_id]) regroupees[rep.message_id] = [];
+                    if (!regroupees[rep.message_id]) {
+                        regroupees[rep.message_id] = [];
+                    }
                     regroupees[rep.message_id].push(rep);
                 }
                 setReponses(regroupees);
@@ -93,7 +97,9 @@ export default function MessagesGroupesCoach() {
     }, [cachedMsgs]);
 
     const envoyerMessage = async () => {
-        if (!message.trim() || !equipeId) return;
+        if (!message.trim() || !equipeId) {
+            return;
+        }
         await supabase.from('messages_groupe_coach').insert({
             equipe_id: equipeId,
             coach_id: coachId,
@@ -106,7 +112,9 @@ export default function MessagesGroupesCoach() {
 
     const envoyerReponse = async (msgId) => {
         const contenu = reponseText[msgId];
-        if (!contenu || !contenu.trim()) return;
+        if (!contenu || !contenu.trim()) {
+            return;
+        }
 
         const { error } = await supabase.from('reponses_messages_joueur').insert({
             message_id: msgId,

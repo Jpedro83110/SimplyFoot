@@ -19,13 +19,17 @@ export default function LectureStage() {
         async () => {
             const { data: session } = await supabase.auth.getSession();
             const userId = session?.session?.user?.id;
-            if (!userId) return null;
+            if (!userId) {
+                return null;
+            }
             const { data: user } = await supabase
                 .from('utilisateurs')
                 .select('club_id')
                 .eq('id', userId)
                 .single();
-            if (!user?.club_id) return null;
+            if (!user?.club_id) {
+                return null;
+            }
             const { data, error } = await supabase
                 .from('stages')
                 .select('*')

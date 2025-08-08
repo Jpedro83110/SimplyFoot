@@ -29,7 +29,9 @@ export default function LoginJoueur() {
     // Charger email enregistré si "Se souvenir de moi"
     useEffect(() => {
         AsyncStorage.getItem('remembered_email').then((savedEmail) => {
-            if (savedEmail) setEmail(savedEmail);
+            if (savedEmail) {
+                setEmail(savedEmail);
+            }
         });
     }, []);
 
@@ -59,7 +61,9 @@ export default function LoginJoueur() {
     };
 
     const handleLogin = async () => {
-        if (loading) return;
+        if (loading) {
+            return;
+        }
         setLoading(true);
 
         try {

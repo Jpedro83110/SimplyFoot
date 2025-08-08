@@ -31,7 +31,9 @@ export default function Membres() {
             setLoading(true);
             const session = await supabase.auth.getSession();
             const userId = session?.data?.session?.user?.id;
-            if (!userId) return Alert.alert('Erreur', 'Utilisateur non authentifié');
+            if (!userId) {
+                return Alert.alert('Erreur', 'Utilisateur non authentifié');
+            }
 
             const { data: club } = await supabase
                 .from('clubs')
@@ -39,7 +41,9 @@ export default function Membres() {
                 .eq('created_by', userId)
                 .single();
 
-            if (!club?.id) return Alert.alert('Erreur', 'Club introuvable');
+            if (!club?.id) {
+                return Alert.alert('Erreur', 'Club introuvable');
+            }
             setClubId(club.id);
             setLoading(false);
         }
@@ -47,7 +51,9 @@ export default function Membres() {
     }, []);
 
     useEffect(() => {
-        if (!clubId) return;
+        if (!clubId) {
+            return;
+        }
         setLoading(true);
 
         async function fetchData() {
@@ -91,7 +97,9 @@ export default function Membres() {
     // Filtre + tri
     const joueursFiltres = joueurs
         .filter((j) => {
-            if (!equipeFiltre) return true;
+            if (!equipeFiltre) {
+                return true;
+            }
             return (j.equipe_id?.toString() || '') === equipeFiltre;
         })
         .sort((a, b) => {
@@ -169,7 +177,9 @@ export default function Membres() {
                         if (!photo) {
                             // fallback initiales
                             let nom = (j.prenom || '') + ' ' + (j.nom || '');
-                            if (nom.trim() === '') nom = 'FC'; // fallback total
+                            if (nom.trim() === '') {
+                                nom = 'FC';
+                            } // fallback total
                             photo =
                                 'https://ui-avatars.com/api/?name=' +
                                 encodeURIComponent(nom.trim()) +

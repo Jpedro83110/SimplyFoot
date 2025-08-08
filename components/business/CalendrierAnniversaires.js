@@ -68,7 +68,9 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
         let annivTab = [];
 
         membres.forEach((m) => {
-            if (!m.date_naissance) return;
+            if (!m.date_naissance) {
+                return;
+            }
             const date = new Date(m.date_naissance);
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -81,7 +83,9 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
                 disableTouchEvent: false,
             };
             let annivDate = new Date(year, date.getMonth(), date.getDate());
-            if (annivDate < now) annivDate.setFullYear(year + 1);
+            if (annivDate < now) {
+                annivDate.setFullYear(year + 1);
+            }
             const joursRestants = Math.ceil((annivDate - now) / (1000 * 3600 * 24));
             annivTab.push({
                 ...m,
@@ -137,7 +141,9 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
     const screenWidth = Dimensions.get('window').width;
     const containerWidth = screenWidth < 600 ? '98%' : 520;
 
-    if (loading) return <ActivityIndicator color={DOT_COLOR} style={{ margin: 40 }} />;
+    if (loading) {
+        return <ActivityIndicator color={DOT_COLOR} style={{ margin: 40 }} />;
+    }
 
     return (
         <ScrollView

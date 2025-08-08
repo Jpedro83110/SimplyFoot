@@ -38,7 +38,9 @@ export default function BesoinTransportCoach() {
 
     // 2. Quand une équipe est sélectionnée, charge les événements + demandes de transport
     useEffect(() => {
-        if (!selectedEquipe) return;
+        if (!selectedEquipe) {
+            return;
+        }
 
         (async () => {
             setLoading(true);
@@ -109,12 +111,13 @@ export default function BesoinTransportCoach() {
         })();
     }, [selectedEquipe]);
 
-    if (loading)
+    if (loading) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator color={GREEN} />
             </View>
         );
+    }
 
     // --- Écran 1 : Choix équipe ---
     if (!selectedEquipe) {

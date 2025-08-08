@@ -247,7 +247,7 @@ export default function ConvocationDetail() {
         setShowModal(false);
     };
 
-    if (loading)
+    if (loading) {
         return (
             <View style={{ flex: 1, backgroundColor: '#121212', justifyContent: 'center' }}>
                 <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />
@@ -256,6 +256,7 @@ export default function ConvocationDetail() {
                 </Text>
             </View>
         );
+    }
 
     return (
         <View style={{ flex: 1, backgroundColor: '#121212' }}>

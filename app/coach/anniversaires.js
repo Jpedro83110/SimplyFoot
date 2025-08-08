@@ -14,7 +14,9 @@ export default function CoachAnniversaires() {
                 // 1. Coach connecté (utilisateur)
                 const { data: userData } = await supabase.auth.getUser();
                 const userId = userData?.user?.id;
-                if (!userId) throw new Error('Utilisateur non authentifié');
+                if (!userId) {
+                    throw new Error('Utilisateur non authentifié');
+                }
 
                 // 2. Son entrée dans utilisateurs (pour club_id)
                 const { data: coachUser, error: errorCoachUser } = await supabase
@@ -22,7 +24,9 @@ export default function CoachAnniversaires() {
                     .select('id, nom, prenom, club_id')
                     .eq('id', userId)
                     .single();
-                if (errorCoachUser || !coachUser) throw new Error('Coach introuvable.');
+                if (errorCoachUser || !coachUser) {
+                    throw new Error('Coach introuvable.');
+                }
 
                 // 3. Toutes les équipes où il est coach
                 const { data: equipes, error: errorEquipes } = await supabase
@@ -31,7 +35,9 @@ export default function CoachAnniversaires() {
                     .eq('coach_id', coachUser.id)
                     .eq('club_id', coachUser.club_id);
 
-                if (errorEquipes || !equipes?.length) throw new Error('Aucune équipe trouvée.');
+                if (errorEquipes || !equipes?.length) {
+                    throw new Error('Aucune équipe trouvée.');
+                }
 
                 const equipeIds = equipes.map((eq) => eq.id);
 
@@ -58,7 +64,7 @@ export default function CoachAnniversaires() {
 
                 // 7. Fusionne tout
                 let membres = [];
-                if (joueurs)
+                if (joueurs) {
                     membres = membres.concat(
                         joueurs.map((j) => ({
                             ...j,
@@ -66,7 +72,8 @@ export default function CoachAnniversaires() {
                             photo_url: j.photo_profil_url || null,
                         })),
                     );
-                if (coachs)
+                }
+                if (coachs) {
                     membres = membres.concat(
                         coachs.map((c) => ({
                             ...c,
@@ -74,7 +81,8 @@ export default function CoachAnniversaires() {
                             photo_url: c.photo_url || null,
                         })),
                     );
-                if (presidents)
+                }
+                if (presidents) {
                     membres = membres.concat(
                         presidents.map((p) => ({
                             ...p,
@@ -82,6 +90,7 @@ export default function CoachAnniversaires() {
                             photo_url: null,
                         })),
                     );
+                }
 
                 // 8. Filtrer ceux qui ont une date de naissance
                 membres = membres.filter((m) => !!m.date_naissance);

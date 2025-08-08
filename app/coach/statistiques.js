@@ -12,9 +12,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 
 function getBadge(note) {
-    if (note >= 90) return require('../../assets/badges/platine.png');
-    if (note >= 75) return require('../../assets/badges/or.png');
-    if (note >= 60) return require('../../assets/badges/argent.png');
+    if (note >= 90) {
+        return require('../../assets/badges/platine.png');
+    }
+    if (note >= 75) {
+        return require('../../assets/badges/or.png');
+    }
+    if (note >= 60) {
+        return require('../../assets/badges/argent.png');
+    }
     return require('../../assets/badges/bronze.png');
 }
 

@@ -181,7 +181,9 @@ export default function FeuilleMatch() {
 
     // 🔧 CORRECTION : Protection pour formatDateFR
     const safeFormatDate = (dateStr) => {
-        if (!dateStr) return '';
+        if (!dateStr) {
+            return '';
+        }
         try {
             const formatted = formatDateFR(dateStr);
             return formatted || '';
@@ -286,7 +288,7 @@ export default function FeuilleMatch() {
         }
     };
 
-    if (loading)
+    if (loading) {
         return (
             <View style={styles.container}>
                 <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />
@@ -295,8 +297,9 @@ export default function FeuilleMatch() {
                 </Text>
             </View>
         );
+    }
 
-    if (error)
+    if (error) {
         return (
             <View style={styles.container}>
                 <Text style={styles.empty}>{error}</Text>
@@ -305,6 +308,7 @@ export default function FeuilleMatch() {
                 </TouchableOpacity>
             </View>
         );
+    }
 
     return (
         <ScrollView style={styles.container}>

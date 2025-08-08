@@ -61,7 +61,9 @@ export default function MessagesPrivesCoach() {
         useCachedApi<CoachMessagesPrives>(
             `messages_prives_${coachId}_${selectedJoueurId}`,
             useCallback(async () => {
-                if (!coachId || !selectedJoueurId) return [];
+                if (!coachId || !selectedJoueurId) {
+                    return [];
+                }
                 const data = await getCoachMessagesPrives({ coachId });
                 const messages = (data || []).filter(
                     (message) =>
@@ -79,7 +81,9 @@ export default function MessagesPrivesCoach() {
     }, [fetchCoachMessages, selectedJoueurId]);
 
     const handleEnvoyer = async () => {
-        if (!message.trim() || !selectedJoueurId) return;
+        if (!message.trim() || !selectedJoueurId) {
+            return;
+        }
 
         await supabase.from('messages_prives').insert({
             emetteur_id: coachId,

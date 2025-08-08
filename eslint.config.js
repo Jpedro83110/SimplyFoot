@@ -9,7 +9,6 @@ module.exports = defineConfig([
     {
         ignores: ['dist/*', 'node_modules/*', '.expo/*'],
         rules: {
-            // Désactive les erreurs de fins de ligne pour éviter les conflits Git/Prettier
             'prettier/prettier': [
                 'error',
                 {
@@ -24,6 +23,7 @@ module.exports = defineConfig([
                         "Please import the specific function from react-use instead of the whole library (e.g. import useTimeout from 'react-use/lib/useTimeout')",
                 },
             ],
+            curly: ['error', 'all'],
         },
     },
 ]);

@@ -49,7 +49,9 @@ export default function EvalMentale() {
             try {
                 const { data: sessionData } = await supabase.auth.getSession();
                 const userId = sessionData?.session?.user?.id;
-                if (!userId) throw new Error('Utilisateur non identifié.');
+                if (!userId) {
+                    throw new Error('Utilisateur non identifié.');
+                }
 
                 const { data: utilisateur } = await supabase
                     .from('utilisateurs')
@@ -68,8 +70,9 @@ export default function EvalMentale() {
                     .eq('joueur_id', joueurId)
                     .single();
 
-                if (error && error.code !== 'PGRST116')
+                if (error && error.code !== 'PGRST116') {
                     throw new Error("Impossible de charger l'évaluation.");
+                }
                 setEvalData(data || defaultEvalData);
             } catch (error) {
                 setError((error as Error).message);
@@ -91,10 +94,12 @@ export default function EvalMentale() {
         return Math.round(notes.reduce((a, b) => a + b, 0) / notes.length);
     };
 
-    if (loading)
+    if (loading) {
         return <ActivityIndicator size="large" color="#00ff88" style={{ marginTop: 40 }} />;
-    if (error)
+    }
+    if (error) {
         return <Text style={{ color: 'red', margin: 30, textAlign: 'center' }}>{error}</Text>;
+    }
 
     return (
         <ScrollView contentContainerStyle={styles.container}>

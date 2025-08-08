@@ -71,7 +71,9 @@ export default function ListeCompositions() {
     // Rafraîchissement manuel avec cooldown anti-spam
     const handleManualRefresh = async () => {
         const now = Date.now();
-        if (loading || refreshing) return;
+        if (loading || refreshing) {
+            return;
+        }
         if (now - lastRefresh < MIN_INTERVAL) {
             Alert.alert('Trop rapide', 'Merci de patienter avant un nouveau rafraîchissement !');
             return;

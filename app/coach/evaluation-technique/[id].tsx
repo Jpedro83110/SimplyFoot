@@ -94,7 +94,9 @@ export default function EvaluationTechnique() {
     const [evalData, refresh, loadingEval] = useCacheData(
         joueurInfo?.id ? `eval-technique-${joueurInfo?.id}` : null,
         async () => {
-            if (!joueurInfo?.id) return null;
+            if (!joueurInfo?.id) {
+                return null;
+            }
 
             try {
                 const { data, error } = await supabase

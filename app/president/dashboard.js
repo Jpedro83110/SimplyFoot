@@ -56,7 +56,9 @@ export default function PresidentDashboard() {
 
     // Fonction pour récupérer les données du président
     const fetchPresident = async (userId) => {
-        if (!userId) throw new Error('ID utilisateur manquant');
+        if (!userId) {
+            throw new Error('ID utilisateur manquant');
+        }
 
         const { data, error } = await supabase
             .from('utilisateurs')
@@ -77,7 +79,9 @@ export default function PresidentDashboard() {
 
     // Fonction pour récupérer les données du club
     const fetchClub = async (userId) => {
-        if (!userId) throw new Error('ID utilisateur manquant');
+        if (!userId) {
+            throw new Error('ID utilisateur manquant');
+        }
 
         const { data: clubRows, error: clubError } = await supabase
             .from('clubs_admins')

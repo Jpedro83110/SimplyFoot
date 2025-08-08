@@ -30,7 +30,9 @@ export default function JoueurLayout() {
                 }
             }
 
-            if (!isMounted) return;
+            if (!isMounted) {
+                return;
+            }
 
             if (!session) {
                 Alert.alert('Erreur', 'Session introuvable');
@@ -45,7 +47,9 @@ export default function JoueurLayout() {
                 .eq('id', session.user.id)
                 .single();
 
-            if (!isMounted) return;
+            if (!isMounted) {
+                return;
+            }
 
             if (error || !user) {
                 Alert.alert(
@@ -129,7 +133,9 @@ export default function JoueurLayout() {
         checkRoleAndRegisterToken();
 
         timeoutId = setTimeout(() => {
-            if (checking && isMounted) setChecking(false);
+            if (checking && isMounted) {
+                setChecking(false);
+            }
         }, 7000);
 
         return () => {
