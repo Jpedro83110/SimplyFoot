@@ -34,15 +34,13 @@ const GREEN = '#00ff88';
 const DARK = '#101415';
 
 export default function CoachDashboard() {
-    const [userId, setUserId] = useState<string>();
-    const [loadingAuth, setLoadingAuth] = useState<boolean>(true);
     const [club, setClub] = useState<Club>();
     const [refreshKey, setRefreshKey] = useState<number>(Date.now());
     const [uploadingPhoto, setUploadingPhoto] = useState<boolean>(false);
     const [showEditModal, setShowEditModal] = useState<boolean>(false);
     const router = useRouter();
 
-    const { signOut } = useSession();
+    const { signOut, utilisateur } = useSession();
 
     const [editData, setEditData] = useState<
         Required<Pick<Staff, 'telephone' | 'email' | 'niveau_diplome' | 'experience'>>
@@ -57,17 +55,15 @@ export default function CoachDashboard() {
     const [coach, loadingCoach, fetchCoach, refreshCoach] = useCachedApi<Staff>(
         'fetch_coach',
         useCallback(async () => {
-            if (!userId) {
+            if (!utilisateur?.id) {
                 return undefined;
             }
 
             const { data: staffData, error: staffError } = await supabase
                 .from('staff')
                 .select('*')
-                .eq('utilisateur_id', userId)
+                .eq('utilisateur_id', utilisateur.id)
                 .single();
-
-            console.log('staffData:', staffData);
 
             if (staffError) {
                 throw staffError;
@@ -79,27 +75,27 @@ export default function CoachDashboard() {
             }
 
             return staffData as Staff;
-        }, [userId]),
+        }, [utilisateur?.id]),
     );
 
     const [equipes, loadingEquipes, fetchCoachEquipes] = useCachedApi<EquipeWithJoueurs[]>(
         'fetch_coach_equipes',
         useCallback(async () => {
-            if (!userId) {
+            if (!utilisateur?.id) {
                 return undefined;
             }
 
             const { data, error } = await supabase
                 .from('equipes')
                 .select('*, joueurs(count)')
-                .eq('coach_id', userId);
+                .eq('coach_id', utilisateur.id);
 
             if (error) {
                 throw error;
             }
 
             return data as EquipeWithJoueurs[];
-        }, [userId]),
+        }, [utilisateur?.id]),
         1,
     );
 
@@ -122,7 +118,7 @@ export default function CoachDashboard() {
     const [evenements, , fetchCoachEvenements] = useCachedApi<Evenement[]>(
         'fetch_coach_evenements',
         useCallback(async () => {
-            if (!userId) {
+            if (!utilisateur?.id) {
                 return undefined;
             }
 
@@ -134,14 +130,14 @@ export default function CoachDashboard() {
             const { data, error } = await supabase
                 .from('evenements')
                 .select('*')
-                .eq('coach_id', userId)
+                .eq('coach_id', utilisateur.id)
                 .gte('date', filterDate)
                 .order('date', { ascending: true });
             if (error) {
                 throw error;
             }
             return data || [];
-        }, [userId]),
+        }, [utilisateur?.id]),
     );
 
     const evenement: Evenement | null = useMemo(
@@ -176,10 +172,7 @@ export default function CoachDashboard() {
         };
     }, [participations]);
 
-    const loading = useMemo(
-        () => loadingAuth || loadingCoach || loadingEquipes,
-        [loadingAuth, loadingCoach, loadingEquipes],
-    );
+    const loading = useMemo(() => loadingCoach || loadingEquipes, [loadingCoach, loadingEquipes]);
 
     // Fonction helper pour ajouter un cache-buster à l'affichage
     // TODO: move this to a separate utilities file
@@ -196,39 +189,29 @@ export default function CoachDashboard() {
         [refreshKey],
     );
 
-    useEffect(() => {
-        supabase.auth.getSession().then(async ({ data: sessionData }) => {
-            const id = sessionData?.session?.user?.id;
-            setUserId(id);
-            setLoadingAuth(false);
+    const fetchClub = useCallback(async () => {
+        if (utilisateur?.club_id) {
+            const { data: clubData }: { data: Club | null } = await supabase
+                .from('clubs')
+                .select('id, nom, facebook_url, instagram_url, boutique_url, logo_url')
+                .eq('id', utilisateur.club_id)
+                .single();
 
-            if (id) {
-                const { data: coachData }: { data: Staff | null } = await supabase
-                    .from('utilisateurs')
-                    .select('club_id')
-                    .eq('id', id)
-                    .single();
-
-                if (coachData?.club_id) {
-                    const { data: clubData }: { data: Club | null } = await supabase
-                        .from('clubs')
-                        .select('id, nom, facebook_url, instagram_url, boutique_url, logo_url')
-                        .eq('id', coachData.club_id)
-                        .single();
-
-                    setClub(clubData || undefined);
-                }
-            }
-        });
-    }, []);
+            setClub(clubData || undefined);
+        }
+    }, [utilisateur?.club_id]);
 
     useEffect(() => {
-        if (userId) {
+        fetchClub();
+    }, [fetchClub]);
+
+    useEffect(() => {
+        if (utilisateur?.id) {
             fetchCoach();
             fetchCoachEquipes();
             fetchCoachEvenements();
         }
-    }, [fetchCoach, fetchCoachEquipes, fetchCoachEvenements, userId]);
+    }, [fetchCoach, fetchCoachEquipes, fetchCoachEvenements, utilisateur?.id]);
 
     useEffect(() => {
         if (coach) {
@@ -341,7 +324,7 @@ export default function CoachDashboard() {
                     }
 
                     // 3. Nom de fichier avec timestamp
-                    const fileName = `photos_profils_coachs/${userId}_${Date.now()}.${fileExt}`;
+                    const fileName = `photos_profils_coachs/${utilisateur?.id}_${Date.now()}.${fileExt}`;
                     console.log('📁 Tentative upload:', fileName);
                     console.log(
                         '📦 Taille fichier:',
@@ -381,7 +364,7 @@ export default function CoachDashboard() {
                     const { error: updateError } = await supabase
                         .from('staff')
                         .update({ photo_url: basePhotoUrl })
-                        .eq('utilisateur_id', userId);
+                        .eq('utilisateur_id', utilisateur?.id);
 
                     if (updateError) {
                         console.error('❌ Erreur sauvegarde base:', updateError);
@@ -440,7 +423,7 @@ export default function CoachDashboard() {
             const { error } = await supabase
                 .from('staff')
                 .update(updateData)
-                .eq('utilisateur_id', userId);
+                .eq('utilisateur_id', utilisateur?.id);
 
             if (error) {
                 throw error;
