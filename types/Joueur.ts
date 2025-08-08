@@ -17,3 +17,5 @@ export interface Joueur {
     photo_profil_url?: string;
     code_equipe?: string; // FIXME: can be null
 }
+
+export type PublicJoueur = Omit<Joueur, 'nom' | 'prenom' | 'telephone' | 'code_equipe'>;

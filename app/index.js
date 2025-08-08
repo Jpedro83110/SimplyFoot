@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/lib/supabase';
+import { useSession } from '@/hooks/useSession';
 
 export default function Accueil() {
     const router = useRouter();
     const [loggedIn, setLoggedIn] = useState(false);
+
+    const { signOut } = useSession();
 
     const redirectUser = useCallback(
         async (session) => {
@@ -69,9 +72,7 @@ export default function Accueil() {
     }, [redirectUser]);
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
-        setLoggedIn(false);
-        router.replace('/auth/login-club');
+        await signOut();
     };
 
     return (

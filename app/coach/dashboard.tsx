@@ -15,9 +15,9 @@ import {
     TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import { TeamCard } from '../../components/business/TeamCard';
+import { TeamCard } from '@/components/business/TeamCard';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
 import { Club } from '@/types/Club';
@@ -27,6 +27,7 @@ import { Evenement } from '@/types/Evenement';
 import { ParticipationsEvenement } from '@/types/ParticipationsEvenement';
 import { useCachedApi } from '@/hooks/useCachedApi';
 import { EquipeWithJoueurs } from '@/types/Equipe';
+import { useSession } from '@/hooks/useSession';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GREEN = '#00ff88';
@@ -40,6 +41,8 @@ export default function CoachDashboard() {
     const [uploadingPhoto, setUploadingPhoto] = useState<boolean>(false);
     const [showEditModal, setShowEditModal] = useState<boolean>(false);
     const router = useRouter();
+
+    const { signOut } = useSession();
 
     const [editData, setEditData] = useState<
         Required<Pick<Staff, 'telephone' | 'email' | 'niveau_diplome' | 'experience'>>
@@ -846,8 +849,7 @@ export default function CoachDashboard() {
             <TouchableOpacity
                 style={styles.logoutButton}
                 onPress={async () => {
-                    await supabase.auth.signOut();
-                    router.replace('/');
+                    await signOut();
                 }}
             >
                 <Text style={styles.logoutButtonText}>🚪 Se déconnecter</Text>

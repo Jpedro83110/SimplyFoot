@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { View, StyleSheet, ImageBackground, StatusBar, Text, Platform } from 'react-native';
 import { Slot } from 'expo-router';
 import WebSocketManager from '../components/business/WebSocketManager';
@@ -9,16 +9,20 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { deleteMessagesPrivesOneWeekOld } from '@/helpers/messagesPrives.helper';
+import { AuthProvider } from '@/context/AuthContext';
+import SplashScreenController from './SplashScreenController';
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
+        shouldShowBanner: false, // FIXME ajouté parce que erreur de transpilation
+        shouldShowList: false, // FIXME ajouté parce que erreur de transpilation
     }),
 });
 
-export default function GlobalLayout() {
+const PrivateGlobalLayout: FC = () => {
     const [role, setRole] = useState(null);
     const [, setLoading] = useState(true); // FIXME
 
@@ -54,10 +58,10 @@ export default function GlobalLayout() {
 
             try {
                 await deleteMessagesPrivesOneWeekOld();
-            } catch (e) {
+            } catch (error) {
                 // FIXME: seems useless, never called on 4XX errors
                 // FIXME: implements messages_prives real ttl
-                console.warn('Erreur purge automatique messages :', e.message);
+                console.warn('Erreur purge automatique messages :', (error as Error).message);
             }
         };
 
@@ -80,8 +84,9 @@ export default function GlobalLayout() {
             // Pour éviter une erreur si expoConfig est undefined en build prod
             const projectId =
                 Constants?.expoConfig?.extra?.eas?.projectId ||
-                Constants?.manifest?.extra?.eas?.projectId ||
+                (Constants?.manifest as any)?.extra?.eas?.projectId ||
                 'TON_PROJECT_ID_MANUEL'; // fallback
+            // FIXME : Constants?.manifest?.extra?.eas?.projectId -> extra does not exist
 
             const tokenData = await Notifications.getExpoPushTokenAsync({
                 projectId,
@@ -119,8 +124,17 @@ export default function GlobalLayout() {
                 {role === 'admin' && <Text style={styles.badge}>👑 MODE ADMIN</Text>}
                 <Slot />
             </View>
-            <Toast />
         </ImageBackground>
+    );
+};
+
+export default function GlobalLayout() {
+    return (
+        <AuthProvider>
+            <PrivateGlobalLayout />
+            <SplashScreenController />
+            <Toast />
+        </AuthProvider>
     );
 }
 

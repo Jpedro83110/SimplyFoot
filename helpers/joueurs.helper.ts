@@ -1,11 +1,29 @@
 import { supabase } from '@/lib/supabase';
 import { DechargeGeneraleFields } from '@/types/DechargesGenerales';
-import { JoueurFields } from '@/types/Joueur';
+import { JoueurFields, PublicJoueur } from '@/types/Joueur';
 import {
     UtilisateurFields,
     UtilisateurWithJoueurAndDechargesGeneralesPicked,
     UtilisateurWithJoueurPicked,
 } from '@/types/Utilisateur';
+
+export const getJoueurById = async (args: { joueurId: string }) => {
+    let { joueurId } = args;
+
+    const { data, error } = await supabase
+        .from('joueurs')
+        .select(
+            'id, equipe_id, poste, numero_licence, visite_medicale_valide, photo_url, date_naissance, equipement, photo_profil_url',
+        )
+        .eq('id', joueurId)
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return data as PublicJoueur;
+};
 
 export const getJoueurByUtilisateurId = async <
     U extends UtilisateurFields,

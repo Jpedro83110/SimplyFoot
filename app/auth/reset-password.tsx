@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/lib/supabase';
+import { useSession } from '@/hooks/useSession';
 
 export default function ResetPassword() {
     const router = useRouter();
@@ -20,6 +21,8 @@ export default function ResetPassword() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
+
+    const { signOut } = useSession();
 
     useEffect(() => {
         if (!access_token) {
@@ -53,8 +56,7 @@ export default function ResetPassword() {
         } else {
             Alert.alert('Succès', 'Mot de passe modifié. Vous pouvez vous connecter.');
             // Je me déconnecte l'utilisateur après la réinitialisation du mot de passe
-            await supabase.auth.signOut();
-            router.replace('/');
+            await signOut();
         }
     };
 

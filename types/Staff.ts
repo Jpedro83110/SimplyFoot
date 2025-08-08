@@ -19,3 +19,8 @@ export interface Staff {
     date_embauche?: string;
     photo_url?: string;
 }
+
+export type PublicStaff = Omit<
+    Staff,
+    'utilisateur_id' | 'nom' | 'prenom' | 'email' | 'telephone' | 'date_naissance'
+>;

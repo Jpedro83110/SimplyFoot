@@ -14,9 +14,10 @@ import {
     ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSession } from '@/hooks/useSession';
 
 export default function LoginJoueur() {
     const router = useRouter();
@@ -26,9 +27,11 @@ export default function LoginJoueur() {
     const [rememberMe, setRememberMe] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
 
+    const { signIn } = useSession();
+
     // Charger email enregistré si "Se souvenir de moi"
     useEffect(() => {
-        AsyncStorage.getItem('remembered_email').then((savedEmail) => {
+        AsyncStorage.getItem('remembered-email').then((savedEmail) => {
             if (savedEmail) {
                 setEmail(savedEmail);
             }
@@ -67,76 +70,69 @@ export default function LoginJoueur() {
         setLoading(true);
 
         try {
-            const trimmedEmail = email.trim().toLowerCase();
-            const trimmedPassword = password.trim();
+            await signIn(email, password);
+            // const trimmedEmail = email.trim().toLowerCase();
+            // const trimmedPassword = password.trim();
 
-            // Connexion admin démo
-            if (trimmedEmail === 'demo@simplyfoot.fr' && trimmedPassword === 'Demojr') {
-                setLoading(false);
-                Alert.alert('✅ Connexion admin', 'Bienvenue en mode administrateur complet');
-                router.replace('/admin/dashboard');
-                return;
-            }
+            // // Connexion via Supabase
+            // const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            //     email: trimmedEmail,
+            //     password: trimmedPassword,
+            // });
 
-            // Connexion via Supabase
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email: trimmedEmail,
-                password: trimmedPassword,
-            });
+            // if (authError || !authData?.user) {
+            //     Alert.alert(
+            //         'Erreur',
+            //         authError?.message === 'Invalid login credentials'
+            //             ? 'Email ou mot de passe incorrect.'
+            //             : `Erreur : ${authError?.message || 'Connexion impossible.'}`,
+            //     );
+            //     setLoading(false);
+            //     return;
+            // }
 
-            if (authError || !authData?.user) {
-                Alert.alert(
-                    'Erreur',
-                    authError?.message === 'Invalid login credentials'
-                        ? 'Email ou mot de passe incorrect.'
-                        : `Erreur : ${authError?.message || 'Connexion impossible.'}`,
-                );
-                setLoading(false);
-                return;
-            }
+            // // Récupération du rôle
+            // const { data: userData, error: userError } = await supabase
+            //     .from('utilisateurs')
+            //     .select('role')
+            //     .eq('id', authData.user.id)
+            //     .single();
 
-            // Récupération du rôle
-            const { data: userData, error: userError } = await supabase
-                .from('utilisateurs')
-                .select('role')
-                .eq('id', authData.user.id)
-                .single();
+            // if (userError || !userData?.role) {
+            //     console.log('Erreur récupération rôle:', userError, userData);
+            //     Alert.alert('Erreur', 'Impossible de récupérer le rôle utilisateur.');
+            //     setLoading(false);
+            //     return;
+            // }
 
-            if (userError || !userData?.role) {
-                console.log('Erreur récupération rôle:', userError, userData);
-                Alert.alert('Erreur', 'Impossible de récupérer le rôle utilisateur.');
-                setLoading(false);
-                return;
-            }
+            // // Si rememberMe, on mémorise l'email
+            // if (rememberMe) {
+            //     await AsyncStorage.setItem('remembered-email', trimmedEmail);
+            // } else {
+            //     await AsyncStorage.removeItem('remembered-email');
+            // }
 
-            // Si rememberMe, on mémorise l'email
-            if (rememberMe) {
-                await AsyncStorage.setItem('remembered_email', trimmedEmail);
-            } else {
-                await AsyncStorage.removeItem('remembered_email');
-            }
-
-            // Redirection selon le rôle
-            const role = userData.role;
-            switch (role) {
-                case 'admin':
-                    router.replace('/admin/dashboard');
-                    break;
-                case 'president':
-                    router.replace('/president/dashboard');
-                    break;
-                case 'coach':
-                case 'staff':
-                    router.replace('/coach/dashboard');
-                    break;
-                case 'joueur':
-                case 'parent':
-                    router.replace('/joueur/dashboard');
-                    break;
-                default:
-                    Alert.alert('Erreur', `Rôle non reconnu : ${role}`);
-                    break;
-            }
+            // // Redirection selon le rôle
+            // const role = userData.role;
+            // switch (role) {
+            //     case 'admin':
+            //         router.replace('/admin/dashboard');
+            //         break;
+            //     case 'president':
+            //         router.replace('/president/dashboard');
+            //         break;
+            //     case 'coach':
+            //     case 'staff':
+            //         router.replace('/coach/dashboard');
+            //         break;
+            //     case 'joueur':
+            //     case 'parent':
+            //         router.replace('/joueur/dashboard');
+            //         break;
+            //     default:
+            //         Alert.alert('Erreur', `Rôle non reconnu : ${role}`);
+            //         break;
+            // }
         } catch (err) {
             console.log('Erreur générale', err);
             Alert.alert('Erreur', 'Problème de connexion, réessaie plus tard.');

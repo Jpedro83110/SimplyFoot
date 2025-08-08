@@ -3,7 +3,7 @@ import { Joueur, JoueurFields } from './Joueur';
 
 export type UtilisateurFields = keyof Utilisateur;
 
-export type UtilisateurRole = 'joueur' | 'coach' | 'president' | 'admin'; // FIXME: admin is necessary ?
+export type UtilisateurRole = 'joueur' | 'coach' | 'president'; // | 'admin'; // FIXME: admin is necessary ?
 
 export interface Utilisateur {
     id: string;
@@ -18,6 +18,8 @@ export interface Utilisateur {
     date_naissance?: string;
     telephone?: string;
 }
+
+export type PublicUtilisateur = Omit<Utilisateur, 'expo_push_token'>;
 
 export type UtilisateurWithJoueurPicked<U extends UtilisateurFields, J extends JoueurFields> = Pick<
     Utilisateur,
