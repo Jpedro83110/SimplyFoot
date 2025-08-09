@@ -4,6 +4,17 @@ import { useSession } from '../useSession';
 import { ReactNode } from 'react';
 import { UtilisateurRole } from '@/types/Utilisateur';
 
+// Mock Supabase to avoid ES module issues
+jest.mock('@/lib/supabase', () => ({
+    supabase: {
+        auth: {
+            getUser: jest.fn(),
+            signInWithPassword: jest.fn(),
+            signOut: jest.fn(),
+        },
+    },
+}));
+
 describe('useSession', () => {
     it('should throw error when not wrapped in AuthProvider', () => {
         expect(() => {
