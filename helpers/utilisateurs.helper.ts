@@ -18,3 +18,19 @@ export const getUtilisateurById = async (args: { utilisateurId: string }) => {
 
     return data as PublicUtilisateur;
 };
+
+export const updateUtilisateur = async (args: {
+    utilisateurId: string;
+    dataToUpdate: Partial<PublicUtilisateur>;
+}) => {
+    const { utilisateurId, dataToUpdate } = args;
+
+    const { error } = await supabase
+        .from('utilisateurs')
+        .update(dataToUpdate)
+        .eq('id', utilisateurId);
+
+    if (error) {
+        throw error;
+    }
+};

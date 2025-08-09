@@ -98,3 +98,16 @@ export const getJoueurAndDechargesGeneralesByUtilisateurId = async <
 
     return data as unknown as UtilisateurWithJoueurAndDechargesGeneralesPicked<U, J, D>;
 };
+
+export const updateJoueur = async (args: {
+    joueurId: string;
+    dataToUpdate: Partial<PublicJoueur>;
+}) => {
+    const { joueurId, dataToUpdate } = args;
+
+    const { error } = await supabase.from('joueurs').update(dataToUpdate).eq('id', joueurId);
+
+    if (error) {
+        throw error;
+    }
+};

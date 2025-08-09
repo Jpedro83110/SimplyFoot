@@ -18,3 +18,16 @@ export const getStaffByUtilisateurId = async (args: { utilisateurId: string }) =
 
     return data as PublicStaff;
 };
+
+export const updateStaff = async (args: {
+    staffId: string;
+    dataToUpdate: Partial<PublicStaff>;
+}) => {
+    const { staffId, dataToUpdate } = args;
+
+    const { error } = await supabase.from('staff').update(dataToUpdate).eq('id', staffId);
+
+    if (error) {
+        throw error;
+    }
+};

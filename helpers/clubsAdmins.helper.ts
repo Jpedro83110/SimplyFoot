@@ -16,3 +16,19 @@ export const getClubAdminByUserId = async (args: { userId: string }) => {
 
     return data as PublicClubAdmin;
 };
+
+export const updateClubAdmin = async (args: {
+    clubAdminId: string;
+    dataToUpdate: Partial<PublicClubAdmin>;
+}) => {
+    const { clubAdminId, dataToUpdate } = args;
+
+    const { error } = await supabase
+        .from('clubs_admins')
+        .update(dataToUpdate)
+        .eq('id', clubAdminId);
+
+    if (error) {
+        throw error;
+    }
+};
