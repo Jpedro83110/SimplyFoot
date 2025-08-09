@@ -2,6 +2,7 @@ import { renderHook } from '@testing-library/react';
 import { AuthContext } from '@/context/AuthContext';
 import { useSession } from '../useSession';
 import { ReactNode } from 'react';
+import { UtilisateurRole } from '@/types/Utilisateur';
 
 describe('useSession', () => {
     it('should throw error when not wrapped in AuthProvider', () => {
@@ -14,8 +15,16 @@ describe('useSession', () => {
         const mockAuthValue = {
             signIn: jest.fn(),
             signOut: jest.fn(),
-            session: 'mockSession',
+            isLoggedIn: true,
+            isLoggedOut: false,
             isLoading: false,
+            utilisateur: {
+                id: '1',
+                role: 'joueur' as UtilisateurRole,
+                email: 'player@example.com',
+            },
+            joueur: { id: '1' },
+            updateUserData: jest.fn(),
         };
 
         const wrapper = ({ children }: { children: ReactNode }) => (

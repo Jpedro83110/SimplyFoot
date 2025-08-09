@@ -517,4 +517,529 @@ describe('AuthContext', () => {
             consoleErrorSpy.mockRestore();
         });
     });
+
+    // Tests for updateUserData
+    describe('updateUserData', () => {
+        test('should update utilisateur data', async () => {
+            // Mock initial state with logged in user
+            const mockUtilisateur = { id: 'user123', role: 'joueur', email: 'old@example.com' };
+
+            // Set up mocks
+            (UtilisateursHelper.updateUtilisateur as jest.Mock).mockResolvedValue({});
+            (useStorageState as jest.Mock).mockReturnValue([
+                [false, JSON.stringify({ utilisateur: mockUtilisateur })],
+                setSession,
+            ]);
+
+            // Render
+            const onContextValue = jest.fn();
+            const { rerender } = render(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Force rerender to update context with initial session
+            rerender(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Get context with session
+            const initialContext =
+                onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+
+            // Call updateUserData with utilisateur data
+            await act(async () => {
+                await initialContext.updateUserData({
+                    utilisateurData: { email: 'new@example.com' },
+                });
+            });
+
+            // Assert helper was called with correct params
+            expect(UtilisateursHelper.updateUtilisateur).toHaveBeenCalledWith({
+                utilisateurId: 'user123',
+                dataToUpdate: { email: 'new@example.com' },
+            });
+
+            // Check session was updated correctly
+            const updatedSessionData = JSON.parse(localStorageMock.getItem('user-data'));
+            expect(updatedSessionData.utilisateur.email).toBe('new@example.com');
+
+            // Force rerender to update context
+            rerender(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Check context was updated
+            const updatedContext =
+                onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+            expect(updatedContext.utilisateur.email).toBe('new@example.com');
+        });
+
+        test('should update joueur data', async () => {
+            // Mock initial state
+            const mockUtilisateur = { id: 'user123', role: 'joueur' };
+            const mockJoueur = { id: 'joueur123', position: 'attaquant' };
+
+            // Set up mocks
+            (JoueursHelper.updateJoueur as jest.Mock).mockResolvedValue({});
+            (useStorageState as jest.Mock).mockReturnValue([
+                [false, JSON.stringify({ utilisateur: mockUtilisateur, joueur: mockJoueur })],
+                setSession,
+            ]);
+
+            // Render
+            const onContextValue = jest.fn();
+            const { rerender } = render(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Force rerender to update context with initial session
+            rerender(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Get context with session
+            const initialContext =
+                onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+
+            // Call updateUserData with joueur data
+            await act(async () => {
+                await initialContext.updateUserData({
+                    joueurData: { position: 'défenseur' },
+                });
+            });
+
+            // Assert helper was called with correct params
+            expect(JoueursHelper.updateJoueur).toHaveBeenCalledWith({
+                joueurId: 'joueur123',
+                dataToUpdate: { position: 'défenseur' },
+            });
+
+            // Check session was updated correctly
+            const updatedSessionData = JSON.parse(localStorageMock.getItem('user-data'));
+            expect(updatedSessionData.joueur.position).toBe('défenseur');
+
+            // Force rerender to update context
+            rerender(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Check context was updated
+            const updatedContext =
+                onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+            expect(updatedContext.joueur.position).toBe('défenseur');
+        });
+
+        test('should update staff data', async () => {
+            // Mock initial state
+            const mockUtilisateur = { id: 'user123', role: 'coach' };
+            const mockStaff = { id: 'staff123', niveau_diplome: 'CFF1' };
+
+            // Set up mocks
+            (StaffHelper.updateStaff as jest.Mock).mockResolvedValue({});
+            (useStorageState as jest.Mock).mockReturnValue([
+                [false, JSON.stringify({ utilisateur: mockUtilisateur, staff: mockStaff })],
+                setSession,
+            ]);
+
+            // Render
+            const onContextValue = jest.fn();
+            const { rerender } = render(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Force rerender to update context with initial session
+            rerender(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Get context with session
+            const initialContext =
+                onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+
+            // Call updateUserData with staff data
+            await act(async () => {
+                await initialContext.updateUserData({
+                    staffData: { niveau_diplome: 'CFF2' },
+                });
+            });
+
+            // Assert helper was called with correct params
+            expect(StaffHelper.updateStaff).toHaveBeenCalledWith({
+                staffId: 'staff123',
+                dataToUpdate: { niveau_diplome: 'CFF2' },
+            });
+
+            // Check session was updated correctly
+            const updatedSessionData = JSON.parse(localStorageMock.getItem('user-data'));
+            expect(updatedSessionData.staff.niveau_diplome).toBe('CFF2');
+
+            // Force rerender to update context
+            rerender(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Check context was updated
+            const updatedContext =
+                onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+            expect(updatedContext.staff.niveau_diplome).toBe('CFF2');
+        });
+
+        test('should update clubAdmin data', async () => {
+            // Mock initial state
+            const mockUtilisateur = { id: 'user123', role: 'president' };
+            const mockClubAdmin = { id: 'clubadmin123', role: 'president' };
+
+            // Set up mocks
+            (ClubAdminsHelper.updateClubAdmin as jest.Mock).mockResolvedValue({});
+            (useStorageState as jest.Mock).mockReturnValue([
+                [false, JSON.stringify({ utilisateur: mockUtilisateur, clubAdmin: mockClubAdmin })],
+                setSession,
+            ]);
+
+            // Render
+            const onContextValue = jest.fn();
+            const { rerender } = render(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Force rerender to update context with initial session
+            rerender(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Get context with session
+            const initialContext =
+                onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+
+            // Call updateUserData with clubAdmin data
+            await act(async () => {
+                await initialContext.updateUserData({
+                    clubAdminData: { role: 'vice-president' },
+                });
+            });
+
+            // Assert helper was called with correct params
+            expect(ClubAdminsHelper.updateClubAdmin).toHaveBeenCalledWith({
+                clubAdminId: 'clubadmin123',
+                dataToUpdate: { role: 'vice-president' },
+            });
+
+            // Check session was updated correctly
+            const updatedSessionData = JSON.parse(localStorageMock.getItem('user-data'));
+            expect(updatedSessionData.clubAdmin.role).toBe('vice-president');
+
+            // Force rerender to update context
+            rerender(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Check context was updated
+            const updatedContext =
+                onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+            expect(updatedContext.clubAdmin.role).toBe('vice-president');
+        });
+
+        test('should update multiple data types simultaneously', async () => {
+            // Mock initial state
+            const mockUtilisateur = { id: 'user123', role: 'coach', telephone: '0123456789' };
+            const mockStaff = { id: 'staff123', niveau_diplome: 'CFF1', experience: '2 ans' };
+
+            // Set up mocks
+            (UtilisateursHelper.updateUtilisateur as jest.Mock).mockResolvedValue({});
+            (StaffHelper.updateStaff as jest.Mock).mockResolvedValue({});
+            (useStorageState as jest.Mock).mockReturnValue([
+                [false, JSON.stringify({ utilisateur: mockUtilisateur, staff: mockStaff })],
+                setSession,
+            ]);
+
+            // Render
+            const onContextValue = jest.fn();
+            const { rerender } = render(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Force rerender to update context with initial session
+            rerender(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Get context with session
+            const initialContext =
+                onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+
+            // Call updateUserData with multiple data types
+            await act(async () => {
+                await initialContext.updateUserData({
+                    utilisateurData: { telephone: '9876543210' },
+                    staffData: {
+                        niveau_diplome: 'CFF2',
+                        experience: '3 ans',
+                    },
+                });
+            });
+
+            // Assert helpers were called with correct params
+            expect(UtilisateursHelper.updateUtilisateur).toHaveBeenCalledWith({
+                utilisateurId: 'user123',
+                dataToUpdate: { telephone: '9876543210' },
+            });
+
+            expect(StaffHelper.updateStaff).toHaveBeenCalledWith({
+                staffId: 'staff123',
+                dataToUpdate: {
+                    niveau_diplome: 'CFF2',
+                    experience: '3 ans',
+                },
+            });
+
+            // Check session was updated correctly with both changes
+            const updatedSessionData = JSON.parse(localStorageMock.getItem('user-data'));
+            expect(updatedSessionData.utilisateur.telephone).toBe('9876543210');
+            expect(updatedSessionData.staff.niveau_diplome).toBe('CFF2');
+            expect(updatedSessionData.staff.experience).toBe('3 ans');
+
+            // Force rerender to update context
+            rerender(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Check context was updated
+            const updatedContext =
+                onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+            expect(updatedContext.utilisateur.telephone).toBe('9876543210');
+            expect(updatedContext.staff.niveau_diplome).toBe('CFF2');
+            expect(updatedContext.staff.experience).toBe('3 ans');
+        });
+
+        test('should handle missing session', async () => {
+            // Mock no session
+
+            // Set up mocks
+            (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null });
+            (useStorageState as jest.Mock).mockReturnValue([[false, null], setSession]);
+
+            // Mock console.warn to avoid test output clutter
+            const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+            // Render
+            const onContextValue = jest.fn();
+            render(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Get context
+            const initialContext = onContextValue.mock.calls[0][0];
+
+            // Call updateUserData with no session
+            await act(async () => {
+                await initialContext.updateUserData({
+                    utilisateurData: { email: 'new@example.com' },
+                });
+            });
+
+            // Should log warning about missing session
+            expect(consoleWarnSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Cannot update user data'),
+            );
+
+            // Should call signOut
+            expect(supabase.auth.signOut).toHaveBeenCalled();
+
+            // Clean up
+            consoleWarnSpy.mockRestore();
+        });
+    });
+
+    // Tests for general functionality
+    describe('general functionality', () => {
+        test('should initialize context with user not logged in', async () => {
+            // Mock no session
+            (useStorageState as jest.Mock).mockReturnValue([[false, null], setSession]);
+
+            // Render
+            const onContextValue = jest.fn();
+            render(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Check context values
+            const contextValue = onContextValue.mock.calls[0][0];
+            expect(contextValue.isLoggedIn).toBe(false);
+            expect(contextValue.isLoggedOut).toBe(true);
+            expect(contextValue.isLoading).toBe(false);
+            expect(contextValue.utilisateur).toBeUndefined();
+            expect(contextValue.joueur).toBeUndefined();
+            expect(contextValue.staff).toBeUndefined();
+            expect(contextValue.clubAdmin).toBeUndefined();
+
+            // Check redirection
+            expect(router.replace).toHaveBeenCalledWith('/');
+        });
+
+        test('should initialize context with user logged in as a player', async () => {
+            // Mock session data for a player
+            const mockUtilisateur = { id: 'user123', role: 'joueur' };
+            const mockJoueur = { id: 'joueur123', position: 'attaquant' };
+            const sessionData = JSON.stringify({
+                utilisateur: mockUtilisateur,
+                joueur: mockJoueur,
+            });
+
+            // Set up mocks
+            (useStorageState as jest.Mock).mockReturnValue([[false, sessionData], setSession]);
+
+            // Render
+            const onContextValue = jest.fn();
+            const { rerender } = render(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Force rerender to ensure session is processed
+            await act(async () => {
+                rerender(
+                    <AuthProvider>
+                        <TestConsumer onContextValue={onContextValue} />
+                    </AuthProvider>,
+                );
+            });
+
+            // Get final context value after any state updates
+            const contextValue = onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+
+            // Check context values
+            expect(contextValue.isLoggedIn).toBe(true);
+            expect(contextValue.isLoggedOut).toBe(false);
+            expect(contextValue.utilisateur).toEqual(mockUtilisateur);
+            expect(contextValue.joueur).toEqual(mockJoueur);
+            expect(contextValue.staff).toBeUndefined();
+            expect(contextValue.clubAdmin).toBeUndefined();
+
+            // Check redirection
+            expect(router.replace).toHaveBeenCalledWith('/joueur/dashboard');
+        });
+
+        test('should initialize context with user logged in as a coach', async () => {
+            // Mock session data for a coach
+            const mockUtilisateur = { id: 'user123', role: 'coach' };
+            const mockStaff = { id: 'staff123', niveau_diplome: 'CFF1' };
+            const sessionData = JSON.stringify({
+                utilisateur: mockUtilisateur,
+                staff: mockStaff,
+            });
+
+            // Set up mocks
+            (useStorageState as jest.Mock).mockReturnValue([[false, sessionData], setSession]);
+
+            // Render
+            const onContextValue = jest.fn();
+            const { rerender } = render(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Force rerender to ensure session is processed
+            await act(async () => {
+                rerender(
+                    <AuthProvider>
+                        <TestConsumer onContextValue={onContextValue} />
+                    </AuthProvider>,
+                );
+            });
+
+            // Get final context value after any state updates
+            const contextValue = onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+
+            // Check context values
+            expect(contextValue.isLoggedIn).toBe(true);
+            expect(contextValue.isLoggedOut).toBe(false);
+            expect(contextValue.utilisateur).toEqual(mockUtilisateur);
+            expect(contextValue.staff).toEqual(mockStaff);
+            expect(contextValue.joueur).toBeUndefined();
+            expect(contextValue.clubAdmin).toBeUndefined();
+
+            // Check redirection
+            expect(router.replace).toHaveBeenCalledWith('/coach/dashboard');
+        });
+
+        test('should initialize context with user logged in as a president', async () => {
+            // Mock session data for a president
+            const mockUtilisateur = { id: 'user123', role: 'president' };
+            const mockClubAdmin = { id: 'clubadmin123', role: 'president' };
+            const sessionData = JSON.stringify({
+                utilisateur: mockUtilisateur,
+                clubAdmin: mockClubAdmin,
+            });
+
+            // Set up mocks
+            (useStorageState as jest.Mock).mockReturnValue([[false, sessionData], setSession]);
+
+            // Render
+            const onContextValue = jest.fn();
+            const { rerender } = render(
+                <AuthProvider>
+                    <TestConsumer onContextValue={onContextValue} />
+                </AuthProvider>,
+            );
+
+            // Force rerender to ensure session is processed
+            await act(async () => {
+                rerender(
+                    <AuthProvider>
+                        <TestConsumer onContextValue={onContextValue} />
+                    </AuthProvider>,
+                );
+            });
+
+            // Get final context value after any state updates
+            const contextValue = onContextValue.mock.calls[onContextValue.mock.calls.length - 1][0];
+
+            // Check context values
+            expect(contextValue.isLoggedIn).toBe(true);
+            expect(contextValue.isLoggedOut).toBe(false);
+            expect(contextValue.utilisateur).toEqual(mockUtilisateur);
+            expect(contextValue.clubAdmin).toEqual(mockClubAdmin);
+            expect(contextValue.joueur).toBeUndefined();
+            expect(contextValue.staff).toBeUndefined();
+
+            // Check redirection
+            expect(router.replace).toHaveBeenCalledWith('/president/dashboard');
+        });
+    });
 });
