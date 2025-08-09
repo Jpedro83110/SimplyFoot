@@ -1,5 +1,5 @@
-import React, { FC, useEffect, useState } from 'react';
-import { View, StyleSheet, ImageBackground, StatusBar, Text, Platform } from 'react-native';
+import { FC, useEffect, useState } from 'react';
+import { View, StyleSheet, StatusBar, Text, Platform } from 'react-native';
 import { Slot } from 'expo-router';
 import WebSocketManager from '../components/business/WebSocketManager';
 import { supabase } from '../lib/supabase';
@@ -113,18 +113,14 @@ const PrivateGlobalLayout: FC = () => {
     }, []);
 
     return (
-        <ImageBackground
-            source={require('../assets/chat.png')}
-            style={styles.container}
-            resizeMode="cover"
-        >
+        <>
             <StatusBar barStyle="light-content" />
             <WebSocketManager />
             <View style={styles.overlay}>
                 {role === 'admin' && <Text style={styles.badge}>👑 MODE ADMIN</Text>}
                 <Slot />
             </View>
-        </ImageBackground>
+        </>
     );
 };
 
