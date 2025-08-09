@@ -68,8 +68,12 @@ export default function CreateEvent() {
         setCoords(null);
         setMeteo('');
         setLieuxResultats([]);
-        if (timerLieu.current) clearTimeout(timerLieu.current);
-        if (text.length < 3) return;
+        if (timerLieu.current) {
+            clearTimeout(timerLieu.current);
+        }
+        if (text.length < 3) {
+            return;
+        }
         setFetchingLieu(true);
         timerLieu.current = setTimeout(async () => {
             try {
@@ -241,20 +245,20 @@ export default function CreateEvent() {
                 // Vérifie s'il existe déjà une participation (évite les conflits 409)
                 const { data: deja, error: dejaErr } = await supabase
                     .from('participations_evenement')
-                    .select('id, joueur_id')
+                    .select('id, utilisateur_id')
                     .eq('evenement_id', nouvelEvenement.id);
 
                 if (dejaErr) {
                     console.error('⚠️ Erreur vérification participations existantes:', dejaErr);
                 }
 
-                const dejaIds = deja ? deja.map((p) => p.joueur_id) : [];
+                const dejaIds = deja ? deja.map((p) => p.utilisateur_id) : [];
                 console.log('🔍 Participations déjà existantes:', dejaIds);
 
                 const participations = selectedJoueurs
                     .filter((userId) => !dejaIds.includes(userId))
                     .map((userId) => ({
-                        joueur_id: userId, // Maintenant c'est l'ID utilisateur
+                        utilisateur_id: userId,
                         evenement_id: nouvelEvenement.id,
                         reponse: null,
                         besoin_transport: false,
@@ -266,9 +270,7 @@ export default function CreateEvent() {
                     // ✅ CORRECTION : Syntaxe correcte pour Supabase upsert
                     const { error: partError } = await supabase
                         .from('participations_evenement')
-                        .upsert(participations, {
-                            onConflict: 'joueur_id,evenement_id', // STRING au lieu d'array
-                        });
+                        .upsert(participations);
 
                     if (partError) {
                         console.error('❌ Erreur participations:', partError);

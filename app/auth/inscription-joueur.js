@@ -38,19 +38,25 @@ function isValidPhone(phone) {
     return phoneRegex.test(phone.replace(/\s/g, ''));
 }
 function formatDateForInput(date) {
-    if (!date) return '';
+    if (!date) {
+        return '';
+    }
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
 function parseDateFromInput(dateString) {
-    if (!dateString) return null;
+    if (!dateString) {
+        return null;
+    }
     const [year, month, day] = dateString.split('-').map(Number);
     return new Date(year, month - 1, day);
 }
 const WebDateInput = ({ value, onChange, disabled, style, placeholder }) => {
-    if (Platform.OS !== 'web') return null;
+    if (Platform.OS !== 'web') {
+        return null;
+    }
     return (
         <input
             type="date"
@@ -150,7 +156,9 @@ export default function InscriptionJoueur() {
 
     // Calcul âge et mineur/majeur
     useEffect(() => {
-        if (!dateNaissance) return;
+        if (!dateNaissance) {
+            return;
+        }
         const age = calculateAge(dateNaissance);
         setCalculatedAge(age);
         setIsMinor(age < 18);
@@ -164,17 +172,29 @@ export default function InscriptionJoueur() {
 
     // DatePicker handlers
     const handleDatePickerOpen = () => {
-        if (Platform.OS !== 'web') setShowDatePicker(true);
+        if (Platform.OS !== 'web') {
+            setShowDatePicker(true);
+        }
     };
     const onDateChange = (event, selectedDate) => {
-        if (Platform.OS !== 'web') setShowDatePicker(false);
-        if (event.type === 'dismissed') return;
-        if (selectedDate) handleDateValidationAndSet(selectedDate);
+        if (Platform.OS !== 'web') {
+            setShowDatePicker(false);
+        }
+        if (event.type === 'dismissed') {
+            return;
+        }
+        if (selectedDate) {
+            handleDateValidationAndSet(selectedDate);
+        }
     };
     const handleWebDateChange = (dateString) => {
-        if (!dateString) return;
+        if (!dateString) {
+            return;
+        }
         const selectedDate = parseDateFromInput(dateString);
-        if (selectedDate) handleDateValidationAndSet(selectedDate);
+        if (selectedDate) {
+            handleDateValidationAndSet(selectedDate);
+        }
     };
     const handleDateValidationAndSet = (selectedDate) => {
         const today = new Date();
@@ -218,7 +238,9 @@ export default function InscriptionJoueur() {
 
     // 🚀 Inscription
     const handleInscription = async () => {
-        if (!validateForm()) return;
+        if (!validateForm()) {
+            return;
+        }
         setLoading(true);
 
         try {

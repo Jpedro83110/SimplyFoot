@@ -64,7 +64,9 @@ export default function Stages() {
     // Supprime automatiquement les stages dépassés (backend = sécurité, ici = UX)
     useEffect(() => {
         async function autoCleanStages() {
-            if (!clubId) return;
+            if (!clubId) {
+                return;
+            }
             const today = new Date().toISOString().slice(0, 10);
             const { data: expired } = await supabase
                 .from('stages')
@@ -87,11 +89,15 @@ export default function Stages() {
     // Confirmation reset
     useEffect(() => {
         if (confirmation) {
-            if (timerRef.current) clearTimeout(timerRef.current);
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+            }
             timerRef.current = setTimeout(() => setConfirmation(''), 5000);
         }
         return () => {
-            if (timerRef.current) clearTimeout(timerRef.current);
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+            }
         };
     }, [confirmation]);
 
@@ -99,14 +105,18 @@ export default function Stages() {
         async function loadData() {
             const { data: session } = await supabase.auth.getSession();
             const userId = session?.session?.user?.id;
-            if (!userId) return;
+            if (!userId) {
+                return;
+            }
             const { data: user } = await supabase
                 .from('utilisateurs')
                 .select('club_id')
                 .eq('id', userId)
                 .single();
 
-            if (!user?.club_id) return;
+            if (!user?.club_id) {
+                return;
+            }
             setClubId(user.club_id);
         }
         loadData();
@@ -114,7 +124,9 @@ export default function Stages() {
 
     // Fetch only future/active stages
     const fetchStages = async () => {
-        if (!clubId) return [];
+        if (!clubId) {
+            return [];
+        }
         const today = new Date().toISOString().slice(0, 10);
         const { data: stagesList } = await supabase
             .from('stages')
@@ -199,9 +211,12 @@ export default function Stages() {
     };
 
     const enregistrerStage = async () => {
-        if (!clubId) return Alert.alert('Erreur', 'Club non identifié');
-        if (!titre || !dateDebut || !dateFin)
+        if (!clubId) {
+            return Alert.alert('Erreur', 'Club non identifié');
+        }
+        if (!titre || !dateDebut || !dateFin) {
             return Alert.alert('Erreur', 'Champs obligatoires manquants');
+        }
         const dataObj = {
             club_id: clubId,
             titre,
@@ -228,9 +243,12 @@ export default function Stages() {
     };
 
     const modifierStage = async () => {
-        if (!openedStageId) return;
-        if (!titre || !dateDebut || !dateFin)
+        if (!openedStageId) {
+            return;
+        }
+        if (!titre || !dateDebut || !dateFin) {
             return Alert.alert('Erreur', 'Champs obligatoires manquants');
+        }
         const dataObj = {
             club_id: clubId,
             titre,
@@ -257,7 +275,9 @@ export default function Stages() {
     };
 
     const supprimerStage = async () => {
-        if (!openedStageId) return;
+        if (!openedStageId) {
+            return;
+        }
         Alert.alert('Suppression', 'Confirmer la suppression de ce stage ?', [
             { text: 'Annuler', style: 'cancel' },
             {
@@ -268,8 +288,9 @@ export default function Stages() {
                         .from('stages')
                         .delete()
                         .eq('id', openedStageId);
-                    if (error) setConfirmation('❌ Erreur suppression');
-                    else {
+                    if (error) {
+                        setConfirmation('❌ Erreur suppression');
+                    } else {
                         await refreshStages();
                         setConfirmation('🗑️ Stage supprimé');
                         resetForm();

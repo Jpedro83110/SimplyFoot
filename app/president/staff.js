@@ -37,9 +37,13 @@ export default function Staff() {
 
     // --- Fonction fetch staff
     const fetchStaff = async () => {
-        if (!clubId) return [];
+        if (!clubId) {
+            return [];
+        }
         const { data, error } = await supabase.from('staff').select('*').eq('club_id', clubId);
-        if (error) throw new Error(error.message);
+        if (error) {
+            throw new Error(error.message);
+        }
         return data || [];
     };
 
@@ -118,7 +122,9 @@ export default function Staff() {
         ]);
     };
 
-    if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    if (loading) {
+        return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    }
 
     return (
         <ScrollView style={styles.container}>

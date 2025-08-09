@@ -43,7 +43,9 @@ function isValidPhone(phone) {
 
 // Fonction pour formater la date en YYYY-MM-DD pour l'input HTML
 function formatDateForInput(date) {
-    if (!date) return '';
+    if (!date) {
+        return '';
+    }
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -52,14 +54,18 @@ function formatDateForInput(date) {
 
 // Fonction pour parser une date depuis un input HTML (YYYY-MM-DD)
 function parseDateFromInput(dateString) {
-    if (!dateString) return null;
+    if (!dateString) {
+        return null;
+    }
     const [year, month, day] = dateString.split('-').map(Number);
     return new Date(year, month - 1, day);
 }
 
 // Composant d'input date spécifique pour le web
 const WebDateInput = ({ value, onChange, disabled, style, placeholder }) => {
-    if (Platform.OS !== 'web') return null;
+    if (Platform.OS !== 'web') {
+        return null;
+    }
 
     return (
         <input
@@ -134,13 +140,17 @@ export default function InscriptionPresident() {
     function genererCodeClub() {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let code = '';
-        for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+        for (let i = 0; i < 6; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
         return `SF-${code}`;
     }
 
     // Gestion du DatePicker pour mobile
     const handleDatePickerOpen = () => {
-        if (Platform.OS === 'web') return;
+        if (Platform.OS === 'web') {
+            return;
+        }
         setShowDatePicker(true);
     };
 
@@ -148,7 +158,9 @@ export default function InscriptionPresident() {
         if (Platform.OS === 'android') {
             setShowDatePicker(false);
         }
-        if (event.type === 'dismissed') return;
+        if (event.type === 'dismissed') {
+            return;
+        }
         if (selectedDate) {
             handleDateValidationAndSet(selectedDate);
         }
@@ -156,7 +168,9 @@ export default function InscriptionPresident() {
 
     // Gestion de la date pour le web
     const handleWebDateChange = (dateString) => {
-        if (!dateString) return;
+        if (!dateString) {
+            return;
+        }
         const selectedDate = parseDateFromInput(dateString);
         if (selectedDate) {
             handleDateValidationAndSet(selectedDate);
@@ -278,7 +292,9 @@ export default function InscriptionPresident() {
         try {
             setNotificationsInitializing(true);
             const { token } = await initializeNotificationsForUser(userId);
-            if (token) return token;
+            if (token) {
+                return token;
+            }
             return null;
         } catch (error) {
             console.error('🔔 Erreur notifications:', error);
@@ -290,7 +306,9 @@ export default function InscriptionPresident() {
 
     // 🚀 Création du club et inscription président
     const creerPresidentEtClub = async () => {
-        if (!validateForm()) return;
+        if (!validateForm()) {
+            return;
+        }
         setLoading(true);
         try {
             console.log("🚀 Début de l'inscription président...");

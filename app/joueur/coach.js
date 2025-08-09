@@ -28,7 +28,9 @@ export default function CoachJoueur() {
                     .eq('id', supabase.auth.getUser().id)
                     .single();
 
-                if (err1 || !user) return setLoading(false);
+                if (err1 || !user) {
+                    return setLoading(false);
+                }
 
                 const { data: coachData } = await supabase
                     .from('staff')
@@ -54,7 +56,9 @@ export default function CoachJoueur() {
         fetchCoach();
     }, []);
 
-    if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    if (loading) {
+        return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    }
 
     return (
         <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>

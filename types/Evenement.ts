@@ -1,3 +1,10 @@
+import {
+    getEvenementByCoachId,
+    getEvenementInfosByUtilisateurId,
+} from '@/helpers/evenements.helper';
+
+export type EvenementFields = keyof Evenement;
+
 export type EvenementType = 'match' | 'entrainement' | 'tournoi' | 'plateau' | 'autre';
 
 export interface Evenement {
@@ -18,3 +25,6 @@ export interface Evenement {
     club_id?: string; // FIXME: can be null
     lieu_complement?: string;
 }
+
+export type CoachEvenements = Awaited<ReturnType<typeof getEvenementByCoachId>>;
+export type EvenementInfos = Awaited<ReturnType<typeof getEvenementInfosByUtilisateurId>>;

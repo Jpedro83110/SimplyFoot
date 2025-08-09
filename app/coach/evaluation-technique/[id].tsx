@@ -1,34 +1,42 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
-    Pressable,
-    Alert,
     ActivityIndicator,
-    TextInput,
+    Pressable,
     Platform,
+    TextInput,
+    Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import Slider from '@react-native-community/slider';
 import useCacheData from '../../../lib/cache';
+import { Utilisateur } from '@/types/Utilisateur';
 
-export default function EvaluationMentale() {
+export default function EvaluationTechnique() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
 
-    const [valeurs, setValeurs] = useState({
-        motivation: 50,
-        rigueur: 50,
-        ponctualite: 50,
-        attitude: 50,
-        respect: 50,
-    });
+    const criteres = useMemo(
+        () => [
+            'tir',
+            'passe',
+            'centre',
+            'tete',
+            'vitesse',
+            'defense',
+            'placement',
+            'jeu_sans_ballon',
+        ],
+        [],
+    );
 
-    const [joueurInfo, setJoueurInfo] = useState(null);
-    const [joueurId, setJoueurId] = useState(null);
+    const [valeurs, setValeurs] = useState(Object.fromEntries(criteres.map((c) => [c, 50])));
+    const [joueurInfo, setJoueurInfo] =
+        useState<Pick<Utilisateur, 'id' | 'nom' | 'prenom' | 'role' | 'joueur_id'>>();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -51,7 +59,6 @@ export default function EvaluationMentale() {
 
                 if (utilisateur) {
                     setJoueurInfo(utilisateur);
-                    setJoueurId(utilisateur.id);
                 } else {
                     // Étape 2: Essayer de trouver par joueur_id
                     const { data: userByJoueurId, error: joueurError } = await supabase
@@ -66,7 +73,6 @@ export default function EvaluationMentale() {
 
                     if (userByJoueurId) {
                         setJoueurInfo(userByJoueurId);
-                        setJoueurId(userByJoueurId.id);
                     } else {
                         Alert.alert('Erreur', 'Joueur introuvable dans le système');
                     }
@@ -84,18 +90,20 @@ export default function EvaluationMentale() {
         }
     }, [id]);
 
-    // Charge les données d'éval si joueurId dispo
+    // Charge les données d'évaluation si joueurId disponible
     const [evalData, refresh, loadingEval] = useCacheData(
-        joueurId ? `eval-mentale-${joueurId}` : null,
+        joueurInfo?.id ? `eval-technique-${joueurInfo?.id}` : null,
         async () => {
-            if (!joueurId) return null;
+            if (!joueurInfo?.id) {
+                return null;
+            }
 
             try {
                 const { data, error } = await supabase
-                    .from('evaluations_mentales')
+                    .from('evaluations_techniques')
                     .select('*')
-                    .eq('joueur_id', joueurId)
-                    .maybeSingle(); // Utilise maybeSingle au lieu de single pour éviter les erreurs si pas de résultat
+                    .eq('joueur_id', joueurInfo?.id)
+                    .maybeSingle();
 
                 if (error) {
                     console.error('Erreur lors du chargement des évaluations:', error);
@@ -111,32 +119,25 @@ export default function EvaluationMentale() {
         3600,
     );
 
-    // Remplit les sliders si data trouvée
+    // Remplit les valeurs si data trouvée
     useEffect(() => {
         if (evalData) {
-            setValeurs({
-                motivation: evalData.motivation ?? 50,
-                rigueur: evalData.rigueur ?? 50,
-                ponctualite: evalData.ponctualite ?? 50,
-                attitude: evalData.attitude ?? 50,
-                respect: evalData.respect ?? 50,
+            const newValeurs = Object.fromEntries(criteres.map((c) => [c, 50]));
+            criteres.forEach((critere) => {
+                if (evalData[critere] !== undefined) {
+                    newValeurs[critere] = evalData[critere];
+                }
             });
+            setValeurs(newValeurs);
         }
-    }, [evalData]);
-
-    const handleSliderChange = (key, value) => {
-        setValeurs((prev) => ({
-            ...prev,
-            [key]: Math.max(0, Math.min(100, parseInt(value) || 0)),
-        }));
-    };
+    }, [criteres, evalData]);
 
     const calculerMoyenne = () => {
-        const total = Object.values(valeurs).reduce((a, b) => a + b, 0);
-        return Math.round(total / Object.values(valeurs).length);
+        const total = criteres.reduce((sum, crit) => sum + (Number(valeurs[crit]) || 0), 0);
+        return Math.round(total / criteres.length);
     };
 
-    const enregistrerEvaluation = async () => {
+    const handleSave = async () => {
         setSaving(true);
 
         try {
@@ -149,34 +150,30 @@ export default function EvaluationMentale() {
                 return;
             }
 
-            if (!joueurId) {
+            if (!joueurInfo?.id) {
                 Alert.alert('Erreur', 'Joueur introuvable');
                 return;
             }
 
             // Objet complet avec tous les champs nécessaires
-            const updates = {
-                joueur_id: joueurId,
+            const updates: any = {
+                // FIXME any
+                joueur_id: joueurInfo?.id,
                 coach_id: session.user.id,
-                date: new Date().toISOString().split('T')[0],
-                motivation: valeurs.motivation,
-                rigueur: valeurs.rigueur,
-                ponctualite: valeurs.ponctualite,
-                attitude: valeurs.attitude,
-                respect: valeurs.respect,
-                note_globale: moyenne,
                 moyenne: moyenne,
                 updated_at: new Date().toISOString(),
-                created_at: new Date().toISOString(),
-                implication: null,
-                commentaire: null,
             };
+
+            // Ajouter tous les critères
+            criteres.forEach((critere) => {
+                updates[critere] = Math.round(Number(valeurs[critere]) || 0);
+            });
 
             // Stratégie UPDATE puis INSERT
             const { data: updateData, error: updateError } = await supabase
-                .from('evaluations_mentales')
+                .from('evaluations_techniques')
                 .update(updates)
-                .eq('joueur_id', joueurId)
+                .eq('joueur_id', joueurInfo?.id)
                 .eq('coach_id', session.user.id)
                 .select();
 
@@ -188,7 +185,7 @@ export default function EvaluationMentale() {
             // Si aucune ligne n'a été mise à jour, on insère
             if (!updateData || updateData.length === 0) {
                 const { error: insertError } = await supabase
-                    .from('evaluations_mentales')
+                    .from('evaluations_techniques')
                     .insert(updates)
                     .select();
 
@@ -209,16 +206,20 @@ export default function EvaluationMentale() {
                 // FIXME: bizarre ce commentaire
             }
 
-            Alert.alert('Succès', 'Évaluation mentale enregistrée avec succès!', [
+            Alert.alert('Succès', 'Évaluation technique enregistrée avec succès!', [
                 {
                     text: 'OK',
                     onPress: () => {
-                        router.replace(`/coach/joueur/${joueurId}`);
+                        router.replace(`/coach/joueur/${joueurInfo?.joueur_id}`);
                     },
                 },
             ]);
+
+            if (Platform.OS === 'web') {
+                router.replace(`/coach/joueur/${joueurInfo?.joueur_id}`);
+            }
         } catch (error) {
-            Alert.alert('Erreur', `Erreur inattendue: ${error.message}`);
+            Alert.alert('Erreur', `Erreur inattendue: ${(error as Error).message}`);
         } finally {
             setSaving(false);
         }
@@ -236,8 +237,8 @@ export default function EvaluationMentale() {
     }
 
     return (
-        <ScrollView style={styles.container}>
-            <Text style={styles.title}>🧠 Évaluation mentale</Text>
+        <ScrollView contentContainerStyle={styles.container}>
+            <Text style={styles.title}>🎯 Évaluation technique</Text>
 
             {/* Affichage des informations du joueur */}
             {joueurInfo && (
@@ -249,17 +250,20 @@ export default function EvaluationMentale() {
                 </View>
             )}
 
-            {Object.entries(valeurs).map(([key, val]) => (
-                <View key={key} style={styles.sliderBlock}>
+            {criteres.map((critere) => (
+                <View key={critere} style={styles.sliderBlock}>
                     <Text style={styles.label}>
-                        {key.charAt(0).toUpperCase() + key.slice(1)} : {val}/100
+                        {critere.replace(/_/g, ' ').toUpperCase()} : {valeurs[critere]}/100
                     </Text>
                     {Platform.OS === 'web' ? (
                         <TextInput
-                            style={styles.input}
                             keyboardType="numeric"
-                            value={String(val)}
-                            onChangeText={(text) => handleSliderChange(key, text)}
+                            value={String(valeurs[critere])}
+                            onChangeText={(val) => {
+                                const num = Math.max(0, Math.min(100, parseInt(val) || 0));
+                                setValeurs((prev) => ({ ...prev, [critere]: num }));
+                            }}
+                            style={styles.inputWeb}
                             placeholder="0 à 100"
                             placeholderTextColor="#555"
                         />
@@ -276,18 +280,20 @@ export default function EvaluationMentale() {
                                     },
                                 ]}
                             >
-                                {val}
+                                {valeurs[critere]}
                             </Text>
                             <Slider
                                 style={{ flex: 1, marginHorizontal: 12 }}
                                 minimumValue={0}
                                 maximumValue={100}
                                 step={1}
-                                value={val}
+                                value={Number(valeurs[critere])}
+                                onValueChange={(val) =>
+                                    setValeurs((prev) => ({ ...prev, [critere]: Math.round(val) }))
+                                }
                                 minimumTrackTintColor="#00ff88"
                                 maximumTrackTintColor="#555"
                                 thumbTintColor="#00ff88"
-                                onValueChange={(v) => handleSliderChange(key, v)}
                             />
                             <Text
                                 style={[
@@ -303,16 +309,16 @@ export default function EvaluationMentale() {
             ))}
 
             <View style={styles.moyenneBlock}>
-                <Text style={styles.moyenneLabel}>🟢 Note globale : {moyenne}/100</Text>
+                <Text style={styles.moyenneText}>🧮 Moyenne générale : {moyenne}/100</Text>
             </View>
 
             <Pressable
+                onPress={handleSave}
                 style={[styles.button, (saving || loading || loadingEval) && styles.buttonDisabled]}
-                onPress={enregistrerEvaluation}
                 disabled={saving || loading || loadingEval}
             >
                 <Text style={styles.buttonText}>
-                    {saving ? 'Enregistrement...' : "Valider l'évaluation"}
+                    {saving ? 'Enregistrement...' : "💾 Enregistrer l'évaluation"}
                 </Text>
             </Pressable>
         </ScrollView>
@@ -321,9 +327,9 @@ export default function EvaluationMentale() {
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#121212',
         padding: 20,
-        flex: 1,
+        backgroundColor: '#121212',
+        flexGrow: 1,
     },
     loadingContainer: {
         flex: 1,
@@ -340,6 +346,7 @@ const styles = StyleSheet.create({
         color: '#00ff88',
         fontWeight: 'bold',
         marginBottom: 20,
+        textAlign: 'center',
     },
     playerInfo: {
         backgroundColor: '#1a1a1a',
@@ -361,40 +368,46 @@ const styles = StyleSheet.create({
     },
     sliderBlock: {
         marginBottom: 25,
+        backgroundColor: '#1e1e1e',
+        padding: 12,
+        borderRadius: 10,
     },
     label: {
         color: '#fff',
         marginBottom: 8,
+        fontWeight: 'bold',
         fontSize: 16,
     },
-    input: {
-        backgroundColor: '#1e1e1e',
-        color: '#fff',
+    inputWeb: {
+        backgroundColor: '#222',
+        color: '#00ff88',
         padding: 10,
-        borderRadius: 8,
-        borderColor: '#444',
+        borderRadius: 6,
+        fontSize: 16,
         borderWidth: 1,
+        borderColor: '#00ff88',
     },
     moyenneBlock: {
-        marginVertical: 20,
-        padding: 14,
+        marginTop: 10,
+        marginBottom: 20,
+        padding: 15,
         backgroundColor: '#0e0e0e',
         borderRadius: 10,
-        borderWidth: 1.5,
         borderColor: '#00ff88',
+        borderWidth: 1.5,
         alignItems: 'center',
     },
-    moyenneLabel: {
-        fontSize: 18,
+    moyenneText: {
         color: '#00ff88',
         fontWeight: 'bold',
+        fontSize: 18,
     },
     button: {
         backgroundColor: '#00ff88',
-        padding: 14,
+        padding: 15,
         borderRadius: 10,
         alignItems: 'center',
-        marginBottom: 40,
+        marginBottom: 30,
     },
     buttonDisabled: {
         backgroundColor: '#555',

@@ -41,14 +41,18 @@ export default function AdminLayout() {
 
             if (user.role === 'admin') {
                 console.log("[ADMIN LAYOUT] Accès autorisé à l'admin");
-                if (isMounted) setAuthorized(true);
+                if (isMounted) {
+                    setAuthorized(true);
+                }
             } else {
                 console.warn('[ADMIN LAYOUT] Accès refusé. Rôle =', user.role);
                 router.replace('/auth/login-club');
                 return;
             }
 
-            if (isMounted) setChecking(false);
+            if (isMounted) {
+                setChecking(false);
+            }
         };
 
         checkRole();

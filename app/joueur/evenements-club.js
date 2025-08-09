@@ -34,8 +34,11 @@ export default function EvenementsClub() {
             .eq('club_id', userData.club_id)
             .order('date', { ascending: true });
 
-        if (error) setEvents([]);
-        else setEvents(data);
+        if (error) {
+            setEvents([]);
+        } else {
+            setEvents(data);
+        }
 
         setLoading(false);
     };

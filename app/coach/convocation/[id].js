@@ -82,7 +82,7 @@ export default function ConvocationDetail() {
 
                 // 4. 🎯 CORRECTION : Récupérer les utilisateurs correctement
                 // participations contient des joueur_id qui sont des IDs d'utilisateurs
-                const participationUserIds = (participations || []).map((p) => p.joueur_id);
+                const participationUserIds = (participations || []).map((p) => p.utilisateur_id);
                 console.log('🏆 COACH: IDs utilisateurs des participations:', participationUserIds);
 
                 // Récupérer tous les utilisateurs joueurs de cette équipe
@@ -138,11 +138,12 @@ export default function ConvocationDetail() {
 
                     // 🎯 CORRECTION : Chercher la participation par ID utilisateur
                     const part = (participations || []).find((p) => {
-                        // participations.joueur_id = ID utilisateur
+                        // participations.utilisateur_id = ID utilisateur
                         // userData.id = ID utilisateur
-                        const match = userData.id && String(p.joueur_id) === String(userData.id);
+                        const match =
+                            userData.id && String(p.utilisateur_id) === String(userData.id);
                         console.log(
-                            `🏆 COACH: Vérification participation pour ${joueur.nom}: p.joueur_id=${p.joueur_id} vs userData.id=${userData.id} => ${match}`,
+                            `🏆 COACH: Vérification participation pour ${joueur.nom}: p.utilisateur_id=${p.utilisateur_id} vs userData.id=${userData.id} => ${match}`,
                         );
                         return match;
                     });
@@ -234,7 +235,7 @@ export default function ConvocationDetail() {
                 lieu_rdv: lieuRdv,
                 heure_rdv: heureRdv,
             })
-            .eq('joueur_id', modalJoueur.utilisateur.id) // ID utilisateur
+            .eq('utilisateur_id', modalJoueur.utilisateur.id) // ID utilisateur
             .eq('evenement_id', id);
 
         if (error) {
@@ -246,7 +247,7 @@ export default function ConvocationDetail() {
         setShowModal(false);
     };
 
-    if (loading)
+    if (loading) {
         return (
             <View style={{ flex: 1, backgroundColor: '#121212', justifyContent: 'center' }}>
                 <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />
@@ -255,6 +256,7 @@ export default function ConvocationDetail() {
                 </Text>
             </View>
         );
+    }
 
     return (
         <View style={{ flex: 1, backgroundColor: '#121212' }}>

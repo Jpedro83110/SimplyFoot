@@ -54,12 +54,14 @@ export default function Motivation() {
                 motivation,
             });
 
-            if (error) Alert.alert('Erreur', error.message);
-            else
+            if (error) {
+                Alert.alert('Erreur', error.message);
+            } else {
                 Alert.alert(
                     '✅ Motivation enregistrée',
                     `Tu te sens à ${motivation}/10 aujourd'hui`,
                 );
+            }
         }
     };
 

@@ -43,7 +43,9 @@ function isValidPhone(phone) {
 
 // Fonction pour formater la date en YYYY-MM-DD pour l'input HTML
 function formatDateForInput(date) {
-    if (!date) return '';
+    if (!date) {
+        return '';
+    }
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -52,14 +54,18 @@ function formatDateForInput(date) {
 
 // Fonction pour parser une date depuis un input HTML (YYYY-MM-DD)
 function parseDateFromInput(dateString) {
-    if (!dateString) return null;
+    if (!dateString) {
+        return null;
+    }
     const [year, month, day] = dateString.split('-').map(Number);
     return new Date(year, month - 1, day);
 }
 
 // Composant d'input date spécifique pour le web
 const WebDateInput = ({ value, onChange, disabled, style, placeholder }) => {
-    if (Platform.OS !== 'web') return null;
+    if (Platform.OS !== 'web') {
+        return null;
+    }
 
     return (
         <input
@@ -126,7 +132,9 @@ export default function InscriptionCoach() {
 
     // Gestion du DatePicker pour mobile
     const handleDatePickerOpen = () => {
-        if (Platform.OS === 'web') return;
+        if (Platform.OS === 'web') {
+            return;
+        }
         console.log('📅 Ouverture DatePicker coach...');
         setShowDatePicker(true);
     };
@@ -149,7 +157,9 @@ export default function InscriptionCoach() {
 
     // Gestion de la date pour le web
     const handleWebDateChange = (dateString) => {
-        if (!dateString) return;
+        if (!dateString) {
+            return;
+        }
 
         const selectedDate = parseDateFromInput(dateString);
         if (selectedDate) {
@@ -287,7 +297,9 @@ export default function InscriptionCoach() {
 
     // 🚀 Inscription principale
     const handleInscription = async () => {
-        if (!validateForm()) return;
+        if (!validateForm()) {
+            return;
+        }
 
         setLoading(true);
 

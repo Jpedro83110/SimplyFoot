@@ -34,10 +34,15 @@ export default function Header({ title, showBack = true }) {
 
         const role = utilisateur.role;
 
-        if (role === 'president') router.replace('/president/dashboard');
-        else if (role === 'coach') router.replace('/coach/dashboard');
-        else if (role === 'joueur') router.replace('/joueur/dashboard');
-        else router.replace('/auth/login-club');
+        if (role === 'president') {
+            router.replace('/president/dashboard');
+        } else if (role === 'coach') {
+            router.replace('/coach/dashboard');
+        } else if (role === 'joueur') {
+            router.replace('/joueur/dashboard');
+        } else {
+            router.replace('/auth/login-club');
+        }
     };
 
     const handleBack = async () => {

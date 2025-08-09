@@ -85,11 +85,16 @@ export default function Decharge() {
             .from('decharges_generales')
             .upsert(payload, { onConflict: ['joueur_id'] });
 
-        if (error) Alert.alert('Erreur', error.message);
-        else Alert.alert('✅ Décharge enregistrée');
+        if (error) {
+            Alert.alert('Erreur', error.message);
+        } else {
+            Alert.alert('✅ Décharge enregistrée');
+        }
     };
 
-    if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    if (loading) {
+        return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    }
 
     return (
         <View style={styles.container}>

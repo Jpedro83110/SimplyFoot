@@ -1,6 +1,6 @@
 {
     "name": "simply-foot",
-    "version": "0.0.1",
+    "version": "0.0.4",
     "main": "expo-router/entry",
     "scripts": {
         "start": "expo start",
@@ -13,6 +13,7 @@
         "build:ios": "expo export -p ios",
         "pack:android": "node scripts/build-android.js",
         "copy-apk": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); const path = require('path'); const srcPath = path.join('android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk'); const destPath = `dist/simply-foot-v${pkg.version}.apk`; fs.copyFileSync(srcPath, destPath); console.log(`APK copied to ${destPath}`);\"",
+        "stats": "node scripts/stats.js",
         "test": "jest",
         "test:watch": "jest --watchAll",
         "test:coverage": "jest --coverage",
@@ -23,7 +24,30 @@
     },
     "jest": {
         "preset": "jest-expo",
-        "testEnvironment": "jsdom"
+        "testEnvironment": "jsdom",
+        "rootDir": ".",
+        "roots": [
+            "<rootDir>/app",
+            "<rootDir>/components",
+            "<rootDir>/context",
+            "<rootDir>/helpers",
+            "<rootDir>/hooks",
+            "<rootDir>/lib",
+            "<rootDir>/utils"
+        ],
+        "collectCoverageFrom": [
+            "**/*.{js,jsx,ts,tsx}",
+            "!<rootDir>/node_modules/"
+        ],
+        "coverageThreshold": {
+            "global": {
+                "lines": 0,
+                "statements": 0
+            }
+        },
+        "setupFilesAfterEnv": [
+            "<rootDir>/.jest/localStorageMock.ts"
+        ]
     },
     "prettier": "./.prettierrc.json",
     "dependencies": {
@@ -49,6 +73,7 @@
         "expo-notifications": "~0.31.3",
         "expo-print": "~14.1.4",
         "expo-router": "~5.1.0",
+        "expo-secure-store": "^14.2.3",
         "expo-sharing": "~13.1.5",
         "expo-sqlite": "~15.2.12",
         "moti": "^0.30.0",
@@ -58,13 +83,14 @@
         "react-native": "0.79.4",
         "react-native-calendars": "^1.1313.0",
         "react-native-chart-kit": "^6.12.0",
-        "react-native-gesture-handler": "~2.24.0",
+        "react-native-gesture-handler": "^2.28.0",
         "react-native-reanimated": "~3.17.4",
         "react-native-safe-area-context": "5.4.0",
         "react-native-screens": "~4.11.1",
         "react-native-svg": "15.11.2",
         "react-native-toast-message": "^2.3.3",
         "react-native-web": "^0.20.0",
+        "react-use": "^17.6.0",
         "victory": "^37.3.6"
     },
     "devDependencies": {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -11,27 +11,39 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
-import useCacheData from '../../../lib/cache';
+import { getCoachMessagesPrives } from '@/helpers/messagesPrives.helper';
+import { Equipe } from '@/types/Equipe';
+import { useCachedApi } from '@/hooks/useCachedApi';
+import { CoachMessagesPrives } from '@/types/MessagePrive';
 
 export default function MessagesPrivesCoach() {
-    const [coachId, setCoachId] = useState(null);
-    const [equipes, setEquipes] = useState([]);
-    const [joueurs, setJoueurs] = useState([]);
-    const [selectedEquipe, setSelectedEquipe] = useState(null);
-    const [selectedJoueur, setSelectedJoueur] = useState(null);
+    const [coachId, setCoachId] = useState<string>();
+    const [equipes, setEquipes] = useState<Equipe[]>([]);
+    const [joueurs, setJoueurs] = useState<
+        // FIXME
+        {
+            prenom: any;
+            nom: any;
+            utilisateurs: {
+                id: any;
+            }[];
+        }[]
+    >([]);
+    const [selectedEquipe, setSelectedEquipe] = useState<string>();
+    const [selectedJoueurId, setSelectedJoueurId] = useState<string>();
     const [message, setMessage] = useState('');
-    const [, setLoading] = useState(false); // FIXME
-
-    // ** Purge automatique supprimée **
 
     useEffect(() => {
         (async () => {
             const session = await supabase.auth.getSession();
-            const userId = session.data.session.user.id;
+            const userId = session.data.session?.user.id;
             setCoachId(userId);
 
-            const { data: eqs } = await supabase.from('equipes').select('*').eq('coach_id', userId);
-            setEquipes(eqs || []);
+            const { data: equipes } = await supabase
+                .from('equipes')
+                .select('*')
+                .eq('coach_id', userId);
+            setEquipes(equipes || []);
         })();
     }, []);
 
@@ -39,55 +51,49 @@ export default function MessagesPrivesCoach() {
         if (selectedEquipe) {
             supabase
                 .from('joueurs')
-                .select('id, prenom, nom')
+                .select('prenom, nom, utilisateurs(id)')
                 .eq('equipe_id', selectedEquipe)
                 .then(({ data }) => setJoueurs(data || []));
         }
     }, [selectedEquipe]);
 
-    // --- CACHE / FILTRAGE DES MESSAGES ---
-    const cacheKey =
-        selectedJoueur && coachId ? `messages_prives_${coachId}_${selectedJoueur}` : null;
-    const [filMessages, refreshMessages] = useCacheData(
-        cacheKey,
-        async () => {
-            if (!coachId || !selectedJoueur) return [];
-            const septJours = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-            const { data } = await supabase
-                .from('messages_prives')
-                .select('*')
-                .or(`emetteur_id.eq.${coachId},recepteur_id.eq.${coachId}`)
-                .order('created_at', { ascending: true });
-            const messages = (data || []).filter(
-                (msg) =>
-                    ((msg.emetteur_id === coachId && msg.recepteur_id === selectedJoueur) ||
-                        (msg.recepteur_id === coachId && msg.emetteur_id === selectedJoueur)) &&
-                    new Date(msg.created_at) >= new Date(septJours),
-            );
-            return messages || [];
-        },
-        30, // cache TTL 30 secondes
-    );
+    const [coachMessages, , fetchCoachMessages, refreshCoachMessages] =
+        useCachedApi<CoachMessagesPrives>(
+            `messages_prives_${coachId}_${selectedJoueurId}`,
+            useCallback(async () => {
+                if (!coachId || !selectedJoueurId) {
+                    return [];
+                }
+                const data = await getCoachMessagesPrives({ coachId });
+                const messages = (data || []).filter(
+                    (message) =>
+                        (message.emetteur_id === coachId &&
+                            message.recepteur_id === selectedJoueurId) ||
+                        (message.recepteur_id === coachId &&
+                            message.emetteur_id === selectedJoueurId),
+                );
+                return messages || [];
+            }, [coachId, selectedJoueurId]),
+        );
 
     useEffect(() => {
-        if (coachId && selectedJoueur) {
-            setLoading(true);
-            refreshMessages().then(() => setLoading(false));
-        }
-    }, [coachId, refreshMessages, selectedJoueur]);
+        fetchCoachMessages();
+    }, [fetchCoachMessages, selectedJoueurId]);
 
     const handleEnvoyer = async () => {
-        if (!message.trim() || !selectedJoueur) return;
+        if (!message.trim() || !selectedJoueurId) {
+            return;
+        }
 
         await supabase.from('messages_prives').insert({
             emetteur_id: coachId,
-            recepteur_id: selectedJoueur,
+            recepteur_id: selectedJoueurId,
             auteur: 'coach',
             texte: message,
         });
 
         setMessage('');
-        refreshMessages();
+        refreshCoachMessages();
     };
 
     return (
@@ -107,7 +113,7 @@ export default function MessagesPrivesCoach() {
                                 key={eq.id}
                                 onPress={() => {
                                     setSelectedEquipe(eq.id);
-                                    setSelectedJoueur(null);
+                                    setSelectedJoueurId(undefined);
                                 }}
                                 style={[
                                     styles.equipeButton,
@@ -121,34 +127,37 @@ export default function MessagesPrivesCoach() {
 
                     <Text style={styles.label}>Sélectionne un joueur :</Text>
                     <View style={styles.selectWrap}>
-                        {joueurs.map((j) => (
+                        {joueurs.map((joueur) => (
                             <Pressable
-                                key={j.id}
-                                onPress={() => setSelectedJoueur(j.id)}
+                                key={joueur.utilisateurs[0].id}
+                                onPress={() => {
+                                    setSelectedJoueurId(joueur.utilisateurs[0].id);
+                                }}
                                 style={[
                                     styles.equipeButton,
-                                    selectedJoueur === j.id && styles.equipeButtonSelected,
+                                    selectedJoueurId === joueur.utilisateurs[0].id &&
+                                        styles.equipeButtonSelected,
                                 ]}
                             >
                                 <Text style={styles.equipeText}>
-                                    {j.prenom} {j.nom}
+                                    {joueur.prenom} {joueur.nom}
                                 </Text>
                             </Pressable>
                         ))}
                     </View>
 
                     <View style={styles.filContainer}>
-                        {(filMessages || []).map((msg) => (
+                        {(coachMessages || []).map((message) => (
                             <View
-                                key={msg.id}
+                                key={message.id}
                                 style={[
                                     styles.bulle,
-                                    msg.auteur === 'coach' ? styles.coachMsg : styles.joueurMsg,
+                                    message.auteur === 'coach' ? styles.coachMsg : styles.joueurMsg,
                                 ]}
                             >
-                                <Text style={styles.texte}>{msg.texte}</Text>
+                                <Text style={styles.texte}>{message.texte}</Text>
                                 <Text style={styles.meta}>
-                                    {new Date(msg.created_at).toLocaleString()}
+                                    {new Date(message.created_at).toLocaleString()}
                                 </Text>
                             </View>
                         ))}
@@ -162,7 +171,15 @@ export default function MessagesPrivesCoach() {
                         value={message}
                         onChangeText={setMessage}
                     />
-                    <Pressable onPress={handleEnvoyer} style={styles.bouton}>
+                    <Pressable
+                        onPress={handleEnvoyer}
+                        disabled={selectedJoueurId === undefined || message.trim() === ''}
+                        style={
+                            selectedJoueurId === undefined || message.trim() === ''
+                                ? styles.boutonDisabled
+                                : styles.bouton
+                        }
+                    >
                         <Ionicons name="send" size={18} color="#111" />
                         <Text style={styles.boutonText}>Envoyer</Text>
                     </Pressable>
@@ -204,6 +221,15 @@ const styles = StyleSheet.create({
     },
     bouton: {
         backgroundColor: '#00ff88',
+        borderRadius: 8,
+        paddingVertical: 10,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+    },
+    boutonDisabled: {
+        backgroundColor: '#555',
         borderRadius: 8,
         paddingVertical: 10,
         flexDirection: 'row',

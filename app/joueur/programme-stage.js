@@ -31,7 +31,9 @@ function downloadCSVWeb(filename, csv) {
 }
 
 function formatDateFR(dateStr) {
-    if (!dateStr) return '';
+    if (!dateStr) {
+        return '';
+    }
     const [y, m, d] = dateStr.split('-');
     return `${d}/${m}/${y}`;
 }
@@ -48,7 +50,9 @@ export default function ProgrammeStage() {
         const fetchStages = async () => {
             const { data: session } = await supabase.auth.getSession();
             const userId = session?.session?.user?.id;
-            if (!userId) return;
+            if (!userId) {
+                return;
+            }
 
             const { data: user } = await supabase
                 .from('utilisateurs')
@@ -56,7 +60,9 @@ export default function ProgrammeStage() {
                 .eq('id', userId)
                 .single();
 
-            if (!user) return;
+            if (!user) {
+                return;
+            }
 
             const { data: stagesList } = await supabase
                 .from('stages')
@@ -149,14 +155,17 @@ export default function ProgrammeStage() {
         }
     };
 
-    if (loading) return <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />;
+    if (loading) {
+        return <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />;
+    }
 
-    if (!stages.length)
+    if (!stages.length) {
         return (
             <Text style={{ color: '#ccc', textAlign: 'center', marginTop: 40 }}>
                 Aucun stage trouvé.
             </Text>
         );
+    }
 
     return (
         <ScrollView style={styles.container}>

@@ -12,10 +12,11 @@ import {
     ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import Button from '@/components/atoms/Button';
+import { useSession } from '@/hooks/useSession';
 
 export default function LoginClub() {
     const router = useRouter();
@@ -23,6 +24,8 @@ export default function LoginClub() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+
+    const { signIn } = useSession();
 
     const handleForgotPassword = async () => {
         if (!email) {
@@ -43,69 +46,15 @@ export default function LoginClub() {
     };
 
     const handleLogin = async () => {
-        if (loading) return;
+        if (loading) {
+            return;
+        }
         setLoading(true);
 
         try {
-            const trimmedEmail = email.trim().toLowerCase();
-            const trimmedPassword = password.trim();
-
-            // Authentification Supabase
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email: trimmedEmail,
-                password: trimmedPassword,
-            });
-
-            if (authError || !authData?.user) {
-                Alert.alert(
-                    'Erreur',
-                    authError?.message === 'Invalid login credentials'
-                        ? 'Email ou mot de passe incorrect.'
-                        : `Erreur : ${authError?.message || 'Connexion impossible.'}`,
-                );
-                alert('Erreur : Connexion impossible.'); //FIXME: Toast notification
-                setLoading(false);
-                return;
-            }
-
-            // Récupération du rôle utilisateur
-            const { data: userData, error: userError } = await supabase
-                .from('utilisateurs')
-                .select('role')
-                .eq('id', authData.user.id)
-                .single();
-
-            if (userError || !userData?.role) {
-                console.log('Erreur récupération rôle:', userError, userData);
-                Alert.alert('Erreur', 'Impossible de récupérer le rôle utilisateur.');
-                setLoading(false);
-                return;
-            }
-
-            const role = userData.role;
-
-            switch (role) {
-                case 'admin':
-                    router.replace('/admin/dashboard');
-                    break;
-                case 'president':
-                    router.replace('/president/dashboard');
-                    break;
-                case 'coach':
-                case 'staff':
-                    router.replace('/coach/dashboard');
-                    break;
-                case 'joueur':
-                case 'parent':
-                    router.replace('/joueur/dashboard');
-                    break;
-                default:
-                    Alert.alert('Erreur', `Rôle non reconnu : ${role}`);
-                    setLoading(false);
-                    return;
-            }
-        } catch (err) {
-            console.log('Erreur générale', err);
+            await signIn(email, password);
+        } catch (error) {
+            console.log('Erreur générale', error);
             Alert.alert('Erreur', 'Problème de connexion, réessaie plus tard.');
         } finally {
             setLoading(false);

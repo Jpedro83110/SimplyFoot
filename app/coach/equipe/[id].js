@@ -76,7 +76,9 @@ export default function EquipeDetail() {
         }
     };
 
-    if (loading) return <ActivityIndicator style={{ marginTop: 50 }} color="#00ff88" />;
+    if (loading) {
+        return <ActivityIndicator style={{ marginTop: 50 }} color="#00ff88" />;
+    }
 
     return (
         <ScrollView style={styles.container}>

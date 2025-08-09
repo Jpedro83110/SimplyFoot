@@ -1,41 +1,35 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
-    ActivityIndicator,
     Pressable,
-    Platform,
-    TextInput,
     Alert,
+    ActivityIndicator,
+    TextInput,
+    Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import Slider from '@react-native-community/slider';
 import useCacheData from '../../../lib/cache';
+import { Utilisateur } from '@/types/Utilisateur';
 
-export default function EvaluationTechnique() {
+export default function EvaluationMentale() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
 
-    const criteres = useMemo(
-        () => [
-            'tir',
-            'passe',
-            'centre',
-            'tete',
-            'vitesse',
-            'defense',
-            'placement',
-            'jeu_sans_ballon',
-        ],
-        [],
-    );
+    const [valeurs, setValeurs] = useState({
+        motivation: 50,
+        rigueur: 50,
+        ponctualite: 50,
+        attitude: 50,
+        respect: 50,
+    });
 
-    const [valeurs, setValeurs] = useState(Object.fromEntries(criteres.map((c) => [c, 50])));
-    const [joueurInfo, setJoueurInfo] = useState(null);
-    const [joueurId, setJoueurId] = useState(null);
+    const [joueurInfo, setJoueurInfo] =
+        useState<Pick<Utilisateur, 'id' | 'nom' | 'prenom' | 'role' | 'joueur_id'>>();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -58,7 +52,6 @@ export default function EvaluationTechnique() {
 
                 if (utilisateur) {
                     setJoueurInfo(utilisateur);
-                    setJoueurId(utilisateur.id);
                 } else {
                     // Étape 2: Essayer de trouver par joueur_id
                     const { data: userByJoueurId, error: joueurError } = await supabase
@@ -73,7 +66,6 @@ export default function EvaluationTechnique() {
 
                     if (userByJoueurId) {
                         setJoueurInfo(userByJoueurId);
-                        setJoueurId(userByJoueurId.id);
                     } else {
                         Alert.alert('Erreur', 'Joueur introuvable dans le système');
                     }
@@ -91,18 +83,20 @@ export default function EvaluationTechnique() {
         }
     }, [id]);
 
-    // Charge les données d'évaluation si joueurId disponible
+    // Charge les données d'éval si utilisateurId dispo
     const [evalData, refresh, loadingEval] = useCacheData(
-        joueurId ? `eval-technique-${joueurId}` : null,
+        joueurInfo?.id ? `eval-mentale-${joueurInfo?.id}` : null,
         async () => {
-            if (!joueurId) return null;
+            if (!joueurInfo?.id) {
+                return null;
+            }
 
             try {
                 const { data, error } = await supabase
-                    .from('evaluations_techniques')
+                    .from('evaluations_mentales')
                     .select('*')
-                    .eq('joueur_id', joueurId)
-                    .maybeSingle();
+                    .eq('joueur_id', joueurInfo?.id)
+                    .maybeSingle(); // Utilise maybeSingle au lieu de single pour éviter les erreurs si pas de résultat
 
                 if (error) {
                     console.error('Erreur lors du chargement des évaluations:', error);
@@ -118,25 +112,32 @@ export default function EvaluationTechnique() {
         3600,
     );
 
-    // Remplit les valeurs si data trouvée
+    // Remplit les sliders si data trouvée
     useEffect(() => {
         if (evalData) {
-            const newValeurs = Object.fromEntries(criteres.map((c) => [c, 50]));
-            criteres.forEach((critere) => {
-                if (evalData[critere] !== undefined) {
-                    newValeurs[critere] = evalData[critere];
-                }
+            setValeurs({
+                motivation: evalData.motivation ?? 50,
+                rigueur: evalData.rigueur ?? 50,
+                ponctualite: evalData.ponctualite ?? 50,
+                attitude: evalData.attitude ?? 50,
+                respect: evalData.respect ?? 50,
             });
-            setValeurs(newValeurs);
         }
-    }, [criteres, evalData]);
+    }, [evalData]);
 
-    const calculerMoyenne = () => {
-        const total = criteres.reduce((sum, crit) => sum + (Number(valeurs[crit]) || 0), 0);
-        return Math.round(total / criteres.length);
+    const handleSliderChange = (key: string, value: string) => {
+        setValeurs((prev) => ({
+            ...prev,
+            [key]: Math.max(0, Math.min(100, parseInt(value) || 0)),
+        }));
     };
 
-    const handleSave = async () => {
+    const calculerMoyenne = () => {
+        const total = Object.values(valeurs).reduce((a, b) => a + b, 0);
+        return Math.round(total / Object.values(valeurs).length);
+    };
+
+    const enregistrerEvaluation = async () => {
         setSaving(true);
 
         try {
@@ -149,29 +150,34 @@ export default function EvaluationTechnique() {
                 return;
             }
 
-            if (!joueurId) {
+            if (!joueurInfo?.id) {
                 Alert.alert('Erreur', 'Joueur introuvable');
                 return;
             }
 
             // Objet complet avec tous les champs nécessaires
             const updates = {
-                joueur_id: joueurId,
+                joueur_id: joueurInfo?.id,
                 coach_id: session.user.id,
+                date: new Date().toISOString().split('T')[0],
+                motivation: valeurs.motivation,
+                rigueur: valeurs.rigueur,
+                ponctualite: valeurs.ponctualite,
+                attitude: valeurs.attitude,
+                respect: valeurs.respect,
+                note_globale: moyenne,
                 moyenne: moyenne,
                 updated_at: new Date().toISOString(),
+                created_at: new Date().toISOString(),
+                implication: null,
+                commentaire: null,
             };
-
-            // Ajouter tous les critères
-            criteres.forEach((critere) => {
-                updates[critere] = Math.round(Number(valeurs[critere]) || 0);
-            });
 
             // Stratégie UPDATE puis INSERT
             const { data: updateData, error: updateError } = await supabase
-                .from('evaluations_techniques')
+                .from('evaluations_mentales')
                 .update(updates)
-                .eq('joueur_id', joueurId)
+                .eq('joueur_id', joueurInfo?.id)
                 .eq('coach_id', session.user.id)
                 .select();
 
@@ -183,7 +189,7 @@ export default function EvaluationTechnique() {
             // Si aucune ligne n'a été mise à jour, on insère
             if (!updateData || updateData.length === 0) {
                 const { error: insertError } = await supabase
-                    .from('evaluations_techniques')
+                    .from('evaluations_mentales')
                     .insert(updates)
                     .select();
 
@@ -204,16 +210,20 @@ export default function EvaluationTechnique() {
                 // FIXME: bizarre ce commentaire
             }
 
-            Alert.alert('Succès', 'Évaluation technique enregistrée avec succès!', [
+            Alert.alert('Succès', 'Évaluation mentale enregistrée avec succès!', [
                 {
                     text: 'OK',
                     onPress: () => {
-                        router.replace(`/coach/joueur/${joueurId}`);
+                        router.replace(`/coach/joueur/${joueurInfo?.joueur_id}`);
                     },
                 },
             ]);
+
+            if (Platform.OS === 'web') {
+                router.replace(`/coach/joueur/${joueurInfo?.joueur_id}`);
+            }
         } catch (error) {
-            Alert.alert('Erreur', `Erreur inattendue: ${error.message}`);
+            Alert.alert('Erreur', `Erreur inattendue: ${(error as Error).message}`);
         } finally {
             setSaving(false);
         }
@@ -231,8 +241,8 @@ export default function EvaluationTechnique() {
     }
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            <Text style={styles.title}>🎯 Évaluation technique</Text>
+        <ScrollView style={styles.container}>
+            <Text style={styles.title}>🧠 Évaluation mentale</Text>
 
             {/* Affichage des informations du joueur */}
             {joueurInfo && (
@@ -244,20 +254,17 @@ export default function EvaluationTechnique() {
                 </View>
             )}
 
-            {criteres.map((critere) => (
-                <View key={critere} style={styles.sliderBlock}>
+            {Object.entries(valeurs).map(([key, val]) => (
+                <View key={key} style={styles.sliderBlock}>
                     <Text style={styles.label}>
-                        {critere.replace(/_/g, ' ').toUpperCase()} : {valeurs[critere]}/100
+                        {key.charAt(0).toUpperCase() + key.slice(1)} : {val}/100
                     </Text>
                     {Platform.OS === 'web' ? (
                         <TextInput
+                            style={styles.input}
                             keyboardType="numeric"
-                            value={String(valeurs[critere])}
-                            onChangeText={(val) => {
-                                const num = Math.max(0, Math.min(100, parseInt(val) || 0));
-                                setValeurs((prev) => ({ ...prev, [critere]: num }));
-                            }}
-                            style={styles.inputWeb}
+                            value={String(val)}
+                            onChangeText={(text) => handleSliderChange(key, text)}
                             placeholder="0 à 100"
                             placeholderTextColor="#555"
                         />
@@ -274,20 +281,18 @@ export default function EvaluationTechnique() {
                                     },
                                 ]}
                             >
-                                {valeurs[critere]}
+                                {val}
                             </Text>
                             <Slider
                                 style={{ flex: 1, marginHorizontal: 12 }}
                                 minimumValue={0}
                                 maximumValue={100}
                                 step={1}
-                                value={Number(valeurs[critere])}
-                                onValueChange={(val) =>
-                                    setValeurs((prev) => ({ ...prev, [critere]: Math.round(val) }))
-                                }
+                                value={val}
                                 minimumTrackTintColor="#00ff88"
                                 maximumTrackTintColor="#555"
                                 thumbTintColor="#00ff88"
+                                onValueChange={(value) => handleSliderChange(key, value.toString())}
                             />
                             <Text
                                 style={[
@@ -303,16 +308,16 @@ export default function EvaluationTechnique() {
             ))}
 
             <View style={styles.moyenneBlock}>
-                <Text style={styles.moyenneText}>🧮 Moyenne générale : {moyenne}/100</Text>
+                <Text style={styles.moyenneLabel}>🟢 Note globale : {moyenne}/100</Text>
             </View>
 
             <Pressable
-                onPress={handleSave}
                 style={[styles.button, (saving || loading || loadingEval) && styles.buttonDisabled]}
+                onPress={enregistrerEvaluation}
                 disabled={saving || loading || loadingEval}
             >
                 <Text style={styles.buttonText}>
-                    {saving ? 'Enregistrement...' : "💾 Enregistrer l'évaluation"}
+                    {saving ? 'Enregistrement...' : "Valider l'évaluation"}
                 </Text>
             </Pressable>
         </ScrollView>
@@ -321,9 +326,9 @@ export default function EvaluationTechnique() {
 
 const styles = StyleSheet.create({
     container: {
-        padding: 20,
         backgroundColor: '#121212',
-        flexGrow: 1,
+        padding: 20,
+        flex: 1,
     },
     loadingContainer: {
         flex: 1,
@@ -340,7 +345,6 @@ const styles = StyleSheet.create({
         color: '#00ff88',
         fontWeight: 'bold',
         marginBottom: 20,
-        textAlign: 'center',
     },
     playerInfo: {
         backgroundColor: '#1a1a1a',
@@ -362,46 +366,40 @@ const styles = StyleSheet.create({
     },
     sliderBlock: {
         marginBottom: 25,
-        backgroundColor: '#1e1e1e',
-        padding: 12,
-        borderRadius: 10,
     },
     label: {
         color: '#fff',
         marginBottom: 8,
-        fontWeight: 'bold',
         fontSize: 16,
     },
-    inputWeb: {
-        backgroundColor: '#222',
-        color: '#00ff88',
+    input: {
+        backgroundColor: '#1e1e1e',
+        color: '#fff',
         padding: 10,
-        borderRadius: 6,
-        fontSize: 16,
+        borderRadius: 8,
+        borderColor: '#444',
         borderWidth: 1,
-        borderColor: '#00ff88',
     },
     moyenneBlock: {
-        marginTop: 10,
-        marginBottom: 20,
-        padding: 15,
+        marginVertical: 20,
+        padding: 14,
         backgroundColor: '#0e0e0e',
         borderRadius: 10,
-        borderColor: '#00ff88',
         borderWidth: 1.5,
+        borderColor: '#00ff88',
         alignItems: 'center',
     },
-    moyenneText: {
+    moyenneLabel: {
+        fontSize: 18,
         color: '#00ff88',
         fontWeight: 'bold',
-        fontSize: 18,
     },
     button: {
         backgroundColor: '#00ff88',
-        padding: 15,
+        padding: 14,
         borderRadius: 10,
         alignItems: 'center',
-        marginBottom: 30,
+        marginBottom: 40,
     },
     buttonDisabled: {
         backgroundColor: '#555',

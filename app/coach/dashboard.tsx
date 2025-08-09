@@ -15,31 +15,32 @@ import {
     TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import { TeamCard } from '../../components/business/TeamCard';
+import { TeamCard } from '@/components/business/TeamCard';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
-import { Club } from '@/types/club';
-import { Staff } from '@/types/staff';
-import { Stage } from '@/types/stage';
-import { Evenement } from '@/types/evenement';
-import { ParticipationEvenement } from '@/types/ParticipationEvenement';
+import { Club } from '@/types/Club';
+import { Staff } from '@/types/Staff';
+import { Stage } from '@/types/Stage';
+import { Evenement } from '@/types/Evenement';
+import { ParticipationsEvenement } from '@/types/ParticipationsEvenement';
 import { useCachedApi } from '@/hooks/useCachedApi';
-import { EquipeWithJoueurs } from '@/types/equipe';
+import { EquipeWithJoueurs } from '@/types/Equipe';
+import { useSession } from '@/hooks/useSession';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GREEN = '#00ff88';
 const DARK = '#101415';
 
 export default function CoachDashboard() {
-    const [userId, setUserId] = useState<string>();
-    const [loadingAuth, setLoadingAuth] = useState<boolean>(true);
     const [club, setClub] = useState<Club>();
     const [refreshKey, setRefreshKey] = useState<number>(Date.now());
     const [uploadingPhoto, setUploadingPhoto] = useState<boolean>(false);
     const [showEditModal, setShowEditModal] = useState<boolean>(false);
     const router = useRouter();
+
+    const { signOut, utilisateur, staff, updateUserData } = useSession();
 
     const [editData, setEditData] = useState<
         Required<Pick<Staff, 'telephone' | 'email' | 'niveau_diplome' | 'experience'>>
@@ -50,75 +51,47 @@ export default function CoachDashboard() {
         experience: '',
     });
 
-    // Fetch coach depuis staff avec URI stable + refreshKey pour forcer le refresh
-    const [coach, loadingCoach, fetchCoach, refreshCoach] = useCachedApi<Staff>(
-        'fetch_coach',
-        useCallback(async () => {
-            if (!userId) {
-                return undefined;
-            }
-
-            const { data: staffData, error: staffError } = await supabase
-                .from('staff')
-                .select('*')
-                .eq('utilisateur_id', userId)
-                .single();
-
-            console.log('staffData:', staffData);
-
-            if (staffError) {
-                throw staffError;
-            }
-
-            // Nettoyer l'URL photo pour éviter les cache-busters
-            if (staffData.photo_url) {
-                staffData.photo_url = staffData.photo_url.split('?')[0];
-            }
-
-            return staffData as Staff;
-        }, [userId]),
-    );
-
     const [equipes, loadingEquipes, fetchCoachEquipes] = useCachedApi<EquipeWithJoueurs[]>(
         'fetch_coach_equipes',
         useCallback(async () => {
-            if (!userId) {
+            if (!utilisateur?.id) {
                 return undefined;
             }
 
             const { data, error } = await supabase
                 .from('equipes')
                 .select('*, joueurs(count)')
-                .eq('coach_id', userId);
+                .eq('coach_id', utilisateur.id);
 
             if (error) {
                 throw error;
             }
 
             return data as EquipeWithJoueurs[];
-        }, [userId]),
+        }, [utilisateur?.id]),
+        1,
     );
 
     const [stage, , fetchClubStage] = useCachedApi<Stage>(
         'fetch_club_stage',
         useCallback(async () => {
-            if (!coach?.club_id) {
+            if (!staff?.club_id) {
                 return undefined;
             }
 
             const { data } = await supabase
                 .from('stages')
                 .select('*')
-                .eq('club_id', coach?.club_id)
+                .eq('club_id', staff?.club_id)
                 .maybeSingle();
             return data;
-        }, [coach?.club_id]),
+        }, [staff?.club_id]),
     );
 
-    const [evenements, , fetchCoachEvenements] = useCachedApi<Evenement[]>(
+    const [evenements, loadingEvenements, fetchCoachEvenements] = useCachedApi<Evenement[]>(
         'fetch_coach_evenements',
         useCallback(async () => {
-            if (!userId) {
+            if (!utilisateur?.id) {
                 return undefined;
             }
 
@@ -130,12 +103,14 @@ export default function CoachDashboard() {
             const { data, error } = await supabase
                 .from('evenements')
                 .select('*')
-                .eq('coach_id', userId)
+                .eq('coach_id', utilisateur.id)
                 .gte('date', filterDate)
                 .order('date', { ascending: true });
-            if (error) throw error;
+            if (error) {
+                throw error;
+            }
             return data || [];
-        }, [userId]),
+        }, [utilisateur?.id]),
     );
 
     const evenement: Evenement | null = useMemo(
@@ -143,10 +118,14 @@ export default function CoachDashboard() {
         [evenements],
     );
 
-    const [participations, , fetchEvenementParticipations] = useCachedApi<ParticipationEvenement[]>(
+    const [participations, , fetchEvenementParticipations] = useCachedApi<
+        ParticipationsEvenement[]
+    >(
         'fetch_evenement_participations',
-        useCallback(async (): Promise<ParticipationEvenement[]> => {
-            if (!evenement?.id) return [];
+        useCallback(async (): Promise<ParticipationsEvenement[]> => {
+            if (!evenement?.id) {
+                return [];
+            }
 
             const { data } = await supabase
                 .from('participations_evenement')
@@ -167,15 +146,17 @@ export default function CoachDashboard() {
     }, [participations]);
 
     const loading = useMemo(
-        () => loadingAuth || loadingCoach || loadingEquipes,
-        [loadingAuth, loadingCoach, loadingEquipes],
+        () => loadingEquipes || loadingEvenements,
+        [loadingEquipes, loadingEvenements],
     );
 
     // Fonction helper pour ajouter un cache-buster à l'affichage
     // TODO: move this to a separate utilities file
     const getImageUrlWithCacheBuster = useCallback(
         (url?: string): string | undefined => {
-            if (!url) return url;
+            if (!url) {
+                return url;
+            }
 
             // Si l'URL contient déjà un paramètre, ajouter avec &, sinon avec ?
             const separator = url.includes('?') ? '&' : '?';
@@ -184,51 +165,40 @@ export default function CoachDashboard() {
         [refreshKey],
     );
 
-    useEffect(() => {
-        supabase.auth.getSession().then(async ({ data: sessionData }) => {
-            const id = sessionData?.session?.user?.id;
-            setUserId(id);
-            setLoadingAuth(false);
+    const fetchClub = useCallback(async () => {
+        if (utilisateur?.club_id) {
+            const { data: clubData }: { data: Club | null } = await supabase
+                .from('clubs')
+                .select('id, nom, facebook_url, instagram_url, boutique_url, logo_url')
+                .eq('id', utilisateur.club_id)
+                .single();
 
-            if (id) {
-                const { data: coachData }: { data: Staff | null } = await supabase
-                    .from('utilisateurs')
-                    .select('club_id')
-                    .eq('id', id)
-                    .single();
-
-                if (coachData?.club_id) {
-                    const { data: clubData }: { data: Club | null } = await supabase
-                        .from('clubs')
-                        .select('id, nom, facebook_url, instagram_url, boutique_url, logo_url')
-                        .eq('id', coachData.club_id)
-                        .single();
-
-                    setClub(clubData || undefined);
-                }
-            }
-        });
-    }, []);
+            setClub(clubData || undefined);
+        }
+    }, [utilisateur?.club_id]);
 
     useEffect(() => {
-        if (userId) {
-            fetchCoach();
+        fetchClub();
+    }, [fetchClub]);
+
+    useEffect(() => {
+        if (utilisateur?.id) {
             fetchCoachEquipes();
             fetchCoachEvenements();
         }
-    }, [fetchCoach, fetchCoachEquipes, fetchCoachEvenements, userId]);
+    }, [fetchCoachEquipes, fetchCoachEvenements, utilisateur?.id]);
 
     useEffect(() => {
-        if (coach) {
+        if (staff) {
             fetchClubStage();
             setEditData({
-                telephone: coach?.telephone || '',
-                email: coach?.email || '',
-                niveau_diplome: coach?.niveau_diplome || '',
-                experience: coach?.experience || '',
+                telephone: utilisateur?.telephone || '',
+                email: utilisateur?.email || '',
+                niveau_diplome: staff?.niveau_diplome || '',
+                experience: staff?.experience || '',
             });
         }
-    }, [coach, fetchClubStage]);
+    }, [fetchClubStage, staff, utilisateur?.email, utilisateur?.telephone]);
 
     useEffect(() => {
         if (evenement?.id) {
@@ -262,10 +232,10 @@ export default function CoachDashboard() {
 
                 try {
                     // 1. Supprimer l'ancienne photo plus efficacement
-                    if (coach?.photo_url) {
+                    if (staff?.photo_url) {
                         try {
                             // Extraire le nom de fichier de l'URL complète
-                            const url = coach.photo_url.split('?')[0]; // Enlever les paramètres de cache
+                            const url = staff.photo_url.split('?')[0]; // Enlever les paramètres de cache
                             const pathParts = url.split('/');
 
                             // Chercher l'index de "photos_profils_coachs" dans l'URL
@@ -301,10 +271,13 @@ export default function CoachDashboard() {
                         const response = await fetch(image.uri);
                         fileData = await response.blob();
 
-                        if (image.uri.includes('.png')) fileExt = 'png';
-                        else if (image.uri.includes('.jpeg') || image.uri.includes('.jpg'))
+                        if (image.uri.includes('.png')) {
+                            fileExt = 'png';
+                        } else if (image.uri.includes('.jpeg') || image.uri.includes('.jpg')) {
                             fileExt = 'jpg';
-                        else if (image.uri.includes('.gif')) fileExt = 'gif';
+                        } else if (image.uri.includes('.gif')) {
+                            fileExt = 'gif';
+                        }
                     } else {
                         if (!image.base64) {
                             throw new Error('Pas de données base64 disponibles');
@@ -312,20 +285,21 @@ export default function CoachDashboard() {
 
                         fileData = decode(image.base64);
 
-                        if (image.uri.includes('png') || image.type?.includes('png'))
+                        if (image.uri.includes('png') || image.type?.includes('png')) {
                             fileExt = 'png';
-                        else if (
+                        } else if (
                             image.uri.includes('jpeg') ||
                             image.uri.includes('jpg') ||
                             image.type?.includes('jpeg')
-                        )
+                        ) {
                             fileExt = 'jpg';
-                        else if (image.uri.includes('gif') || image.type?.includes('gif'))
+                        } else if (image.uri.includes('gif') || image.type?.includes('gif')) {
                             fileExt = 'gif';
+                        }
                     }
 
                     // 3. Nom de fichier avec timestamp
-                    const fileName = `photos_profils_coachs/${userId}_${Date.now()}.${fileExt}`;
+                    const fileName = `photos_profils_coachs/${utilisateur?.id}_${Date.now()}.${fileExt}`;
                     console.log('📁 Tentative upload:', fileName);
                     console.log(
                         '📦 Taille fichier:',
@@ -362,20 +336,13 @@ export default function CoachDashboard() {
                     // 6. Sauvegarder l'URL PROPRE en base (sans paramètres)
                     console.log('💾 Sauvegarde en base:', basePhotoUrl);
 
-                    const { error: updateError } = await supabase
-                        .from('staff')
-                        .update({ photo_url: basePhotoUrl })
-                        .eq('utilisateur_id', userId);
-
-                    if (updateError) {
-                        console.error('❌ Erreur sauvegarde base:', updateError);
-                        throw new Error(`Sauvegarde échouée: ${updateError.message}`);
-                    }
+                    await updateUserData({
+                        staffData: {
+                            photo_url: basePhotoUrl,
+                        },
+                    });
 
                     console.log('✅ Sauvegarde en base réussie');
-
-                    // 7. Mettre à jour l'état local et forcer le refresh complet
-                    refreshCoach();
 
                     // IMPORTANT : Forcer un nouveau refreshKey pour synchroniser toutes les plateformes
                     const newRefreshKey = Date.now();
@@ -414,23 +381,18 @@ export default function CoachDashboard() {
     // Sauvegarder modifications
     const handleSaveChanges = async () => {
         try {
-            const updateData = {
-                telephone: editData.telephone.trim(),
-                email: editData.email.trim(),
-                niveau_diplome: editData.niveau_diplome.trim(),
-                experience: editData.experience.trim(),
-            };
+            await updateUserData({
+                utilisateurData: {
+                    telephone: editData.telephone.trim(),
+                    email: editData.email.trim(),
+                },
+                staffData: {
+                    niveau_diplome: editData.niveau_diplome.trim(),
+                    experience: editData.experience.trim(),
+                },
+            });
 
-            const { error } = await supabase
-                .from('staff')
-                .update(updateData)
-                .eq('utilisateur_id', userId);
-
-            if (error) throw error;
-
-            refreshCoach();
             setShowEditModal(false);
-
             Alert.alert('Succès', 'Informations mises à jour !');
         } catch (error) {
             console.error('Erreur sauvegarde:', error);
@@ -459,22 +421,27 @@ export default function CoachDashboard() {
 
     // Calculer âge
     const calculAge = (date?: string): string | null => {
-        if (!date) return null;
+        if (!date) {
+            return null;
+        }
         const birth = new Date(date);
         const today = new Date();
         let age = today.getFullYear() - birth.getFullYear();
         const m = today.getMonth() - birth.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+            age--;
+        }
         return age + ' ans';
     };
 
-    if (loading)
+    if (loading) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator color="#00ff88" size="large" />
                 <Text style={styles.loadingText}>Chargement...</Text>
             </View>
         );
+    }
 
     const actionsData = [
         { label: 'Créer équipe', icon: 'people', route: '/coach/creation-equipe' },
@@ -512,19 +479,19 @@ export default function CoachDashboard() {
                         <View style={[styles.profilePhoto, styles.placeholderPhoto]}>
                             <ActivityIndicator size="small" color={GREEN} />
                         </View>
-                    ) : coach?.photo_url ? (
+                    ) : staff?.photo_url ? (
                         <Image
-                            source={{ uri: getImageUrlWithCacheBuster(coach.photo_url) }}
+                            source={{ uri: getImageUrlWithCacheBuster(staff.photo_url) }}
                             style={styles.profilePhoto}
-                            key={`${coach.photo_url}_${refreshKey}`} // Clé qui change à chaque refresh
+                            key={`${staff.photo_url}_${refreshKey}`} // Clé qui change à chaque refresh
                             onError={(error) => {
                                 console.log('❌ Erreur chargement image:', error);
-                                console.log('📷 URL problématique:', coach.photo_url);
+                                console.log('📷 URL problématique:', staff.photo_url);
                             }}
                             onLoad={() => {
                                 console.log(
                                     '✅ Image chargée avec succès:',
-                                    getImageUrlWithCacheBuster(coach.photo_url),
+                                    getImageUrlWithCacheBuster(staff.photo_url),
                                 );
                             }}
                         />
@@ -541,7 +508,7 @@ export default function CoachDashboard() {
                 </TouchableOpacity>
 
                 <Text style={styles.welcomeTitle}>
-                    Bienvenue Coach {coach?.prenom} {coach?.nom}
+                    Bienvenue Coach {utilisateur?.prenom} {utilisateur?.nom}
                 </Text>
 
                 <View style={styles.logoWrapper}>
@@ -559,7 +526,7 @@ export default function CoachDashboard() {
             <View style={styles.headerCard}>
                 <View style={styles.nameAndEditRow}>
                     <Text style={styles.headerName}>
-                        {coach?.prenom} {coach?.nom}
+                        {utilisateur?.prenom} {utilisateur?.nom}
                     </Text>
                     <TouchableOpacity
                         onPress={() => setShowEditModal(true)}
@@ -572,7 +539,7 @@ export default function CoachDashboard() {
                 <Text style={styles.headerCat}>Coach · {club?.nom || 'Club'}</Text>
 
                 <View style={isMobile ? styles.infoContainerMobile : styles.infoContainerDesktop}>
-                    {coach?.email && (
+                    {utilisateur?.email && (
                         <View style={styles.infoRow}>
                             <Ionicons
                                 name="mail-outline"
@@ -581,12 +548,12 @@ export default function CoachDashboard() {
                                 style={styles.infoIcon}
                             />
                             <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
-                                {coach.email}
+                                {utilisateur.email}
                             </Text>
                         </View>
                     )}
 
-                    {coach?.telephone && (
+                    {utilisateur?.telephone && (
                         <View style={styles.infoRow}>
                             <Ionicons
                                 name="call-outline"
@@ -595,12 +562,12 @@ export default function CoachDashboard() {
                                 style={styles.infoIcon}
                             />
                             <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
-                                {coach.telephone}
+                                {utilisateur.telephone}
                             </Text>
                         </View>
                     )}
 
-                    {calculAge(coach?.date_naissance) && (
+                    {calculAge(utilisateur?.date_naissance) && (
                         <View style={styles.infoRow}>
                             <Ionicons
                                 name="calendar-outline"
@@ -609,12 +576,12 @@ export default function CoachDashboard() {
                                 style={styles.infoIcon}
                             />
                             <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
-                                {calculAge(coach?.date_naissance)}
+                                {calculAge(utilisateur?.date_naissance)}
                             </Text>
                         </View>
                     )}
 
-                    {coach?.niveau_diplome && (
+                    {staff?.niveau_diplome && (
                         <View style={styles.infoRow}>
                             <Ionicons
                                 name="school-outline"
@@ -623,12 +590,12 @@ export default function CoachDashboard() {
                                 style={styles.infoIcon}
                             />
                             <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
-                                Diplôme : {coach.niveau_diplome}
+                                Diplôme : {staff.niveau_diplome}
                             </Text>
                         </View>
                     )}
 
-                    {coach?.experience && (
+                    {staff?.experience && (
                         <View style={styles.infoRow}>
                             <Ionicons
                                 name="trophy-outline"
@@ -637,7 +604,7 @@ export default function CoachDashboard() {
                                 style={styles.infoIcon}
                             />
                             <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
-                                Expérience : {coach.experience}
+                                Expérience : {staff.experience}
                             </Text>
                         </View>
                     )}
@@ -826,8 +793,7 @@ export default function CoachDashboard() {
             <TouchableOpacity
                 style={styles.logoutButton}
                 onPress={async () => {
-                    await supabase.auth.signOut();
-                    router.replace('/');
+                    await signOut();
                 }}
             >
                 <Text style={styles.logoutButtonText}>🚪 Se déconnecter</Text>

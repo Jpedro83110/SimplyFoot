@@ -21,7 +21,9 @@ export default function LectureStage() {
         (async () => {
             const { data: session } = await supabase.auth.getSession();
             const userId = session?.session?.user?.id;
-            if (!userId) return;
+            if (!userId) {
+                return;
+            }
 
             const { data: user } = await supabase
                 .from('utilisateurs')
@@ -29,7 +31,9 @@ export default function LectureStage() {
                 .eq('id', userId)
                 .single();
 
-            if (!user?.club_id) return;
+            if (!user?.club_id) {
+                return;
+            }
 
             const { data, error } = await supabase
                 .from('stages')
@@ -39,7 +43,9 @@ export default function LectureStage() {
                 .limit(1)
                 .single();
 
-            if (!error) setStage(data);
+            if (!error) {
+                setStage(data);
+            }
             setLoading(false);
         })();
     }, []);

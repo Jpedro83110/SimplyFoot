@@ -31,12 +31,14 @@ export default function TransportManquant() {
     }, []);
 
     useEffect(() => {
-        if (!userId && !email) return;
+        if (!userId && !email) {
+            return;
+        }
 
         async function fetchParticipants() {
             const { data, error } = await supabase
                 .from('participations_evenement')
-                .select('id, besoin_transport, joueur_id, evenement_id, transport_valide_par')
+                .select('id, besoin_transport, utilisateur_id, evenement_id, transport_valide_par')
                 .eq('besoin_transport', true)
                 .is('transport_valide_par', null);
 
@@ -50,7 +52,7 @@ export default function TransportManquant() {
                     const { data: joueurData } = await supabase
                         .from('utilisateurs')
                         .select('prenom, nom')
-                        .eq('id', p.joueur_id)
+                        .eq('id', p.utilisateur_id)
                         .single();
 
                     const { data: evt } = await supabase
@@ -60,8 +62,9 @@ export default function TransportManquant() {
                         .single();
 
                     // Affiche tout pour admin, sinon filtre coach_id
-                    if (!evt || (email !== 'demo@simplyfoot.fr' && evt.coach_id !== userId))
+                    if (!evt || (email !== 'demo@simplyfoot.fr' && evt.coach_id !== userId)) {
                         return null;
+                    }
 
                     return {
                         id: p.id,
@@ -86,14 +89,17 @@ export default function TransportManquant() {
             .update({ transport_valide_par: userId })
             .eq('id', participation_id);
 
-        if (confirm.error) Alert.alert('Erreur', confirm.error.message);
-        else {
+        if (confirm.error) {
+            Alert.alert('Erreur', confirm.error.message);
+        } else {
             Alert.alert('✅ Confirmé', 'Transport pris en charge.');
             setParticipants((prev) => prev.filter((p) => p.id !== participation_id));
         }
     };
 
-    if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    if (loading) {
+        return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+    }
 
     return (
         <ScrollView style={styles.container}>

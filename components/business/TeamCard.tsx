@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { EquipeWithJoueurs } from '@/types/equipe';
+import { EquipeWithJoueurs } from '@/types/Equipe';
 
 interface TeamCardProps {
     equipe: EquipeWithJoueurs;

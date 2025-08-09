@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
+import { deleteMessagesPrivesOneWeekOld } from '@/helpers/messagesPrives.helper';
 
 const DARK = '#101415';
 
@@ -20,11 +21,9 @@ export default function MessagesPrivesJoueur() {
     const [filMessages, setFilMessages] = useState([]);
     const [message, setMessage] = useState('');
 
-    // Purge messages vieux de +7 jours à chaque ouverture
     useEffect(() => {
         const purgeOldMessages = async () => {
-            const septJours = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-            await supabase.from('messages_prives').delete().lt('created_at', septJours);
+            await deleteMessagesPrivesOneWeekOld();
         };
         purgeOldMessages();
     }, []);
@@ -41,13 +40,17 @@ export default function MessagesPrivesJoueur() {
                 .select('joueur_id')
                 .eq('id', userId)
                 .single();
-            if (!user?.joueur_id) return;
+            if (!user?.joueur_id) {
+                return;
+            }
             const { data: joueur } = await supabase
                 .from('joueurs')
                 .select('equipe_id')
                 .eq('id', user.joueur_id)
                 .single();
-            if (!joueur?.equipe_id) return;
+            if (!joueur?.equipe_id) {
+                return;
+            }
             const { data: equipe } = await supabase
                 .from('equipes')
                 .select('coach_id')
@@ -77,7 +80,9 @@ export default function MessagesPrivesJoueur() {
     };
 
     const handleEnvoyer = async () => {
-        if (!message.trim() || !coachId) return;
+        if (!message.trim() || !coachId) {
+            return;
+        }
         await supabase.from('messages_prives').insert({
             emetteur_id: joueurId,
             recepteur_id: coachId,

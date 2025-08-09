@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -10,88 +10,53 @@ import {
 } from 'react-native';
 import { supabase } from '../../../lib/supabase';
 import { useRouter } from 'expo-router';
-import { getFromCache, saveToCache } from '../../../lib/cache';
+import { getEvenementByCoachId } from '@/helpers/evenements.helper';
+import { CoachEvenements } from '@/types/Evenement';
 
 export default function ListeCompositions() {
-    const [evenements, setEvenements] = useState([]);
+    const [evenements, setEvenements] = useState<CoachEvenements>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [lastRefresh, setLastRefresh] = useState(0);
     const router = useRouter();
 
-    const CACHE_KEY = 'compo_evenements';
+    // const CACHE_KEY = 'compo_evenements'; // FIXME useCachedApi
     const MIN_INTERVAL = 10000; // 10s de cooldown
 
     // Récupère les événements (avec cache)
     async function fetchEvenements(forceRefresh = false) {
         setLoading(true);
-        let data = null;
 
-        // 1. Essaye le cache sauf si refresh forcé
-        if (!forceRefresh) {
-            const cached = await getFromCache(CACHE_KEY);
-            data = cached?.value;
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = sessionData?.session?.user?.id;
+
+        if (!userId) {
+            // FIXME manage error
+            console.error('Utilisateur non connecté ou ID introuvable');
+            return;
         }
 
-        // 2. Si rien en cache (ou refresh), charge Supabase
-        if (!data) {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const userId = sessionData?.session?.user?.id;
-
-            // ✅ CORRECTION: Filtre à partir d'hier pour inclure les événements du jour
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(today.getDate() - 1);
-            const filterDate = yesterday.toISOString().split('T')[0]; // Format YYYY-MM-DD
-
-            console.log("Date d'aujourd'hui:", today.toISOString().split('T')[0]);
-            console.log('Filtrage des événements à partir du:', filterDate);
-
-            const { data: freshData, error } = await supabase
-                .from('evenements')
-                .select('*')
-                .eq('coach_id', userId)
-                .gte('date', filterDate) // ← MODIFIÉ: Filtre >= hier (pour inclure aujourd'hui)
-                .order('date', { ascending: true });
-
-            console.log('Événements futurs reçus:', freshData?.length || 0, 'événements');
-
-            if (!error) {
-                data = freshData;
-                await saveToCache(CACHE_KEY, freshData); // MAJ le cache
-            } else {
-                console.error('Erreur lors de la récupération des événements:', error);
-                data = [];
-            }
-        }
-
-        // Patch : accepte cache {value: [...]} ou tableau simple
-        let evenementsList = [];
-        if (data && Array.isArray(data.value)) {
-            evenementsList = data.value;
-        } else if (Array.isArray(data)) {
-            evenementsList = data;
-        }
-
-        // Sécurité anti-événements fantômes
-        if (evenementsList.length > 0) {
-            const eventsIds = evenementsList.map((ev) => ev.id);
-            const { data: existsList } = await supabase
-                .from('evenements')
-                .select('id')
-                .in('id', eventsIds);
-            const idsExistants = (existsList || []).map((ev) => ev.id);
-            evenementsList = evenementsList.filter((ev) => idsExistants.includes(ev.id));
-            await saveToCache(CACHE_KEY, evenementsList);
-        }
-
-        // ✅ SÉCURITÉ SUPPLÉMENTAIRE: Double filtrage côté client (à partir d'hier)
+        // ✅ CORRECTION: Filtre à partir d'hier pour inclure les événements du jour
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(today.getDate() - 1);
-        const filterDate = yesterday.toISOString().split('T')[0];
+        const filterDate = yesterday.toISOString().split('T')[0]; // Format YYYY-MM-DD
 
-        evenementsList = evenementsList.filter((ev) => ev.date >= filterDate);
+        console.log("Date d'aujourd'hui:", today.toISOString().split('T')[0]);
+        console.log('Filtrage des événements à partir du:', filterDate);
+
+        // FIXME: replace let by const
+        const evenementsList = await getEvenementByCoachId({
+            coachId: userId,
+            filterDate,
+        });
+
+        console.log('Événements futurs reçus:', evenementsList?.length || 0, 'événements');
+
+        if (!evenementsList) {
+            console.error('Erreur lors de la récupération des événements');
+            return;
+        }
 
         console.log('Événements finaux après filtrage:', evenementsList.length);
         setEvenements(evenementsList);
@@ -106,7 +71,9 @@ export default function ListeCompositions() {
     // Rafraîchissement manuel avec cooldown anti-spam
     const handleManualRefresh = async () => {
         const now = Date.now();
-        if (loading || refreshing) return;
+        if (loading || refreshing) {
+            return;
+        }
         if (now - lastRefresh < MIN_INTERVAL) {
             Alert.alert('Trop rapide', 'Merci de patienter avant un nouveau rafraîchissement !');
             return;
@@ -140,17 +107,17 @@ export default function ListeCompositions() {
             </View>
 
             {Array.isArray(evenements) && evenements.length > 0 ? (
-                evenements.map((evt) => (
+                evenements.map((evenement) => (
                     <TouchableOpacity
-                        key={evt.id}
+                        key={evenement.id}
                         style={styles.card}
-                        onPress={() => router.push(`/coach/composition/${evt.id}`)}
+                        onPress={() => router.push(`/coach/composition/${evenement.id}`)}
                     >
-                        <Text style={styles.titre}>{evt.titre}</Text>
+                        <Text style={styles.titre}>{evenement.titre}</Text>
                         <Text style={styles.info}>
-                            📅 {evt.date} à {evt.heure}
+                            📅 {evenement.date} à {evenement.heure}
                         </Text>
-                        <Text style={styles.info}>📍 {evt.lieu}</Text>
+                        <Text style={styles.info}>📍 {evenement.lieu}</Text>
                     </TouchableOpacity>
                 ))
             ) : !loading ? (

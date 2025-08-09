@@ -14,7 +14,9 @@ export default function PresidentAnniversaires() {
                 // 1. Président connecté (utilisateur)
                 const { data: userData } = await supabase.auth.getUser();
                 const userId = userData?.user?.id;
-                if (!userId) throw new Error('Non authentifié.');
+                if (!userId) {
+                    throw new Error('Non authentifié.');
+                }
 
                 // 2. On récupère le club_id du président connecté
                 const { data: user } = await supabase
@@ -22,7 +24,9 @@ export default function PresidentAnniversaires() {
                     .select('id, club_id')
                     .eq('id', userId)
                     .single();
-                if (!user) throw new Error('Président introuvable.');
+                if (!user) {
+                    throw new Error('Président introuvable.');
+                }
 
                 // 3. Toutes les équipes du club
                 const { data: equipes } = await supabase
@@ -38,7 +42,9 @@ export default function PresidentAnniversaires() {
                         .from('joueurs')
                         .select('id, nom, prenom, date_naissance, photo_url, equipe_id')
                         .in('equipe_id', equipeIds);
-                    if (jrs) joueurs = jrs.map((j) => ({ ...j, role: 'joueur' }));
+                    if (jrs) {
+                        joueurs = jrs.map((j) => ({ ...j, role: 'joueur' }));
+                    }
                 }
 
                 // 5. Tous les coachs du club depuis STAFF
@@ -53,8 +59,10 @@ export default function PresidentAnniversaires() {
 
                 // 7. Fusionne joueurs + coachs, filtre ceux qui ont une date_naissance
                 let membres = [];
-                if (joueurs.length) membres = membres.concat(joueurs);
-                if (coachs)
+                if (joueurs.length) {
+                    membres = membres.concat(joueurs);
+                }
+                if (coachs) {
                     membres = membres.concat(
                         coachs.map((c) => ({
                             ...c,
@@ -62,6 +70,7 @@ export default function PresidentAnniversaires() {
                             role: 'coach',
                         })),
                     );
+                }
 
                 membres = membres.filter((m) => !!m.date_naissance);
 
