@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Directories to analyze
-const SOURCE_DIRS = ['app', 'components', 'helpers', 'hooks', 'lib', 'utils'];
+const SOURCE_DIRS = ['app', 'components', 'context', 'helpers', 'hooks', 'types', 'lib', 'utils'];
 
 // File extensions
 const JS_EXTENSIONS = ['.js', '.jsx'];
