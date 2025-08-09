@@ -85,8 +85,12 @@ jobs:
             - name: Run tests with coverage
               id: test-coverage
               run: |
+                  # Run tests and store results in a file
+                  npm run test:coverage > test_output.txt || { EXIT_CODE=$?; cat test_output.txt; exit $EXIT_CODE; }
+
+                  # Extract coverage info for the PR comment
                   echo "TEST_OUTPUT<<EOF" >> $GITHUB_OUTPUT
-                  npm run test:coverage | grep 'All files' | awk -F'|' '{ print "Statements" $2 "%\nBranches" $3 "%\nFunctions" $4 "%\nLines" $5 "%" }' | column -t >> $GITHUB_OUTPUT
+                  cat test_output.txt | grep 'All files' | awk -F'|' '{ print "Statements" $2 "%\nBranches" $3 "%\nFunctions" $4 "%\nLines" $5 "%" }' | column -t >> $GITHUB_OUTPUT
                   echo "EOF" >> $GITHUB_OUTPUT
 
             - name: Comment PR with coverage
