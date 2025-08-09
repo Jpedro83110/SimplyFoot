@@ -214,22 +214,45 @@ export default function InscriptionJoueur() {
     const validateForm = () => {
         const newErrors = {};
 
-        if (!email.trim() || !isValidEmail(email.trim())) newErrors.email = true;
-        if (!password.trim() || password.length < 6) newErrors.password = true;
-        if (password !== confirmPassword) newErrors.confirmPassword = true;
-        if (!codeEquipe.trim() || !equipeData) newErrors.codeEquipe = true;
-        if (!nom.trim()) newErrors.nom = true;
-        if (!prenom.trim()) newErrors.prenom = true;
-        if (!dateNaissance) newErrors.dateNaissance = true;
+        if (!email.trim() || !isValidEmail(email.trim())) {
+            newErrors.email = true;
+        }
+        if (!password.trim() || password.length < 6) {
+            newErrors.password = true;
+        }
+        if (password !== confirmPassword) {
+            newErrors.confirmPassword = true;
+        }
+        if (!codeEquipe.trim() || !equipeData) {
+            newErrors.codeEquipe = true;
+        }
+        if (!nom.trim()) {
+            newErrors.nom = true;
+        }
+        if (!prenom.trim()) {
+            newErrors.prenom = true;
+        }
+        if (!dateNaissance) {
+            newErrors.dateNaissance = true;
+        }
 
         if (isMinor) {
-            if (!nomParent.trim()) newErrors.nomParent = true;
-            if (!prenomParent.trim()) newErrors.prenomParent = true;
-            if (!telephoneParent.trim() || !isValidPhone(telephoneParent.trim()))
+            if (!nomParent.trim()) {
+                newErrors.nomParent = true;
+            }
+            if (!prenomParent.trim()) {
+                newErrors.prenomParent = true;
+            }
+            if (!telephoneParent.trim() || !isValidPhone(telephoneParent.trim())) {
                 newErrors.telephoneParent = true;
-            if (waiverAccepted === null) newErrors.waiverAccepted = true;
+            }
+            if (waiverAccepted === null) {
+                newErrors.waiverAccepted = true;
+            }
         } else {
-            if (!telephone.trim() || !isValidPhone(telephone.trim())) newErrors.telephone = true;
+            if (!telephone.trim() || !isValidPhone(telephone.trim())) {
+                newErrors.telephone = true;
+            }
         }
 
         setErrors(newErrors);
