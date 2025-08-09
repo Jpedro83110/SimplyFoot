@@ -13,7 +13,7 @@ export default function JoueurCard({ nom, poste, stats, avatar, licenceOK, prese
                 source={
                     avatar && avatar.startsWith('http')
                         ? { uri: avatar }
-                        : require('../../assets/avatar.png')
+                        : require('../../assets/logo-v2.png')
                 }
                 style={styles.avatar}
             />

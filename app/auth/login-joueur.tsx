@@ -9,7 +9,6 @@ import {
     KeyboardAvoidingView,
     Platform,
     StatusBar,
-    ActivityIndicator,
     Switch,
     ScrollView,
 } from 'react-native';
@@ -17,6 +16,8 @@ import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ReturnButton from '@/components/atoms/ReturnButton';
+import Button from '@/components/atoms/Button';
 import { useSession } from '@/hooks/useSession';
 
 export default function LoginJoueur() {
@@ -52,7 +53,7 @@ export default function LoginJoueur() {
             return;
         }
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-            redirectTo: 'http://localhost:8081/auth/reset-password', // FIXME
+            redirectTo: '/auth/reset-password', // FIXME
         });
         if (error) {
             Alert.alert('Erreur', error.message);
@@ -85,10 +86,7 @@ export default function LoginJoueur() {
             style={styles.container}
         >
             <StatusBar barStyle="light-content" />
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-            >
+            <ScrollView keyboardShouldPersistTaps="handled">
                 <Text style={styles.title}>Connexion Joueur / Parent</Text>
                 <TextInput
                     style={styles.input}
@@ -102,7 +100,7 @@ export default function LoginJoueur() {
                     textContentType="username"
                 />
 
-                <View style={{ width: '100%', position: 'relative', marginBottom: 15 }}>
+                <View style={{ width: '100%', position: 'relative', marginBottom: 5 }}>
                     <TextInput
                         style={[styles.input, { paddingRight: 44 }]}
                         placeholder="Mot de passe"
@@ -123,33 +121,37 @@ export default function LoginJoueur() {
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.rememberContainer}>
+                <View style={{ ...styles.rememberContainer, marginBottom: 20 }}>
                     <Switch
                         value={rememberMe}
                         onValueChange={setRememberMe}
-                        thumbColor={rememberMe ? '#00ff88' : '#555'}
-                        trackColor={{ false: '#555', true: '#1e1e1e' }}
+                        thumbColor={rememberMe ? '#4D8065' : '#333'}
+                        trackColor={{ false: '#333', true: '#4D8065' }}
                     />
                     <Text style={styles.rememberText}>Se souvenir de moi</Text>
                 </View>
 
-                <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-                    {loading ? (
-                        <ActivityIndicator color="#000" />
-                    ) : (
-                        <Text style={styles.buttonText}>Se connecter</Text>
-                    )}
-                </TouchableOpacity>
+                <Button
+                    text="Se connecter"
+                    onPress={handleLogin}
+                    loading={loading}
+                    color="primary"
+                />
 
                 <TouchableOpacity onPress={handleForgotPassword}>
                     <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => router.push('/auth/inscription-joueur')}>
-                    <Text style={styles.switchText}>
-                        Pas encore de compte ? Créer un compte Joueur
-                    </Text>
-                </TouchableOpacity>
+                <View style={styles.separator} />
+
+                <Text style={styles.text}>Pas encore de compte ? </Text>
+                <Button
+                    text="Créer un compte Joueur"
+                    onPress={() => router.push('/auth/inscription-joueur')}
+                    color="secondary"
+                />
+
+                <ReturnButton />
             </ScrollView>
         </KeyboardAvoidingView>
     );
@@ -158,13 +160,7 @@ export default function LoginJoueur() {
 const styles = StyleSheet.create({
     container: {
         backgroundColor: '#121212',
-        flexGrow: 1,
         justifyContent: 'center',
-    },
-    scrollContent: {
-        marginTop: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     title: {
         fontSize: 24,
@@ -213,25 +209,38 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         alignSelf: 'flex-start',
         marginBottom: 18,
-        marginTop: 8,
     },
     rememberText: {
-        color: '#00ff88',
+        color: '#fff',
         fontSize: 14,
         marginLeft: 10,
     },
     forgotText: {
-        color: '#00bfff',
+        color: '#00ff88',
+        fontSize: 12,
         marginTop: 18,
-        fontSize: 15,
-        textAlign: 'center',
+        textAlign: 'right',
         textDecorationLine: 'underline',
+    },
+    separator: {
+        height: 1,
+        backgroundColor: '#333',
+        width: '80%',
+        alignSelf: 'center',
+        marginVertical: 20,
+        marginTop: 30,
     },
     switchText: {
         color: '#00ff88',
-        marginTop: 28,
         textDecorationLine: 'underline',
-        fontSize: 14,
+        fontSize: 13,
         textAlign: 'center',
+    },
+    text: {
+        fontSize: 13,
+        color: '#fff',
+        textAlign: 'center',
+        marginTop: 20,
+        marginBottom: 15,
     },
 });

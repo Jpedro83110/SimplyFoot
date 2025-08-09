@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
-    TextInput,
     TouchableOpacity,
     StyleSheet,
     Alert,
@@ -10,13 +9,14 @@ import {
     Platform,
     ScrollView,
     ActivityIndicator,
-    Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '../../lib/notifications';
 import { formatDateToISO, formatDateForDisplay, calculateAge } from '../../lib/formatDate';
 import { Ionicons } from '@expo/vector-icons';
+import ReturnButton from '@/components/atoms/ReturnButton';
+import Input from '@/components/atoms/Input';
 
 // DatePicker mobile
 let DateTimePicker = null;
@@ -95,6 +95,7 @@ export default function InscriptionJoueur() {
     const [codeEquipe, setCodeEquipe] = useState('');
     const [equipeData, setEquipeData] = useState(null);
     const [coachData, setCoachData] = useState(null);
+    const [errors, setErrors] = React.useState({});
 
     const [nom, setNom] = useState('');
     const [prenom, setPrenom] = useState('');
@@ -108,7 +109,7 @@ export default function InscriptionJoueur() {
 
     const [dateNaissance, setDateNaissance] = useState(new Date(2008, 0, 1));
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [accepteDecharge, setAccepteDecharge] = useState(null);
+    const [waiverAccepted, setWaiverAccepted] = useState(null);
 
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -162,7 +163,7 @@ export default function InscriptionJoueur() {
         setCalculatedAge(age);
         setIsMinor(age < 18);
         if (age >= 18) {
-            setAccepteDecharge(null);
+            setWaiverAccepted(null);
             setNomParent('');
             setPrenomParent('');
             setTelephoneParent('');
@@ -211,82 +212,51 @@ export default function InscriptionJoueur() {
 
     // Validation
     const validateForm = () => {
-        if (!email.trim()) {
-            Alert.alert('Erreur', "L'email est obligatoire.");
-            return false;
+        const newErrors = {};
+
+        if (!email.trim() || !isValidEmail(email.trim())) {
+            newErrors.email = true;
         }
-        if (!isValidEmail(email.trim())) {
-            Alert.alert('Erreur', "Format d'email invalide.");
-            return false;
-        }
-        if (!password.trim()) {
-            Alert.alert('Erreur', 'Le mot de passe est obligatoire.');
-            return false;
-        }
-        if (password.length < 6) {
-            Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères.');
-            return false;
+        if (!password.trim() || password.length < 6) {
+            newErrors.password = true;
         }
         if (password !== confirmPassword) {
-            Alert.alert('Erreur', 'Les mots de passe ne correspondent pas.');
-            return false;
+            newErrors.confirmPassword = true;
         }
-        if (!codeEquipe.trim()) {
-            Alert.alert('Erreur', 'Le code équipe est obligatoire.');
-            return false;
-        }
-        if (!equipeData) {
-            Alert.alert('Erreur', 'Le code équipe est invalide ou inexistant.');
-            return false;
+        if (!codeEquipe.trim() || !equipeData) {
+            newErrors.codeEquipe = true;
         }
         if (!nom.trim()) {
-            Alert.alert('Erreur', 'Le nom est obligatoire.');
-            return false;
+            newErrors.nom = true;
         }
         if (!prenom.trim()) {
-            Alert.alert('Erreur', 'Le prénom est obligatoire.');
-            return false;
+            newErrors.prenom = true;
         }
         if (!dateNaissance) {
-            Alert.alert('Erreur', 'La date de naissance est obligatoire.');
-            return false;
+            newErrors.dateNaissance = true;
         }
-        // Poste(s) optionnel
+
         if (isMinor) {
             if (!nomParent.trim()) {
-                Alert.alert('Erreur', 'Nom du parent/tuteur obligatoire.');
-                return false;
+                newErrors.nomParent = true;
             }
             if (!prenomParent.trim()) {
-                Alert.alert('Erreur', 'Prénom du parent/tuteur obligatoire.');
-                return false;
+                newErrors.prenomParent = true;
             }
-            if (!telephoneParent.trim()) {
-                Alert.alert('Erreur', 'Téléphone du parent/tuteur obligatoire.');
-                return false;
+            if (!telephoneParent.trim() || !isValidPhone(telephoneParent.trim())) {
+                newErrors.telephoneParent = true;
             }
-            if (!isValidPhone(telephoneParent.trim())) {
-                Alert.alert('Erreur', 'Format de téléphone du parent/tuteur invalide.');
-                return false;
-            }
-            if (accepteDecharge === null) {
-                Alert.alert(
-                    'Décharge parentale requise',
-                    "Merci d'indiquer si vous acceptez ou refusez la décharge parentale.",
-                );
-                return false;
+            if (waiverAccepted === null) {
+                newErrors.waiverAccepted = true;
             }
         } else {
-            if (!telephone.trim()) {
-                Alert.alert('Erreur', 'Votre téléphone est obligatoire.');
-                return false;
-            }
-            if (!isValidPhone(telephone.trim())) {
-                Alert.alert('Erreur', 'Format de téléphone invalide.');
-                return false;
+            if (!telephone.trim() || !isValidPhone(telephone.trim())) {
+                newErrors.telephone = true;
             }
         }
-        return true;
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     // 🚀 Inscription
@@ -369,7 +339,7 @@ export default function InscriptionJoueur() {
                     parent_nom: nomParent.trim(),
                     parent_prenom: prenomParent.trim(),
                     parent_telephone: telephoneParent.trim(),
-                    accepte_transport: accepteDecharge === true ? true : false,
+                    accepte_transport: waiverAccepted === true ? true : false,
                     date_signature: new Date().toISOString(),
                 });
             }
@@ -401,190 +371,109 @@ export default function InscriptionJoueur() {
         }
     };
 
-    // -------- UI --------
     return (
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={styles.container}
-            >
-                <View style={styles.header}>
-                    <Image
-                        source={require('../../assets/logo.png')}
-                        style={styles.logo}
-                        resizeMode="contain"
-                    />
-                    <Text style={styles.title}>Créer un compte Joueur</Text>
-                    <Text style={styles.subtitle}>Rejoignez votre club sur SimplyFoot</Text>
-                </View>
-                <View style={styles.form}>
-                    {/* EMAIL */}
-                    <View style={styles.inputGroup}>
-                        <Ionicons
-                            name="mail-outline"
-                            size={20}
-                            color="#888"
-                            style={styles.inputIcon}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Email"
-                            placeholderTextColor="#aaa"
+        <>
+            <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    style={styles.container}
+                >
+                    <View style={styles.header}>
+                        <Text style={styles.title}>Créer un compte Joueur</Text>
+                        <Text style={styles.subtitle}>Rejoignez votre club sur SimplyFoot</Text>
+                    </View>
+                    <View style={styles.form}>
+                        {/* EMAIL */}
+                        <Input
+                            icon="mail-outline"
+                            placeholder="Email*"
                             value={email}
                             onChangeText={setEmail}
-                            autoCapitalize="none"
                             keyboardType="email-address"
                             textContentType="emailAddress"
                             editable={!loading}
+                            error={email === undefined ? 'Le mail est requis' : false}
                         />
-                    </View>
-                    {/* PASSWORD */}
-                    <View style={styles.inputGroup}>
-                        <Ionicons
-                            name="lock-closed-outline"
-                            size={20}
-                            color="#888"
-                            style={styles.inputIcon}
-                        />
-                        <TextInput
-                            style={[styles.input, { paddingRight: 50 }]}
-                            placeholder="Mot de passe (min. 6 caractères)"
-                            placeholderTextColor="#aaa"
-                            secureTextEntry={!showPassword}
+                        {/* PASSWORD */}
+                        <Input
+                            icon="lock-closed-outline"
+                            placeholder="Mot de passe*"
                             value={password}
                             onChangeText={setPassword}
+                            secureTextEntry
+                            showToggle
+                            show={showPassword}
+                            onToggle={() => setShowPassword(!showPassword)}
                             textContentType="newPassword"
                             editable={!loading}
+                            error={password === undefined ? 'Le mot de passe est requis' : false}
                         />
-                        <TouchableOpacity
-                            style={styles.eyeButton}
-                            onPress={() => setShowPassword(!showPassword)}
-                            disabled={loading}
-                        >
-                            <Ionicons
-                                name={showPassword ? 'eye' : 'eye-off'}
-                                size={22}
-                                color="#888"
-                            />
-                        </TouchableOpacity>
-                    </View>
-                    {/* CONFIRM PASSWORD */}
-                    <View style={styles.inputGroup}>
-                        <Ionicons
-                            name="lock-closed-outline"
-                            size={20}
-                            color="#888"
-                            style={styles.inputIcon}
-                        />
-                        <TextInput
-                            style={[styles.input, { paddingRight: 50 }]}
-                            placeholder="Confirmer le mot de passe"
-                            placeholderTextColor="#aaa"
-                            secureTextEntry={!showConfirmPassword}
+                        {/* CONFIRM PASSWORD */}
+                        <Input
+                            icon="lock-closed-outline"
+                            placeholder="Confirmer le mot de passe*"
                             value={confirmPassword}
                             onChangeText={setConfirmPassword}
+                            secureTextEntry
+                            showToggle
+                            show={showConfirmPassword}
+                            onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
                             textContentType="newPassword"
                             editable={!loading}
+                            error={
+                                confirmPassword === undefined
+                                    ? 'La confirmation du mot de passe est requise'
+                                    : false
+                            }
                         />
-                        <TouchableOpacity
-                            style={styles.eyeButton}
-                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                            disabled={loading}
-                        >
-                            <Ionicons
-                                name={showConfirmPassword ? 'eye' : 'eye-off'}
-                                size={22}
-                                color="#888"
-                            />
-                        </TouchableOpacity>
-                    </View>
-                    {/* CODE EQUIPE */}
-                    <View style={styles.inputGroup}>
-                        <Ionicons
-                            name="key-outline"
-                            size={20}
-                            color="#888"
-                            style={styles.inputIcon}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Code Équipe"
-                            placeholderTextColor="#aaa"
+                        {/* CODE EQUIPE */}
+                        <Input
+                            icon="key-outline"
+                            placeholder="Code Équipe*"
                             value={codeEquipe}
                             onChangeText={setCodeEquipe}
                             autoCapitalize="characters"
                             editable={!loading}
+                            error={codeEquipe === undefined ? 'Le code équipe est requis' : false}
                         />
-                    </View>
-                    {/* INFOS EQUIPE */}
-                    {equipeData && (
-                        <View style={styles.equipeInfoBlock}>
-                            <Text style={styles.equipeTitle}>
-                                🎽 {equipeData.nom} ({equipeData.categorie || 'Catégorie inconnue'})
-                            </Text>
-                            <Text style={styles.equipeLabel}>
-                                Coach associé :{' '}
-                                <Text style={{ color: '#fff' }}>
-                                    {coachData
-                                        ? `${coachData.prenom} ${coachData.nom}`
-                                        : 'Non renseigné'}
+                        {/* INFOS EQUIPE */}
+                        {equipeData && (
+                            <View style={styles.equipeInfoBlock}>
+                                <Text style={styles.equipeTitle}>
+                                    🎽 {equipeData.nom} (
+                                    {equipeData.categorie || 'Catégorie inconnue'})
                                 </Text>
-                            </Text>
-                        </View>
-                    )}
-                    {/* NOM / PRÉNOM */}
-                    <View style={styles.inputGroup}>
-                        <Ionicons
-                            name="person-outline"
-                            size={20}
-                            color="#888"
-                            style={styles.inputIcon}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Nom"
-                            placeholderTextColor="#aaa"
+                                <Text style={styles.equipeLabel}>
+                                    Coach associé :{' '}
+                                    <Text style={{ color: '#fff' }}>
+                                        {coachData
+                                            ? `${coachData.prenom} ${coachData.nom}`
+                                            : 'Non renseigné'}
+                                    </Text>
+                                </Text>
+                            </View>
+                        )}
+                        {/* NOM / PRÉNOM */}
+                        <Input
+                            icon="person-outline"
+                            placeholder="Nom du joueur*"
                             value={nom}
                             onChangeText={setNom}
                             textContentType="familyName"
                             editable={!loading}
+                            error={nom === undefined ? 'Le nom du joueur est requis' : false}
                         />
-                    </View>
-                    <View style={styles.inputGroup}>
-                        <Ionicons
-                            name="person-outline"
-                            size={20}
-                            color="#888"
-                            style={styles.inputIcon}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Prénom"
-                            placeholderTextColor="#aaa"
+                        <Input
+                            icon="person-outline"
+                            placeholder="Prénom du joueur*"
                             value={prenom}
                             onChangeText={setPrenom}
                             textContentType="givenName"
                             editable={!loading}
+                            error={prenom === undefined ? 'Le prénom du joueur est requis' : false}
                         />
-                    </View>
-                    {/* DATE DE NAISSANCE */}
-                    {Platform.OS === 'web' ? (
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="calendar-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <WebDateInput
-                                value={dateNaissance}
-                                onChange={handleWebDateChange}
-                                disabled={loading}
-                                placeholder="Date de naissance"
-                            />
-                        </View>
-                    ) : (
-                        <>
+                        {/* DATE DE NAISSANCE */}
+                        {Platform.OS === 'web' ? (
                             <View style={styles.inputGroup}>
                                 <Ionicons
                                     name="calendar-outline"
@@ -592,269 +481,256 @@ export default function InscriptionJoueur() {
                                     color="#888"
                                     style={styles.inputIcon}
                                 />
-                                <TouchableOpacity
-                                    style={styles.datePickerButton}
-                                    onPress={handleDatePickerOpen}
+                                <WebDateInput
+                                    value={dateNaissance}
+                                    onChange={handleWebDateChange}
                                     disabled={loading}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.datePickerText,
-                                            !dateNaissance && styles.datePickerPlaceholder,
-                                        ]}
-                                    >
-                                        {dateNaissance
-                                            ? formatDateForDisplay(dateNaissance)
-                                            : 'Sélectionner la date de naissance'}
-                                    </Text>
-                                    <Ionicons name="chevron-down" size={20} color="#888" />
-                                </TouchableOpacity>
+                                    placeholder="Date de naissance*"
+                                />
                             </View>
-                            {showDatePicker && DateTimePicker && (
-                                <View style={styles.datePickerContainer}>
-                                    <DateTimePicker
-                                        value={dateNaissance}
-                                        mode="date"
-                                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                        onChange={onDateChange}
-                                        maximumDate={new Date()}
-                                        minimumDate={new Date(1920, 0, 1)}
-                                        style={
-                                            Platform.OS === 'ios' ? styles.iosDatePicker : undefined
-                                        }
+                        ) : (
+                            <>
+                                <View style={styles.inputGroup}>
+                                    <Ionicons
+                                        name="calendar-outline"
+                                        size={20}
+                                        color="#888"
+                                        style={styles.inputIcon}
                                     />
-                                    {Platform.OS === 'ios' && (
-                                        <TouchableOpacity
-                                            style={styles.closeDatePickerButton}
-                                            onPress={() => setShowDatePicker(false)}
+                                    <TouchableOpacity
+                                        style={styles.datePickerButton}
+                                        onPress={handleDatePickerOpen}
+                                        disabled={loading}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.datePickerText,
+                                                !dateNaissance && styles.datePickerPlaceholder,
+                                            ]}
                                         >
-                                            <Text style={styles.closeDatePickerText}>
-                                                Confirmer
-                                            </Text>
-                                        </TouchableOpacity>
-                                    )}
+                                            {dateNaissance
+                                                ? formatDateForDisplay(dateNaissance)
+                                                : 'Sélectionner la date de naissance'}
+                                        </Text>
+                                        <Ionicons name="chevron-down" size={20} color="#888" />
+                                    </TouchableOpacity>
                                 </View>
-                            )}
-                        </>
-                    )}
-                    {/* ÂGE + Mineur */}
-                    {calculatedAge !== null && (
-                        <View
-                            style={[
-                                styles.ageIndicator,
-                                isMinor ? styles.ageIndicatorMinor : styles.ageIndicatorMajor,
-                            ]}
-                        >
-                            <Ionicons
-                                name={isMinor ? 'warning-outline' : 'checkmark-circle-outline'}
-                                size={20}
-                                color={isMinor ? '#ffb100' : '#00ff88'}
-                            />
-                            <Text
-                                style={[styles.ageText, { color: isMinor ? '#ffb100' : '#00ff88' }]}
+                                {showDatePicker && DateTimePicker && (
+                                    <View style={styles.datePickerContainer}>
+                                        <DateTimePicker
+                                            value={dateNaissance}
+                                            mode="date"
+                                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                            onChange={onDateChange}
+                                            maximumDate={new Date()}
+                                            minimumDate={new Date(1920, 0, 1)}
+                                            style={
+                                                Platform.OS === 'ios'
+                                                    ? styles.iosDatePicker
+                                                    : undefined
+                                            }
+                                        />
+                                        {Platform.OS === 'ios' && (
+                                            <TouchableOpacity
+                                                style={styles.closeDatePickerButton}
+                                                onPress={() => setShowDatePicker(false)}
+                                            >
+                                                <Text style={styles.closeDatePickerText}>
+                                                    Confirmer
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                )}
+                            </>
+                        )}
+                        {/* ÂGE + Mineur */}
+                        {calculatedAge !== null && (
+                            <View
+                                style={[
+                                    styles.ageIndicator,
+                                    isMinor ? styles.ageIndicatorMinor : styles.ageIndicatorMajor,
+                                ]}
                             >
-                                {calculatedAge} ans -{' '}
-                                {isMinor
-                                    ? 'Joueur mineur (moins de 18 ans)'
-                                    : 'Joueur majeur (18 ans et plus)'}
-                            </Text>
-                        </View>
-                    )}
-                    {/* POSTE(S) */}
-                    <View style={styles.inputGroup}>
-                        <Ionicons
-                            name="football-outline"
-                            size={20}
-                            color="#888"
-                            style={styles.inputIcon}
-                        />
-                        <TextInput
-                            style={styles.input}
+                                <Ionicons
+                                    name={isMinor ? 'warning-outline' : 'checkmark-circle-outline'}
+                                    size={20}
+                                    color={isMinor ? '#ffb100' : '#00ff88'}
+                                />
+                                <Text
+                                    style={[
+                                        styles.ageText,
+                                        { color: isMinor ? '#ffb100' : '#00ff88' },
+                                    ]}
+                                >
+                                    {calculatedAge} ans -{' '}
+                                    {isMinor
+                                        ? 'Joueur mineur (moins de 18 ans)'
+                                        : 'Joueur majeur (18 ans et plus)'}
+                                </Text>
+                            </View>
+                        )}
+                        {/* POSTE(S) */}
+                        <Input
+                            icon="football-outline"
                             placeholder="Poste(s) (optionnel, ex: Gardien, Défenseur...)"
-                            placeholderTextColor="#aaa"
                             value={postes}
                             onChangeText={setPostes}
                             editable={!loading}
                         />
-                    </View>
-                    {/* TÉLÉPHONE JOUEUR OU INFOS PARENT */}
-                    {!isMinor && (
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="call-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Votre téléphone"
-                                placeholderTextColor="#aaa"
+                        {/* TÉLÉPHONE JOUEUR OU INFOS PARENT */}
+                        {!isMinor && (
+                            <Input
+                                icon="call-outline"
+                                placeholder="Votre téléphone*"
                                 value={telephone}
                                 onChangeText={setTelephone}
                                 keyboardType="phone-pad"
                                 textContentType="telephoneNumber"
                                 editable={!loading}
+                                error={telephone === undefined ? 'Le téléphone est requis' : false}
                             />
-                        </View>
-                    )}
-                    {isMinor && (
-                        <>
-                            <View style={styles.inputGroup}>
-                                <Ionicons
-                                    name="person-outline"
-                                    size={20}
-                                    color="#ffb100"
-                                    style={styles.inputIcon}
-                                />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Nom du parent / tuteur"
-                                    placeholderTextColor="#aaa"
+                        )}
+                        {isMinor && (
+                            <>
+                                <Input
+                                    icon="person-outline"
+                                    placeholder="Nom du parent / tuteur*"
                                     value={nomParent}
                                     onChangeText={setNomParent}
                                     editable={!loading}
+                                    error={
+                                        nomParent === undefined
+                                            ? 'Le nom du parent / tuteur est requis'
+                                            : false
+                                    }
                                 />
-                            </View>
-                            <View style={styles.inputGroup}>
-                                <Ionicons
-                                    name="person-outline"
-                                    size={20}
-                                    color="#ffb100"
-                                    style={styles.inputIcon}
-                                />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Prénom du parent / tuteur"
-                                    placeholderTextColor="#aaa"
+                                <Input
+                                    icon="person-outline"
+                                    placeholder="Prénom du parent / tuteur*"
                                     value={prenomParent}
                                     onChangeText={setPrenomParent}
                                     editable={!loading}
+                                    error={
+                                        prenomParent === undefined
+                                            ? 'Le prénom du parent / tuteur est requis'
+                                            : false
+                                    }
                                 />
-                            </View>
-                            <View style={styles.inputGroup}>
-                                <Ionicons
-                                    name="call-outline"
-                                    size={20}
-                                    color="#ffb100"
-                                    style={styles.inputIcon}
-                                />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Téléphone du parent / tuteur"
-                                    placeholderTextColor="#aaa"
+                                <Input
+                                    icon="call-outline"
+                                    placeholder="Téléphone du parent / tuteur*"
                                     value={telephoneParent}
                                     onChangeText={setTelephoneParent}
                                     keyboardType="phone-pad"
                                     textContentType="telephoneNumber"
                                     editable={!loading}
+                                    error={
+                                        telephoneParent === undefined
+                                            ? 'Le téléphone du parent / tuteur est requis'
+                                            : false
+                                    }
                                 />
-                            </View>
-                            {/* Bloc décharge */}
-                            <View style={styles.dechargeBlock}>
-                                <Text style={styles.dechargeTitle}>
-                                    <Ionicons
-                                        name="document-text-outline"
-                                        size={16}
-                                        color="#ffb100"
-                                    />{' '}
-                                    Décharge parentale obligatoire
-                                </Text>
-                                <Text style={styles.dechargeText}>
-                                    Votre enfant étant mineur ({calculatedAge} ans), une décharge
-                                    parentale est nécessaire :
-                                </Text>
-                                <Text style={styles.dechargeMessage}>
-                                    &quot;J&apos;accepte que mon enfant puisse être transporté sur
-                                    le lieu d&apos;un événement par le coach ou un autre parent dans
-                                    le cadre du club.&quot;
-                                </Text>
-                                <Text style={styles.dechargeNote}>
-                                    ⚠️ Ce choix pourra être modifié plus tard dans l&apos;espace
-                                    parent.
-                                </Text>
-                                <View style={styles.dechargeRow}>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.dechargeButton,
-                                            accepteDecharge === true &&
-                                                styles.dechargeButtonSelected,
-                                        ]}
-                                        onPress={() => setAccepteDecharge(true)}
-                                        disabled={loading}
-                                    >
+                                {/* Bloc décharge */}
+                                <View style={styles.waiverBlock}>
+                                    <Text style={styles.waiverTitle}>
                                         <Ionicons
-                                            name="checkmark-circle-outline"
-                                            size={18}
-                                            color={accepteDecharge === true ? '#121212' : '#fff'}
-                                        />
-                                        <Text
+                                            name="document-text-outline"
+                                            size={16}
+                                            color="#ffb100"
+                                        />{' '}
+                                        Décharge parentale obligatoire
+                                    </Text>
+                                    <Text style={styles.waiverText}>
+                                        Votre enfant étant mineur ({calculatedAge} ans), une
+                                        décharge parentale est nécessaire :
+                                    </Text>
+                                    <Text style={styles.waiverMessage}>
+                                        &quot;J&apos;accepte que mon enfant puisse être transporté
+                                        sur le lieu d&apos;un événement par le coach ou un autre
+                                        parent dans le cadre du club.&quot;
+                                    </Text>
+                                    <Text style={styles.waiverNote}>
+                                        ⚠️ Ce choix pourra être modifié plus tard dans l&apos;espace
+                                        parent.
+                                    </Text>
+                                    <View style={styles.waiverRow}>
+                                        <TouchableOpacity
                                             style={[
-                                                styles.dechargeButtonText,
-                                                accepteDecharge === true &&
-                                                    styles.dechargeButtonTextSelected,
+                                                styles.waiverButton,
+                                                waiverAccepted === true &&
+                                                    styles.waiverButtonSelected,
                                             ]}
+                                            onPress={() => setWaiverAccepted(true)}
+                                            disabled={loading}
                                         >
-                                            Signer la décharge
-                                        </Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.dechargeButton,
-                                            accepteDecharge === false &&
-                                                styles.dechargeButtonSelected,
-                                        ]}
-                                        onPress={() => setAccepteDecharge(false)}
-                                        disabled={loading}
-                                    >
-                                        <Ionicons
-                                            name="close-circle-outline"
-                                            size={18}
-                                            color={accepteDecharge === false ? '#121212' : '#fff'}
-                                        />
-                                        <Text
+                                            <Ionicons
+                                                name="checkmark-circle-outline"
+                                                size={18}
+                                                color={waiverAccepted === true ? '#121212' : '#fff'}
+                                            />
+                                            <Text
+                                                style={[
+                                                    styles.waiverButtonText,
+                                                    waiverAccepted === true &&
+                                                        styles.waiverButtonTextSelected,
+                                                ]}
+                                            >
+                                                Signer la décharge
+                                            </Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
                                             style={[
-                                                styles.dechargeButtonText,
-                                                accepteDecharge === false &&
-                                                    styles.dechargeButtonTextSelected,
+                                                styles.waiverButton,
+                                                waiverAccepted === false &&
+                                                    styles.waiverButtonSelected,
                                             ]}
+                                            onPress={() => setWaiverAccepted(false)}
+                                            disabled={loading}
                                         >
-                                            Ne pas signer maintenant
-                                        </Text>
-                                    </TouchableOpacity>
+                                            <Ionicons
+                                                name="close-circle-outline"
+                                                size={18}
+                                                color={
+                                                    waiverAccepted === false ? '#121212' : '#fff'
+                                                }
+                                            />
+                                            <Text
+                                                style={[
+                                                    styles.waiverButtonText,
+                                                    waiverAccepted === false &&
+                                                        styles.waiverButtonTextSelected,
+                                                ]}
+                                            >
+                                                Ne pas signer maintenant
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
-                            </View>
-                        </>
-                    )}
-                    {/* BTN INSCRIPTION */}
-                    <TouchableOpacity
-                        style={[styles.button, loading && styles.buttonDisabled]}
-                        onPress={handleInscription}
-                        disabled={loading}
-                        activeOpacity={0.8}
-                    >
-                        {loading ? (
-                            <View style={styles.loadingContainer}>
-                                <ActivityIndicator color="#000" size="small" />
-                                <Text style={styles.loadingText}>Création du compte...</Text>
-                            </View>
-                        ) : (
-                            <Text style={styles.buttonText}>Créer mon compte</Text>
+                            </>
                         )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => router.push('/auth/login-joueur')}
-                        disabled={loading}
-                        style={styles.backLink}
-                    >
-                        <Text style={[styles.backLinkText, loading && styles.textDisabled]}>
-                            Déjà un compte ? Se connecter
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-            </KeyboardAvoidingView>
-        </ScrollView>
+                        {/* BTN INSCRIPTION */}
+                        <TouchableOpacity
+                            style={[styles.button, loading && styles.buttonDisabled]}
+                            onPress={handleInscription}
+                            disabled={loading}
+                            activeOpacity={0.8}
+                        >
+                            {loading ? (
+                                <View style={styles.loadingContainer}>
+                                    <ActivityIndicator color="#000" size="small" />
+                                    <Text style={styles.loadingText}>Création du compte...</Text>
+                                </View>
+                            ) : (
+                                <Text style={styles.buttonText}>Créer mon compte</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </KeyboardAvoidingView>
+            </ScrollView>
+            <ReturnButton />
+        </>
     );
 }
 
@@ -947,7 +823,7 @@ const styles = StyleSheet.create({
     ageIndicatorMinor: { borderLeftWidth: 3, borderLeftColor: '#ffb100' },
     ageIndicatorMajor: { borderLeftWidth: 3, borderLeftColor: '#00ff88' },
     ageText: { fontSize: 14, fontWeight: '600' },
-    dechargeBlock: {
+    waiverBlock: {
         marginBottom: 24,
         backgroundColor: '#1a1a1a',
         padding: 16,
@@ -955,9 +831,9 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#ffb100',
     },
-    dechargeTitle: { color: '#ffb100', fontSize: 16, fontWeight: '700', marginBottom: 12 },
-    dechargeText: { color: '#fff', fontSize: 15, lineHeight: 22, marginBottom: 8 },
-    dechargeMessage: {
+    waiverTitle: { color: '#ffb100', fontSize: 16, fontWeight: '700', marginBottom: 12 },
+    waiverText: { color: '#fff', fontSize: 15, lineHeight: 22, marginBottom: 8 },
+    waiverMessage: {
         color: '#ddd',
         fontSize: 14,
         fontStyle: 'italic',
@@ -967,9 +843,9 @@ const styles = StyleSheet.create({
         borderLeftWidth: 2,
         borderLeftColor: '#ffb100',
     },
-    dechargeNote: { color: '#ffb100', fontSize: 13, fontWeight: '500', marginBottom: 16 },
-    dechargeRow: { flexDirection: 'row', gap: 12 },
-    dechargeButton: {
+    waiverNote: { color: '#ffb100', fontSize: 13, fontWeight: '500', marginBottom: 16 },
+    waiverRow: { flexDirection: 'row', gap: 12 },
+    waiverButton: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
@@ -981,9 +857,9 @@ const styles = StyleSheet.create({
         borderColor: '#555',
         gap: 6,
     },
-    dechargeButtonSelected: { backgroundColor: '#00ff88', borderColor: '#00ff88' },
-    dechargeButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-    dechargeButtonTextSelected: { color: '#121212' },
+    waiverButtonSelected: { backgroundColor: '#00ff88', borderColor: '#00ff88' },
+    waiverButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+    waiverButtonTextSelected: { color: '#121212' },
     button: {
         backgroundColor: '#00ff88',
         paddingVertical: 16,

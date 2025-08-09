@@ -316,7 +316,7 @@ export default function PresidentDashboard() {
 
     // COMPOSANT IMAGE OPTIMISÉ
     const LogoComponent = () => {
-        const defaultLogo = require('../../assets/logo.png');
+        const defaultLogo = require('../../assets/logo-v2.png');
         const currentLogoUrl = club?.logo_url;
 
         if (!currentLogoUrl || currentLogoUrl.includes('logo.png')) {

@@ -10,11 +10,12 @@ import {
     Platform,
     StatusBar,
     ScrollView,
-    ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import ReturnButton from '@/components/atoms/ReturnButton';
+import Button from '@/components/atoms/Button';
 import { useSession } from '@/hooks/useSession';
 
 export default function LoginClub() {
@@ -32,6 +33,7 @@ export default function LoginClub() {
                 'Erreur',
                 "Entrez d'abord votre email pour recevoir un lien de réinitialisation.",
             );
+            alert('Veuillez entrer votre email pour recevoir un lien de réinitialisation.'); //FIXME: Toast notification
             return;
         }
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
@@ -39,6 +41,7 @@ export default function LoginClub() {
             Alert.alert('Erreur', error.message);
         } else {
             Alert.alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
+            alert('Vérifiez vos emails, Un lien de réinitialisation a été envoyé.'); //FIXME: Toast notification
         }
     };
 
@@ -46,6 +49,7 @@ export default function LoginClub() {
         if (loading) {
             return;
         }
+
         setLoading(true);
 
         try {
@@ -59,10 +63,7 @@ export default function LoginClub() {
     };
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1 }}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <StatusBar barStyle="light-content" />
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
@@ -102,25 +103,33 @@ export default function LoginClub() {
                     </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-                    {loading ? (
-                        <ActivityIndicator color="#000" />
-                    ) : (
-                        <Text style={styles.buttonText}>Se connecter</Text>
-                    )}
-                </TouchableOpacity>
+                <Button
+                    text="Se connecter"
+                    onPress={handleLogin}
+                    loading={loading}
+                    color="primary"
+                />
 
-                <TouchableOpacity onPress={handleForgotPassword}>
-                    <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
-                </TouchableOpacity>
+                <View style={styles.forgotContainer}>
+                    <TouchableOpacity onPress={handleForgotPassword}>
+                        <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+                    </TouchableOpacity>
+                </View>
 
-                <TouchableOpacity onPress={() => router.push('/auth/inscription-coach')}>
-                    <Text style={styles.switchText}>Créer un compte Coach</Text>
-                </TouchableOpacity>
+                <View style={styles.separator} />
+                <Button
+                    text="Créer un compte Coach"
+                    onPress={() => router.push('/auth/inscription-coach')}
+                    color="secondary"
+                />
+                <View style={{ marginBottom: 15 }} />
+                <Button
+                    text="Créer un nouveau Club (Président)"
+                    onPress={() => router.push('/auth/inscription-president')}
+                    color="secondary"
+                />
 
-                <TouchableOpacity onPress={() => router.push('/auth/inscription-president')}>
-                    <Text style={styles.switchText}>Créer un nouveau club (Président)</Text>
-                </TouchableOpacity>
+                <ReturnButton />
             </ScrollView>
         </KeyboardAvoidingView>
     );
@@ -129,11 +138,9 @@ export default function LoginClub() {
 const styles = StyleSheet.create({
     container: {
         backgroundColor: '#121212',
-        flexGrow: 1,
         justifyContent: 'center',
     },
     scrollContent: {
-        marginTop: 30,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -179,11 +186,15 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontSize: 16,
     },
+    forgotContainer: {
+        width: '100%',
+        alignItems: 'flex-end',
+    },
     forgotText: {
-        color: '#00bfff',
-        marginTop: 22,
-        fontSize: 15,
-        textAlign: 'center',
+        color: '#00ff88',
+        fontSize: 12,
+        marginTop: 18,
+        textAlign: 'right',
         textDecorationLine: 'underline',
     },
     switchText: {
@@ -192,5 +203,13 @@ const styles = StyleSheet.create({
         textDecorationLine: 'underline',
         fontSize: 14,
         textAlign: 'center',
+    },
+    separator: {
+        height: 1,
+        backgroundColor: '#333',
+        width: '80%',
+        alignSelf: 'center',
+        marginVertical: 20,
+        marginTop: 30,
     },
 });

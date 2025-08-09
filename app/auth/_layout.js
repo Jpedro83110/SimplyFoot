@@ -125,20 +125,7 @@ export default function AuthLayout() {
 
     return (
         <View style={styles.container}>
-            <Image source={require('../../assets/logo.png')} style={styles.logo} />
-            <Text style={styles.title}>Bienvenue sur SimplyFoot</Text>
-
-            {session?.user && (
-                <TouchableOpacity
-                    style={styles.logoutButton}
-                    onPress={async () => {
-                        await signOut();
-                    }}
-                >
-                    <Text style={styles.logoutText}>🔓 Se déconnecter</Text>
-                </TouchableOpacity>
-            )}
-
+            <Image source={require('../../assets/logo-v2.png')} style={styles.logo} />
             <Slot />
         </View>
     );
@@ -165,8 +152,8 @@ const styles = StyleSheet.create({
         marginBottom: 30,
     },
     logo: {
-        width: 90,
-        height: 90,
+        width: 100,
+        height: 100,
         marginBottom: 20,
     },
     logoutButton: {
