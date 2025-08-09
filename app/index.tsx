@@ -16,9 +16,9 @@ export default function Accueil() {
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
-            <Image source={require('../assets/logo.png')} style={styles.logoImage} />
+            <Image source={require('../assets/logo-v2.png')} style={styles.logoImage} />
             <Text style={styles.title}>Bienvenue sur</Text>
-            <Text style={styles.logo}>⚽ SimplyFoot</Text>
+            <Text style={styles.logo}>Simply Foot</Text>
             <Text style={styles.subtitle}>L&apos;application des clubs de foot amateur</Text>
 
             {loggedIn ? (

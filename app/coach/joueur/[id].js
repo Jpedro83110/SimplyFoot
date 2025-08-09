@@ -226,7 +226,7 @@ export default function JoueurDetail() {
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
-            <Image source={require('../../../assets/avatar.png')} style={styles.avatar} />
+            <Image source={require('../../../assets/logo-v2.png')} style={styles.avatar} />
             <Text style={styles.title}>
                 {(utilisateur?.prenom || joueur.prenom) + ' ' + (utilisateur?.nom || joueur.nom)}
             </Text>

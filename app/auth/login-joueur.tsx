@@ -86,10 +86,7 @@ export default function LoginJoueur() {
             style={styles.container}
         >
             <StatusBar barStyle="light-content" />
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-            >
+            <ScrollView keyboardShouldPersistTaps="handled">
                 <Text style={styles.title}>Connexion Joueur / Parent</Text>
                 <TextInput
                     style={styles.input}
@@ -134,7 +131,12 @@ export default function LoginJoueur() {
                     <Text style={styles.rememberText}>Se souvenir de moi</Text>
                 </View>
 
-                <Button text="Se connecter" onPress={handleLogin} color="primary" />
+                <Button
+                    text="Se connecter"
+                    onPress={handleLogin}
+                    loading={loading}
+                    color="primary"
+                />
 
                 <TouchableOpacity onPress={handleForgotPassword}>
                     <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
@@ -158,11 +160,7 @@ export default function LoginJoueur() {
 const styles = StyleSheet.create({
     container: {
         backgroundColor: '#121212',
-        flexGrow: 1,
         justifyContent: 'center',
-    },
-    scrollContent: {
-        marginTop: 30,
     },
     title: {
         fontSize: 24,

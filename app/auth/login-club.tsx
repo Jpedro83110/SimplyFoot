@@ -41,7 +41,7 @@ export default function LoginClub() {
             Alert.alert('Erreur', error.message);
         } else {
             Alert.alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
-            alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.'); //FIXME: Toast notification
+            alert('Vérifiez vos emails, Un lien de réinitialisation a été envoyé.'); //FIXME: Toast notification
         }
     };
 
@@ -49,6 +49,7 @@ export default function LoginClub() {
         if (loading) {
             return;
         }
+
         setLoading(true);
 
         try {
@@ -62,10 +63,7 @@ export default function LoginClub() {
     };
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1 }}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <StatusBar barStyle="light-content" />
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
@@ -105,7 +103,12 @@ export default function LoginClub() {
                     </TouchableOpacity>
                 </View>
 
-                <Button text="Se connecter" onPress={handleLogin} color="primary" />
+                <Button
+                    text="Se connecter"
+                    onPress={handleLogin}
+                    loading={loading}
+                    color="primary"
+                />
 
                 <View style={styles.forgotContainer}>
                     <TouchableOpacity onPress={handleForgotPassword}>
@@ -135,11 +138,9 @@ export default function LoginClub() {
 const styles = StyleSheet.create({
     container: {
         backgroundColor: '#121212',
-        flexGrow: 1,
         justifyContent: 'center',
     },
     scrollContent: {
-        marginTop: 30,
         justifyContent: 'center',
         alignItems: 'center',
     },

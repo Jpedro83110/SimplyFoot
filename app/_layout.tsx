@@ -113,18 +113,14 @@ const PrivateGlobalLayout: FC = () => {
     }, []);
 
     return (
-        <ImageBackground
-            source={require('../assets/chat.png')}
-            style={styles.container}
-            resizeMode="cover"
-        >
+        <>
             <StatusBar barStyle="light-content" />
             <WebSocketManager />
             <View style={styles.overlay}>
                 {role === 'admin' && <Text style={styles.badge}>👑 MODE ADMIN</Text>}
                 <Slot />
             </View>
-        </ImageBackground>
+        </>
     );
 };
 
