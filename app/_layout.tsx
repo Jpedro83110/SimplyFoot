@@ -1,5 +1,5 @@
-import React, { FC, useEffect, useState } from 'react';
-import { View, StyleSheet, ImageBackground, StatusBar, Text, Platform } from 'react-native';
+import { FC, useEffect, useState } from 'react';
+import { View, StyleSheet, StatusBar, Text, Platform } from 'react-native';
 import { Slot } from 'expo-router';
 import WebSocketManager from '../components/business/WebSocketManager';
 import { supabase } from '../lib/supabase';

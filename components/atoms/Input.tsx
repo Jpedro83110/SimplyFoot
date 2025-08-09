@@ -14,7 +14,15 @@ interface InputProps extends TextInputProps {
     onToggle?: () => void;
     keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad';
     editable?: boolean;
-    textContentType?: 'none' | 'username' | 'password' | 'emailAddress' | 'telephoneNumber';
+    mandatory?: boolean;
+    textContentType?:
+        | 'none'
+        | 'username'
+        | 'newPassword'
+        | 'emailAddress'
+        | 'telephoneNumber'
+        | 'familyName'
+        | 'givenName'; // FIXME use real type
     multiline?: boolean;
     iconColor?: string;
     iconSize?: number;
@@ -34,6 +42,7 @@ const Input: React.FC<InputProps> = ({
     onToggle,
     keyboardType = 'default',
     editable = true,
+    mandatory = false,
     textContentType,
     iconColor = '#888',
     iconSize = 20,
@@ -64,7 +73,7 @@ const Input: React.FC<InputProps> = ({
                         showToggle && { paddingRight: 50 },
                         error && styles.inputError,
                     ]}
-                    placeholder={placeholder}
+                    placeholder={`${placeholder}${mandatory ? ' *' : ''}`}
                     placeholderTextColor={placeholderTextColor}
                     value={value}
                     onChangeText={onChangeText}

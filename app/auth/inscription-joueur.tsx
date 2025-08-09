@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, FC } from 'react';
 import {
     View,
     Text,
@@ -8,7 +8,6 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
-    ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -17,27 +16,30 @@ import { formatDateToISO, formatDateForDisplay, calculateAge } from '../../lib/f
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import Input from '@/components/atoms/Input';
+import Button from '@/components/atoms/Button';
+import { Equipe } from '@/types/Equipe';
+import { Staff } from '@/types/Staff';
 
 // DatePicker mobile
-let DateTimePicker = null;
+let DateTimePicker: any = null;
 if (Platform.OS !== 'web') {
     try {
-        DateTimePicker = require('@react-native-community/datetimepicker').default;
+        DateTimePicker = require('@react-native-community/datetimepicker').default; // FIXME
     } catch (error) {
         console.warn('DateTimePicker not available:', error);
     }
 }
 
 // Utils
-function isValidEmail(email) {
+function isValidEmail(email: string) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 }
-function isValidPhone(phone) {
+function isValidPhone(phone: string) {
     const phoneRegex = /^[0-9+\s\-\.()]{8,15}$/;
     return phoneRegex.test(phone.replace(/\s/g, ''));
 }
-function formatDateForInput(date) {
+function formatDateForInput(date: Date) {
     if (!date) {
         return '';
     }
@@ -46,21 +48,30 @@ function formatDateForInput(date) {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
-function parseDateFromInput(dateString) {
+function parseDateFromInput(dateString: string) {
     if (!dateString) {
         return null;
     }
     const [year, month, day] = dateString.split('-').map(Number);
     return new Date(year, month - 1, day);
 }
-const WebDateInput = ({ value, onChange, disabled, style, placeholder }) => {
+
+interface WebDateInputProps {
+    value: Date | undefined;
+    onChange: (dateString: string) => void;
+    disabled?: boolean;
+    style?: React.CSSProperties;
+    placeholder?: string;
+}
+
+const WebDateInput: FC<WebDateInputProps> = ({ value, onChange, disabled, style, placeholder }) => {
     if (Platform.OS !== 'web') {
         return null;
     }
     return (
         <input
             type="date"
-            value={formatDateForInput(value)}
+            value={value ? formatDateForInput(value) : ''}
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled}
             max={formatDateForInput(new Date())}
@@ -93,9 +104,9 @@ export default function InscriptionJoueur() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [codeEquipe, setCodeEquipe] = useState('');
-    const [equipeData, setEquipeData] = useState(null);
-    const [coachData, setCoachData] = useState(null);
-    const [errors, setErrors] = React.useState({});
+    const [equipeData, setEquipeData] = useState<Partial<Equipe> | null>(null); // FIXME
+    const [coachData, setCoachData] = useState<Partial<Staff> | null>(null); // FIXME
+    const [errors, setErrors] = React.useState<Record<string, string>>({});
 
     const [nom, setNom] = useState('');
     const [prenom, setPrenom] = useState('');
@@ -107,19 +118,19 @@ export default function InscriptionJoueur() {
     const [prenomParent, setPrenomParent] = useState('');
     const [telephoneParent, setTelephoneParent] = useState('');
 
-    const [dateNaissance, setDateNaissance] = useState(new Date(2008, 0, 1));
+    const [dateNaissance, setDateNaissance] = useState<Date>();
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [waiverAccepted, setWaiverAccepted] = useState(null);
+    const [waiverAccepted, setWaiverAccepted] = useState<boolean | null>(null);
 
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isMinor, setIsMinor] = useState(false);
-    const [calculatedAge, setCalculatedAge] = useState(null);
+    const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
 
     // Fetch équipe + coach dès que codeEquipe rempli
     useEffect(() => {
-        if (!codeEquipe || codeEquipe.length < 3) {
+        if (!codeEquipe || codeEquipe.length !== 8) {
             setEquipeData(null);
             setCoachData(null);
             return;
@@ -176,7 +187,8 @@ export default function InscriptionJoueur() {
             setShowDatePicker(true);
         }
     };
-    const onDateChange = (event, selectedDate) => {
+    const onDateChange = (event: Event, selectedDate: Date | undefined) => {
+        // FIXME pas sûr des types
         if (Platform.OS !== 'web') {
             setShowDatePicker(false);
         }
@@ -187,7 +199,7 @@ export default function InscriptionJoueur() {
             handleDateValidationAndSet(selectedDate);
         }
     };
-    const handleWebDateChange = (dateString) => {
+    const handleWebDateChange = (dateString: string) => {
         if (!dateString) {
             return;
         }
@@ -196,7 +208,7 @@ export default function InscriptionJoueur() {
             handleDateValidationAndSet(selectedDate);
         }
     };
-    const handleDateValidationAndSet = (selectedDate) => {
+    const handleDateValidationAndSet = (selectedDate: Date) => {
         const today = new Date();
         if (selectedDate > today) {
             Alert.alert('Erreur', 'La date de naissance ne peut pas être dans le futur.');
@@ -211,19 +223,19 @@ export default function InscriptionJoueur() {
     };
 
     // Validation
-    const validateForm = () => {
-        const newErrors = {};
+    const isFormValid = useMemo(() => {
+        const newErrors: any = {}; // FIXME
 
-        if (!email.trim() || !isValidEmail(email.trim())) {
+        if (email.trim() !== '' && !isValidEmail(email.trim())) {
             newErrors.email = true;
         }
-        if (!password.trim() || password.length < 6) {
+        if (password !== '' && password.length < 6) {
             newErrors.password = true;
         }
-        if (password !== confirmPassword) {
+        if (password !== '' && password !== confirmPassword) {
             newErrors.confirmPassword = true;
         }
-        if (!codeEquipe.trim() || !equipeData) {
+        if (codeEquipe.trim() !== '' && !equipeData) {
             newErrors.codeEquipe = true;
         }
         if (!nom.trim()) {
@@ -243,27 +255,39 @@ export default function InscriptionJoueur() {
             if (!prenomParent.trim()) {
                 newErrors.prenomParent = true;
             }
-            if (!telephoneParent.trim() || !isValidPhone(telephoneParent.trim())) {
+            if (telephoneParent.trim() !== '' && !isValidPhone(telephoneParent.trim())) {
                 newErrors.telephoneParent = true;
             }
             if (waiverAccepted === null) {
                 newErrors.waiverAccepted = true;
             }
         } else {
-            if (!telephone.trim() || !isValidPhone(telephone.trim())) {
+            if (telephone.trim() !== '' && !isValidPhone(telephone.trim())) {
                 newErrors.telephone = true;
             }
         }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
-    };
+    }, [
+        email,
+        password,
+        confirmPassword,
+        codeEquipe,
+        equipeData,
+        nom,
+        prenom,
+        dateNaissance,
+        isMinor,
+        nomParent,
+        prenomParent,
+        telephoneParent,
+        waiverAccepted,
+        telephone,
+    ]);
 
     // 🚀 Inscription
     const handleInscription = async () => {
-        if (!validateForm()) {
-            return;
-        }
         setLoading(true);
 
         try {
@@ -291,7 +315,7 @@ export default function InscriptionJoueur() {
                 email: email.trim().toLowerCase(),
                 nom: nom.trim(),
                 prenom: prenom.trim(),
-                club_id: equipeData.club_id,
+                club_id: equipeData?.club_id,
                 role: 'joueur',
                 expo_push_token: expoPushToken,
                 date_creation: new Date().toISOString(),
@@ -303,9 +327,9 @@ export default function InscriptionJoueur() {
             }
 
             // 4. Crée Joueur
-            const dateNaissanceISO = formatDateToISO(dateNaissance);
+            const dateNaissanceISO = dateNaissance ? formatDateToISO(dateNaissance) : null;
             let joueurData = {
-                equipe_id: equipeData.id,
+                equipe_id: equipeData?.id,
                 nom: nom.trim(),
                 prenom: prenom.trim(),
                 date_naissance: dateNaissanceISO,
@@ -354,7 +378,7 @@ export default function InscriptionJoueur() {
             // 8. Fin OK
             Alert.alert(
                 'Inscription réussie ! 🎉',
-                `Bienvenue ${prenom} dans l'équipe ${equipeData.nom} !`,
+                `Bienvenue ${prenom} dans l'équipe ${equipeData?.nom} !`,
                 [
                     {
                         text: 'Accéder à mon espace',
@@ -373,31 +397,35 @@ export default function InscriptionJoueur() {
 
     return (
         <>
-            <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    style={styles.container}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={styles.container}
+            >
+                <View style={styles.header}>
+                    <Text style={styles.title}>Créer un compte Joueur</Text>
+                    <Text style={styles.subtitle}>Rejoignez votre club sur Simply Foot</Text>
+                </View>
+                <ScrollView
+                    contentContainerStyle={styles.scroll}
+                    keyboardShouldPersistTaps="handled"
                 >
-                    <View style={styles.header}>
-                        <Text style={styles.title}>Créer un compte Joueur</Text>
-                        <Text style={styles.subtitle}>Rejoignez votre club sur SimplyFoot</Text>
-                    </View>
                     <View style={styles.form}>
                         {/* EMAIL */}
                         <Input
                             icon="mail-outline"
-                            placeholder="Email*"
+                            placeholder="Email"
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
                             textContentType="emailAddress"
                             editable={!loading}
-                            error={email === undefined ? 'Le mail est requis' : false}
+                            mandatory
+                            error={errors.email ? "L'email n'est pas valide" : false}
                         />
                         {/* PASSWORD */}
                         <Input
                             icon="lock-closed-outline"
-                            placeholder="Mot de passe*"
+                            placeholder="Mot de passe"
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry
@@ -406,12 +434,17 @@ export default function InscriptionJoueur() {
                             onToggle={() => setShowPassword(!showPassword)}
                             textContentType="newPassword"
                             editable={!loading}
-                            error={password === undefined ? 'Le mot de passe est requis' : false}
+                            mandatory
+                            error={
+                                errors.password
+                                    ? 'Le mot de passe doit contenir au moins 6 caractères'
+                                    : false
+                            }
                         />
                         {/* CONFIRM PASSWORD */}
                         <Input
                             icon="lock-closed-outline"
-                            placeholder="Confirmer le mot de passe*"
+                            placeholder="Confirmer le mot de passe"
                             value={confirmPassword}
                             onChangeText={setConfirmPassword}
                             secureTextEntry
@@ -420,21 +453,21 @@ export default function InscriptionJoueur() {
                             onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
                             textContentType="newPassword"
                             editable={!loading}
+                            mandatory
                             error={
-                                confirmPassword === undefined
-                                    ? 'La confirmation du mot de passe est requise'
-                                    : false
+                                errors.confirmPassword ? 'Le mot de passe ne correspond pas' : false
                             }
                         />
                         {/* CODE EQUIPE */}
                         <Input
                             icon="key-outline"
-                            placeholder="Code Équipe*"
+                            placeholder="Code Équipe"
                             value={codeEquipe}
                             onChangeText={setCodeEquipe}
                             autoCapitalize="characters"
                             editable={!loading}
-                            error={codeEquipe === undefined ? 'Le code équipe est requis' : false}
+                            mandatory
+                            error={errors.codeEquipe ? "Le code équipe n'est pas valide" : false}
                         />
                         {/* INFOS EQUIPE */}
                         {equipeData && (
@@ -456,21 +489,21 @@ export default function InscriptionJoueur() {
                         {/* NOM / PRÉNOM */}
                         <Input
                             icon="person-outline"
-                            placeholder="Nom du joueur*"
+                            placeholder="Nom du joueur"
                             value={nom}
                             onChangeText={setNom}
                             textContentType="familyName"
                             editable={!loading}
-                            error={nom === undefined ? 'Le nom du joueur est requis' : false}
+                            mandatory
                         />
                         <Input
                             icon="person-outline"
-                            placeholder="Prénom du joueur*"
+                            placeholder="Prénom du joueur"
                             value={prenom}
                             onChangeText={setPrenom}
                             textContentType="givenName"
                             editable={!loading}
-                            error={prenom === undefined ? 'Le prénom du joueur est requis' : false}
+                            mandatory
                         />
                         {/* DATE DE NAISSANCE */}
                         {Platform.OS === 'web' ? (
@@ -583,52 +616,50 @@ export default function InscriptionJoueur() {
                         {!isMinor && (
                             <Input
                                 icon="call-outline"
-                                placeholder="Votre téléphone*"
+                                placeholder="Votre téléphone"
                                 value={telephone}
                                 onChangeText={setTelephone}
                                 keyboardType="phone-pad"
                                 textContentType="telephoneNumber"
                                 editable={!loading}
-                                error={telephone === undefined ? 'Le téléphone est requis' : false}
+                                mandatory
+                                error={
+                                    errors.telephone
+                                        ? "Le numéro de téléphone n'est pas valide"
+                                        : false
+                                }
                             />
                         )}
                         {isMinor && (
                             <>
                                 <Input
                                     icon="person-outline"
-                                    placeholder="Nom du parent / tuteur*"
+                                    placeholder="Nom du parent / tuteur"
                                     value={nomParent}
                                     onChangeText={setNomParent}
                                     editable={!loading}
-                                    error={
-                                        nomParent === undefined
-                                            ? 'Le nom du parent / tuteur est requis'
-                                            : false
-                                    }
+                                    mandatory
                                 />
                                 <Input
                                     icon="person-outline"
-                                    placeholder="Prénom du parent / tuteur*"
+                                    placeholder="Prénom du parent / tuteur"
                                     value={prenomParent}
                                     onChangeText={setPrenomParent}
                                     editable={!loading}
-                                    error={
-                                        prenomParent === undefined
-                                            ? 'Le prénom du parent / tuteur est requis'
-                                            : false
-                                    }
+                                    mandatory
                                 />
                                 <Input
                                     icon="call-outline"
-                                    placeholder="Téléphone du parent / tuteur*"
+                                    placeholder="Téléphone du parent / tuteur"
                                     value={telephoneParent}
                                     onChangeText={setTelephoneParent}
                                     keyboardType="phone-pad"
                                     textContentType="telephoneNumber"
                                     editable={!loading}
+                                    mandatory
                                     error={
-                                        telephoneParent === undefined
-                                            ? 'Le téléphone du parent / tuteur est requis'
+                                        errors.telephoneParent
+                                            ? "Le numéro de téléphone du parent / tuteur n'est pas valide"
                                             : false
                                     }
                                 />
@@ -710,25 +741,26 @@ export default function InscriptionJoueur() {
                                 </View>
                             </>
                         )}
-                        {/* BTN INSCRIPTION */}
-                        <TouchableOpacity
-                            style={[styles.button, loading && styles.buttonDisabled]}
-                            onPress={handleInscription}
-                            disabled={loading}
-                            activeOpacity={0.8}
-                        >
-                            {loading ? (
-                                <View style={styles.loadingContainer}>
-                                    <ActivityIndicator color="#000" size="small" />
-                                    <Text style={styles.loadingText}>Création du compte...</Text>
-                                </View>
-                            ) : (
-                                <Text style={styles.buttonText}>Créer mon compte</Text>
-                            )}
-                        </TouchableOpacity>
                     </View>
-                </KeyboardAvoidingView>
-            </ScrollView>
+                </ScrollView>
+                <View
+                    style={{
+                        width: '100%',
+                        marginTop: 50,
+                        alignItems: 'center',
+                        flex: 1,
+                        justifyContent: 'center',
+                    }}
+                >
+                    <Button
+                        text="Créer mon compte"
+                        onPress={handleInscription}
+                        loading={loading}
+                        disabled={!isFormValid}
+                        color="primary"
+                    />
+                </View>
+            </KeyboardAvoidingView>
             <ReturnButton />
         </>
     );
@@ -736,7 +768,7 @@ export default function InscriptionJoueur() {
 
 // Styles : exactement les tiens d'origine + block équipe
 const styles = StyleSheet.create({
-    scroll: { flexGrow: 1, backgroundColor: '#121212', paddingVertical: 40, paddingHorizontal: 24 },
+    scroll: { flexGrow: 1, backgroundColor: '#121212' },
     container: { flex: 1, justifyContent: 'center' },
     header: { alignItems: 'center', marginBottom: 30 },
     logo: { width: 80, height: 80, marginBottom: 16 },
