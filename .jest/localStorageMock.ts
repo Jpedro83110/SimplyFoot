@@ -6,7 +6,7 @@ export const localStorageMock = (function () {
             return store[key];
         },
         setItem: function (key: string, value: string) {
-            store[key] = value.toString();
+            store[key] = value?.toString();
         },
         clear: function () {
             store = {};
