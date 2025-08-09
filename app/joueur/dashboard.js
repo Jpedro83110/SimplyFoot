@@ -14,18 +14,19 @@ import {
     Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
+import { useSession } from '@/hooks/useSession';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
 const DARK_LIGHT = '#161b20';
 
-const LAST_MESSAGES_VIEWED = 'last_messages_viewed';
+const LAST_MESSAGES_VIEWED = 'last-messages-viewed';
 const DEADLINE_LICENCE = new Date('2025-10-15T23:59:59');
 
 export default function JoueurDashboard() {
@@ -42,6 +43,8 @@ export default function JoueurDashboard() {
     const [evenement, setEvenement] = useState(null);
     const [participations, setParticipations] = useState([]);
     const [nouveauMessage, setNouveauMessage] = useState(false);
+
+    const { signOut } = useSession();
 
     const [editData, setEditData] = useState({
         licence: '',
@@ -794,8 +797,7 @@ export default function JoueurDashboard() {
                     backgroundColor: DARK_LIGHT,
                 }}
                 onPress={async () => {
-                    await supabase.auth.signOut();
-                    router.replace('/auth/login-joueur');
+                    await signOut();
                 }}
             >
                 <Text style={{ color: GREEN, fontSize: 16, fontWeight: '700', borderRadius: 10 }}>

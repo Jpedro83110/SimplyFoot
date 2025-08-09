@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
-import { supabase } from '../../lib/supabase';
-import { isAdmin } from '../../lib/authGuard';
+import { supabase } from '@/lib/supabase';
+import { isAdmin } from '@/lib/authGuard';
 import { useSessionReady } from '../../lib/useSessionReady';
 import * as Linking from 'expo-linking';
+import { useSession } from '@/hooks/useSession';
 
 export default function AuthLayout() {
     const router = useRouter();
     const { session, checking } = useSessionReady();
     const [redirecting, setRedirecting] = useState(false);
     const segments = useSegments();
+
+    const { signOut } = useSession();
 
     // 🔗 Interception des liens Supabase (type=recovery)
     useEffect(() => {
@@ -129,8 +132,7 @@ export default function AuthLayout() {
                 <TouchableOpacity
                     style={styles.logoutButton}
                     onPress={async () => {
-                        await supabase.auth.signOut();
-                        router.replace('/auth/login-club');
+                        await signOut();
                     }}
                 >
                     <Text style={styles.logoutText}>🔓 Se déconnecter</Text>

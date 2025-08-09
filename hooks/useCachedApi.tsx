@@ -32,7 +32,9 @@ function useCachedApi<T>(
     }, []);
 
     const fetchCachedData = useCallback(async (): Promise<void> => {
-        if (!key || loading) return;
+        if (!key || loading) {
+            return;
+        }
 
         setLoading(true);
         try {

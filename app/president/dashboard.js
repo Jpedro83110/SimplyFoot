@@ -15,8 +15,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
-import { supabase } from '../../lib/supabase';
-import useCacheData from '../../lib/cache';
+import { supabase } from '@/lib/supabase';
+import useCacheData from '@/lib/cache';
+import { useSession } from '@/hooks/useSession';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
@@ -28,6 +29,8 @@ export default function PresidentDashboard() {
     const [userId, setUserId] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
+
+    const { signOut } = useSession();
 
     // Vérification de l'authentification
     useEffect(() => {
@@ -335,21 +338,6 @@ export default function PresidentDashboard() {
         );
     };
 
-    // Fonction de déconnexion
-    const handleLogout = async () => {
-        try {
-            const { error } = await supabase.auth.signOut();
-            if (error) {
-                Alert.alert('Erreur', 'Impossible de se déconnecter');
-            } else {
-                router.replace('/');
-            }
-        } catch (err) {
-            console.error('Erreur déconnexion:', err);
-            Alert.alert('Erreur', 'Problème lors de la déconnexion');
-        }
-    };
-
     // Fonction pour ouvrir les réseaux sociaux
     const openSocialLink = async (url, appUrl) => {
         try {
@@ -553,7 +541,7 @@ export default function PresidentDashboard() {
                 </View>
 
                 {/* Bouton déconnexion */}
-                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                <TouchableOpacity style={styles.logoutButton} onPress={async () => await signOut()}>
                     <Text style={styles.logoutText}>🚪 Se déconnecter</Text>
                 </TouchableOpacity>
             </ScrollView>

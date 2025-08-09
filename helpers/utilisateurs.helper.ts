@@ -1,27 +1,36 @@
 import { supabase } from '@/lib/supabase';
-import { Utilisateur, UtilisateurFields } from '@/types/Utilisateur';
+import { PublicUtilisateur } from '@/types/Utilisateur';
 
-export const getUtilisateurById = async <U extends UtilisateurFields>(args: {
-    utilisateurId: string;
-    utilisateurFields: U[];
-}): Promise<Pick<Utilisateur, U>> => {
-    let { utilisateurId, utilisateurFields } = args;
-
-    if (!utilisateurFields || utilisateurFields.length === 0) {
-        utilisateurFields = ['id'] as U[];
-    }
+export const getUtilisateurById = async (args: { utilisateurId: string }) => {
+    let { utilisateurId } = args;
 
     const { data, error } = await supabase
         .from('utilisateurs')
-        .select(utilisateurFields.join(', '))
+        .select(
+            'id, email, nom, prenom, role, club_id, joueur_id, date_creation, date_naissance, telephone',
+        )
         .eq('id', utilisateurId)
         .single();
 
     if (error) {
         throw error;
-    } else if (!data) {
-        throw new Error(`Utilisateur with id ${utilisateurId} not found`); // FIXME custom exception
     }
 
-    return data as unknown as Pick<Utilisateur, U>;
+    return data as PublicUtilisateur;
+};
+
+export const updateUtilisateur = async (args: {
+    utilisateurId: string;
+    dataToUpdate: Partial<PublicUtilisateur>;
+}) => {
+    const { utilisateurId, dataToUpdate } = args;
+
+    const { error } = await supabase
+        .from('utilisateurs')
+        .update(dataToUpdate)
+        .eq('id', utilisateurId);
+
+    if (error) {
+        throw error;
+    }
 };
