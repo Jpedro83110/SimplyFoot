@@ -114,6 +114,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
     }, [isLoggedIn, isLoggedOut, utilisateur]);
 
+    const signOut = useCallback(async () => {
+        try {
+            await supabase.auth.signOut();
+        } catch (error) {
+            console.error('Error signing out:', error);
+        } finally {
+            setSession(null);
+            setUtilisateur(undefined);
+            setJoueur(undefined);
+            setStaff(undefined);
+            setClubAdmin(undefined);
+        }
+    }, [setSession]);
+
     const signIn = useCallback(
         async (email: string, password: string) => {
             const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword(
@@ -166,6 +180,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
                     userId: utilisateur.id,
                 });
                 sessionData = { ...sessionData, clubAdmin };
+            } else {
+                console.warn(`Unknown role for utilisateur: ${utilisateur.role}`);
+                await signOut();
+                return;
             }
 
             setSession(JSON.stringify(sessionData));
@@ -174,22 +192,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
             setStaff(sessionData.staff);
             setClubAdmin(sessionData.clubAdmin);
         },
-        [setSession],
+        [setSession, signOut],
     );
-
-    const signOut = useCallback(async () => {
-        try {
-            await supabase.auth.signOut();
-        } catch (error) {
-            console.error('Error signing out:', error);
-        } finally {
-            setSession(null);
-            setUtilisateur(undefined);
-            setJoueur(undefined);
-            setStaff(undefined);
-            setClubAdmin(undefined);
-        }
-    }, [setSession]);
 
     const updateUserData = useCallback(
         async ({
@@ -205,6 +209,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }) => {
             if (!session) {
                 console.warn('Cannot update user data: user is not logged in');
+                await signOut();
                 return;
             }
 
@@ -273,7 +278,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
             setSession(JSON.stringify(updatingSession));
         },
-        [clubAdmin, joueur, session, setSession, staff, utilisateur],
+        [clubAdmin, joueur, session, setSession, signOut, staff, utilisateur],
     );
 
     return (
