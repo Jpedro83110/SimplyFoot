@@ -26,13 +26,15 @@ interface AuthContextProps {
     isLoggedOut: boolean;
     isLoading: boolean;
     utilisateur?: PublicUtilisateur;
-    updateUtilisateur: (dataToUpdate: Partial<PublicUtilisateur>) => Promise<void>;
     joueur?: PublicJoueur;
-    updateJoueur: (dataToUpdate: Partial<PublicJoueur>) => Promise<void>;
     staff?: PublicStaff;
-    updateStaff: (dataToUpdate: Partial<PublicStaff>) => Promise<void>;
     clubAdmin?: PublicClubAdmin;
-    updateClubAdmin: (dataToUpdate: Partial<PublicClubAdmin>) => Promise<void>;
+    updateUserData: (params: {
+        utilisateurData?: Partial<PublicUtilisateur>;
+        joueurData?: Partial<PublicJoueur>;
+        staffData?: Partial<PublicStaff>;
+        clubAdminData?: Partial<PublicClubAdmin>;
+    }) => Promise<void>;
 }
 
 interface Session {
@@ -49,13 +51,10 @@ export const authContextDefaultValue: AuthContextProps = {
     isLoggedOut: true,
     isLoading: false,
     utilisateur: undefined,
-    updateUtilisateur: async () => void 0,
     joueur: undefined,
-    updateJoueur: async () => void 0,
     staff: undefined,
-    updateStaff: async () => void 0,
     clubAdmin: undefined,
-    updateClubAdmin: async () => void 0,
+    updateUserData: async () => void 0,
 };
 
 export const AuthContext = createContext<AuthContextProps>(authContextDefaultValue);
@@ -86,42 +85,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
             setClubAdmin(sessionParsed.clubAdmin);
         }
     }, [session, utilisateur, isLoading]);
-
-    const updateSession = useCallback(
-        <T extends PublicUtilisateur | PublicJoueur | PublicStaff | PublicClubAdmin>(
-            type: 'utilisateur' | 'joueur' | 'staff' | 'clubAdmin',
-            data: T,
-        ) => {
-            if (!session) {
-                console.warn('Cannot update session: user is not logged in');
-                return;
-            }
-
-            switch (type) {
-                case 'utilisateur':
-                    setUtilisateur(data as PublicUtilisateur);
-                    break;
-                case 'joueur':
-                    setJoueur(data as PublicJoueur);
-                    break;
-                case 'staff':
-                    setStaff(data as PublicStaff);
-                    break;
-                case 'clubAdmin':
-                    setClubAdmin(data as PublicClubAdmin);
-                    break;
-            }
-
-            const sessionUpdate: Session = {
-                ...JSON.parse(session),
-                [type]: data,
-            };
-
-            console.log('isLoading', { isLoading, sessionUpdate }, JSON.stringify(sessionUpdate));
-            setSession(JSON.stringify(sessionUpdate));
-        },
-        [session, isLoading, setSession],
-    );
 
     useEffect(() => {
         if (isLoggedIn && utilisateur) {
@@ -228,81 +191,89 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
     }, [setSession]);
 
-    const updateUtilisateur = useCallback(
-        async (dataToUpdate: Partial<PublicUtilisateur>) => {
-            if (!utilisateur) {
-                console.warn('Cannot update utilisateur: user is not logged in');
+    const updateUserData = useCallback(
+        async ({
+            utilisateurData,
+            joueurData,
+            staffData,
+            clubAdminData,
+        }: {
+            utilisateurData?: Partial<PublicUtilisateur>;
+            joueurData?: Partial<PublicJoueur>;
+            staffData?: Partial<PublicStaff>;
+            clubAdminData?: Partial<PublicClubAdmin>;
+        }) => {
+            if (!session) {
+                console.warn('Cannot update user data: user is not logged in');
                 return;
             }
 
-            await UtilisateursHelper.updateUtilisateur({
-                utilisateurId: utilisateur.id,
-                dataToUpdate,
-            });
+            const updatingSession: Session = JSON.parse(session);
 
-            updateSession('utilisateur', {
-                ...utilisateur,
-                ...dataToUpdate,
-            });
-        },
-        [utilisateur, updateSession],
-    );
+            // Process each entity update individually
+            if (utilisateurData && utilisateur) {
+                await UtilisateursHelper.updateUtilisateur({
+                    utilisateurId: utilisateur.id,
+                    dataToUpdate: utilisateurData,
+                });
 
-    const updateJoueur = useCallback(
-        async (dataToUpdate: Partial<PublicJoueur>) => {
-            if (!joueur) {
-                console.warn('Cannot update joueur: user is not logged in');
-                return;
+                const updatedUtilisateur = {
+                    ...utilisateur,
+                    ...utilisateurData,
+                };
+
+                setUtilisateur(updatedUtilisateur);
+                updatingSession.utilisateur = updatedUtilisateur;
             }
 
-            await JoueursHelper.updateJoueur({
-                joueurId: joueur.id,
-                dataToUpdate,
-            });
+            if (joueurData && joueur) {
+                await JoueursHelper.updateJoueur({
+                    joueurId: joueur.id,
+                    dataToUpdate: joueurData,
+                });
 
-            updateSession('joueur', {
-                ...joueur,
-                ...dataToUpdate,
-            });
-        },
-        [joueur, updateSession],
-    );
+                const updatedJoueur = {
+                    ...joueur,
+                    ...joueurData,
+                };
 
-    const updateStaff = useCallback(
-        async (dataToUpdate: Partial<PublicStaff>) => {
-            if (!staff) {
-                console.warn('Cannot update staff: user is not logged in');
-                return;
+                setJoueur(updatedJoueur);
+                updatingSession.joueur = updatedJoueur;
             }
 
-            await StaffHelper.updateStaff({ staffId: staff.id, dataToUpdate });
+            if (staffData && staff) {
+                await StaffHelper.updateStaff({
+                    staffId: staff.id,
+                    dataToUpdate: staffData,
+                });
 
-            updateSession('staff', {
-                ...staff,
-                ...dataToUpdate,
-            });
-        },
-        [staff, updateSession],
-    );
+                const updatedStaff = {
+                    ...staff,
+                    ...staffData,
+                };
 
-    const updateClubAdmin = useCallback(
-        async (dataToUpdate: Partial<PublicClubAdmin>) => {
-            if (!clubAdmin) {
-                console.warn('Cannot update clubAdmin: user is not logged in');
-                return;
+                setStaff(updatedStaff);
+                updatingSession.staff = updatedStaff;
             }
 
-            await ClubAdminsHelper.updateClubAdmin({
-                clubAdminId: clubAdmin.id,
-                dataToUpdate,
-            });
+            if (clubAdminData && clubAdmin) {
+                await ClubAdminsHelper.updateClubAdmin({
+                    clubAdminId: clubAdmin.id,
+                    dataToUpdate: clubAdminData,
+                });
 
-            updateSession('clubAdmin', {
-                ...clubAdmin,
-                ...dataToUpdate,
-            });
+                const updatedClubAdmin = {
+                    ...clubAdmin,
+                    ...clubAdminData,
+                };
+
+                setClubAdmin(updatedClubAdmin);
+                updatingSession.clubAdmin = updatedClubAdmin;
+            }
+
+            setSession(JSON.stringify(updatingSession));
         },
-        [clubAdmin, updateSession],
+        [clubAdmin, joueur, session, setSession, staff, utilisateur],
     );
 
     return (
@@ -314,13 +285,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
                 isLoggedOut,
                 isLoading,
                 utilisateur,
-                updateUtilisateur,
                 joueur,
-                updateJoueur,
                 staff,
-                updateStaff,
                 clubAdmin,
-                updateClubAdmin,
+                updateUserData,
             }}
         >
             {children}

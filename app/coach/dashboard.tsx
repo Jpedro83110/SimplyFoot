@@ -40,7 +40,7 @@ export default function CoachDashboard() {
     const [showEditModal, setShowEditModal] = useState<boolean>(false);
     const router = useRouter();
 
-    const { signOut, utilisateur, updateUtilisateur, staff, updateStaff } = useSession();
+    const { signOut, utilisateur, staff, updateUserData } = useSession();
 
     const [editData, setEditData] = useState<
         Required<Pick<Staff, 'telephone' | 'email' | 'niveau_diplome' | 'experience'>>
@@ -336,8 +336,10 @@ export default function CoachDashboard() {
                     // 6. Sauvegarder l'URL PROPRE en base (sans paramètres)
                     console.log('💾 Sauvegarde en base:', basePhotoUrl);
 
-                    await updateStaff({
-                        photo_url: basePhotoUrl,
+                    await updateUserData({
+                        staffData: {
+                            photo_url: basePhotoUrl,
+                        },
                     });
 
                     console.log('✅ Sauvegarde en base réussie');
@@ -379,14 +381,15 @@ export default function CoachDashboard() {
     // Sauvegarder modifications
     const handleSaveChanges = async () => {
         try {
-            await updateUtilisateur({
-                telephone: editData.telephone.trim(),
-                email: editData.email.trim(),
-            });
-
-            await updateStaff({
-                niveau_diplome: editData.niveau_diplome.trim(),
-                experience: editData.experience.trim(),
+            await updateUserData({
+                utilisateurData: {
+                    telephone: editData.telephone.trim(),
+                    email: editData.email.trim(),
+                },
+                staffData: {
+                    niveau_diplome: editData.niveau_diplome.trim(),
+                    experience: editData.experience.trim(),
+                },
             });
 
             setShowEditModal(false);
