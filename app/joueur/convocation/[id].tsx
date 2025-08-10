@@ -22,7 +22,7 @@ import {
     GetEvenementInfosByUtilisateurId,
     getEvenementInfosByUtilisateurId,
 } from '@/helpers/evenements.helper';
-import { ParticipationsEvenementReponse } from '@/types/ParticipationsEvenement';
+import { ParticipationsEvenementReponse } from '@/types/participationsEvenement.types';
 
 dayjs.locale('fr');
 
