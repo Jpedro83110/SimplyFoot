@@ -454,9 +454,6 @@ describe('AuthContext', () => {
         });
 
         test('should sign out even if error occurs', async () => {
-            // Mock initial state with logged in user
-            const mockUtilisateur = { id: 'user123', role: 'joueur' };
-
             // Set up mocks to throw error on signOut
             (supabase.auth.signOut as jest.Mock).mockRejectedValue(new Error('Network error'));
 
