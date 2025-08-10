@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import { PublicStaff } from '@/types/Staff';
+import { Database } from '@/types/database.types';
+
+export type GetStaffByUtilisateurId = Awaited<ReturnType<typeof getStaffByUtilisateurId>>;
 
 export const getStaffByUtilisateurId = async (args: { utilisateurId: string }) => {
     const { utilisateurId } = args;
@@ -16,12 +18,12 @@ export const getStaffByUtilisateurId = async (args: { utilisateurId: string }) =
         throw error;
     }
 
-    return data as PublicStaff;
+    return data;
 };
 
 export const updateStaff = async (args: {
     staffId: string;
-    dataToUpdate: Partial<PublicStaff>;
+    dataToUpdate: Database['public']['Tables']['staff']['Update'];
 }) => {
     const { staffId, dataToUpdate } = args;
 

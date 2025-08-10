@@ -14,19 +14,21 @@ import {
     ScrollView,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import { Ionicons } from '@expo/vector-icons';
-import { getEvenementInfosByUtilisateurId } from '@/helpers/evenements.helper';
+import {
+    GetEvenementInfosByUtilisateurId,
+    getEvenementInfosByUtilisateurId,
+} from '@/helpers/evenements.helper';
 import { ParticipationsEvenementReponse } from '@/types/ParticipationsEvenement';
-import { EvenementInfos } from '@/types/Evenement';
 
 dayjs.locale('fr');
 
 export default function ConvocationReponse() {
     const { id: evenementId }: { id: string } = useLocalSearchParams();
-    const [evenementInfos, setEvenementInfos] = useState<EvenementInfos>();
+    const [evenementInfos, setEvenementInfos] = useState<GetEvenementInfosByUtilisateurId>();
 
     const [loading, setLoading] = useState(true);
     const [besoinTransport, setBesoinTransport] = useState(false);
@@ -75,10 +77,14 @@ export default function ConvocationReponse() {
         try {
             setReponseLoading(true);
 
-            const utilisateurId = evenementInfos?.participations_evenement[0]?.utilisateurs[0]?.id;
-            const accepteTransport =
-                evenementInfos?.participations_evenement[0]?.utilisateurs[0]?.joueurs[0]
-                    ?.decharges_generales[0]?.accepte_transport;
+            let utilisateurId = null;
+            let accepteTransport = false;
+            if (evenementInfos) {
+                utilisateurId = evenementInfos.participations_evenement[0]?.utilisateurs?.id;
+                accepteTransport =
+                    evenementInfos.participations_evenement[0]?.utilisateurs?.joueurs
+                        ?.decharges_generales[0]?.accepte_transport ?? false;
+            }
 
             if (!utilisateurId || !evenementId || !valeur) {
                 Alert.alert('Erreur', 'Données manquantes (utilisateur ou événement).');
@@ -126,14 +132,14 @@ export default function ConvocationReponse() {
         try {
             setSendingProposition(true);
 
-            const utilisateurId = evenementInfos?.participations_evenement[0]?.utilisateurs[0]?.id;
+            const utilisateurId = evenementInfos?.participations_evenement[0]?.utilisateurs?.id;
             const { error } = await supabase.from('messages_besoin_transport').insert({
                 evenement_id: evenementId,
                 utilisateur_id: utilisateurId,
                 adresse_demande: nouvelleAdresse,
                 heure_demande: nouvelleHeure,
                 etat: 'en_attente',
-                created_at: new Date(),
+                created_at: new Date().toISOString(),
             });
 
             if (error) {
@@ -238,14 +244,15 @@ export default function ConvocationReponse() {
             {evenementInfos?.meteo && (
                 <Text style={[styles.info, { color: '#62d4ff', fontWeight: '700' }]}>
                     <Ionicons name="cloud-outline" size={16} color="#62d4ff" />{' '}
-                    {evenementInfos.meteo}
+                    {/* FIXME meteo est de type JSON, mais semble ne contenir qu'une string */}
+                    {evenementInfos.meteo.toString()}
                 </Text>
             )}
 
             {/* Debug info */}
             <Text style={styles.debugText}>
                 Réponse actuelle:{' '}
-                {(reponse ?? evenementInfos?.participations_evenement[0].reponse) || 'Aucune'} |
+                {(reponse ?? evenementInfos?.participations_evenement[0]?.reponse) || 'Aucune'} |
                 Transport: {besoinTransport ? 'Oui' : 'Non'}
             </Text>
 
@@ -281,7 +288,7 @@ export default function ConvocationReponse() {
                 <TouchableOpacity
                     style={[
                         styles.button,
-                        (reponse ?? evenementInfos?.participations_evenement[0].reponse) ===
+                        (reponse ?? evenementInfos?.participations_evenement[0]?.reponse) ===
                             'present' && styles.selected,
                     ]}
                     onPress={() => {
@@ -293,7 +300,7 @@ export default function ConvocationReponse() {
                     <Text
                         style={[
                             styles.buttonText,
-                            (reponse ?? evenementInfos?.participations_evenement[0].reponse) ===
+                            (reponse ?? evenementInfos?.participations_evenement[0]?.reponse) ===
                                 'present' && {
                                 color: '#111',
                             },
@@ -306,7 +313,7 @@ export default function ConvocationReponse() {
                 <TouchableOpacity
                     style={[
                         styles.button,
-                        (reponse ?? evenementInfos?.participations_evenement[0].reponse) ===
+                        (reponse ?? evenementInfos?.participations_evenement[0]?.reponse) ===
                             'absent' && styles.selected,
                     ]}
                     onPress={() => {
@@ -318,7 +325,7 @@ export default function ConvocationReponse() {
                     <Text
                         style={[
                             styles.buttonText,
-                            (reponse ?? evenementInfos?.participations_evenement[0].reponse) ===
+                            (reponse ?? evenementInfos?.participations_evenement[0]?.reponse) ===
                                 'absent' && {
                                 color: '#111',
                             },
@@ -329,7 +336,7 @@ export default function ConvocationReponse() {
                 </TouchableOpacity>
             </View>
 
-            {evenementInfos?.participations_evenement[0]?.utilisateurs[0]?.joueurs[0]
+            {evenementInfos?.participations_evenement[0]?.utilisateurs?.joueurs
                 ?.decharges_generales[0]?.accepte_transport &&
                 (reponse ?? evenementInfos?.participations_evenement[0].reponse) === 'present' && (
                     <View style={styles.switchBlock}>
@@ -340,7 +347,8 @@ export default function ConvocationReponse() {
                             thumbColor={besoinTransport ? '#00ff88' : '#666'}
                             trackColor={{ false: '#333', true: '#00ff8860' }}
                             disabled={
-                                (reponse ?? evenementInfos?.participations_evenement[0].reponse) !==
+                                (reponse ??
+                                    evenementInfos?.participations_evenement[0]?.reponse) !==
                                 'present'
                             }
                         />
@@ -348,7 +356,7 @@ export default function ConvocationReponse() {
                 )}
 
             {/* Affiche le bouton transport SEULEMENT si besoinTransport === true ET reponse === 'present' */}
-            {(reponse ?? evenementInfos?.participations_evenement[0].reponse) === 'present' &&
+            {(reponse ?? evenementInfos?.participations_evenement[0]?.reponse) === 'present' &&
                 besoinTransport && (
                     <TouchableOpacity
                         style={styles.transportBtn}
@@ -381,10 +389,10 @@ export default function ConvocationReponse() {
                     {evenementInfos?.messages_besoin_transport.map((messageBesoinTransport) => (
                         <View key={messageBesoinTransport.id} style={styles.messageCard}>
                             <Text style={{ color: '#00ff88', fontWeight: 'bold', fontSize: 16 }}>
-                                {messageBesoinTransport.utilisateurs[0].prenom}{' '}
-                                {messageBesoinTransport.utilisateurs[0].nom}{' '}
-                                {/* {messageBesoinTransport.utilisateurs[0].age
-                                    ? `(âge: ${messageBesoinTransport.utilisateurs[0].age})`
+                                {messageBesoinTransport.utilisateurs?.prenom}{' '}
+                                {messageBesoinTransport.utilisateurs?.nom}{' '}
+                                {/* {messageBesoinTransport.utilisateurs[0]?.age
+                                    ? `(âge: ${messageBesoinTransport.utilisateurs[0]?.age})`
                                     : ''} FIXME */}
                             </Text>
                             <Text style={{ color: '#fff', marginBottom: 4 }}>

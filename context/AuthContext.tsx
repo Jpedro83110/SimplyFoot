@@ -11,13 +11,10 @@ import { supabase } from '@/lib/supabase';
 import Toast from 'react-native-toast-message';
 import * as JoueursHelper from '@/helpers/joueurs.helper';
 import * as UtilisateursHelper from '@/helpers/utilisateurs.helper';
-import { PublicUtilisateur } from '@/types/Utilisateur';
-import { PublicJoueur } from '@/types/Joueur';
 import * as StaffHelper from '@/helpers/staff.helper';
-import { PublicStaff } from '@/types/Staff';
 import { router } from 'expo-router';
-import { PublicClubAdmin } from '@/types/ClubAdmin';
 import * as ClubAdminsHelper from '@/helpers/clubsAdmins.helper';
+import { Database } from '@/types/database.types';
 
 interface AuthContextProps {
     signIn: (email: string, password: string) => Promise<void>;
@@ -25,23 +22,23 @@ interface AuthContextProps {
     isLoggedIn: boolean;
     isLoggedOut: boolean;
     isLoading: boolean;
-    utilisateur?: PublicUtilisateur;
-    joueur?: PublicJoueur;
-    staff?: PublicStaff;
-    clubAdmin?: PublicClubAdmin;
+    utilisateur?: UtilisateursHelper.GetUtilisateurById;
+    joueur?: JoueursHelper.GetJoueurById;
+    staff?: StaffHelper.GetStaffByUtilisateurId;
+    clubAdmin?: ClubAdminsHelper.GetClubAdminByUserId;
     updateUserData: (params: {
-        utilisateurData?: Partial<PublicUtilisateur>;
-        joueurData?: Partial<PublicJoueur>;
-        staffData?: Partial<PublicStaff>;
-        clubAdminData?: Partial<PublicClubAdmin>;
+        utilisateurData?: Partial<UtilisateursHelper.GetUtilisateurById>;
+        joueurData?: Partial<JoueursHelper.GetJoueurById>;
+        staffData?: Partial<StaffHelper.GetStaffByUtilisateurId>;
+        clubAdminData?: Partial<ClubAdminsHelper.GetClubAdminByUserId>;
     }) => Promise<void>;
 }
 
 interface Session {
-    utilisateur?: PublicUtilisateur;
-    joueur?: PublicJoueur;
-    staff?: PublicStaff;
-    clubAdmin?: PublicClubAdmin;
+    utilisateur?: UtilisateursHelper.GetUtilisateurById;
+    joueur?: JoueursHelper.GetJoueurById;
+    staff?: StaffHelper.GetStaffByUtilisateurId;
+    clubAdmin?: ClubAdminsHelper.GetClubAdminByUserId;
 }
 
 export const authContextDefaultValue: AuthContextProps = {
@@ -61,10 +58,10 @@ export const AuthContext = createContext<AuthContextProps>(authContextDefaultVal
 
 export function AuthProvider({ children }: PropsWithChildren) {
     const [[isLoading, session], setSession] = useStorageState('user-data');
-    const [utilisateur, setUtilisateur] = useState<PublicUtilisateur>();
-    const [joueur, setJoueur] = useState<PublicJoueur>();
-    const [staff, setStaff] = useState<PublicStaff>();
-    const [clubAdmin, setClubAdmin] = useState<PublicClubAdmin>();
+    const [utilisateur, setUtilisateur] = useState<UtilisateursHelper.GetUtilisateurById>();
+    const [joueur, setJoueur] = useState<JoueursHelper.GetJoueurById>();
+    const [staff, setStaff] = useState<StaffHelper.GetStaffByUtilisateurId>();
+    const [clubAdmin, setClubAdmin] = useState<ClubAdminsHelper.GetClubAdminByUserId>();
 
     const isLoggedIn = useMemo(
         () => !isLoading && !!session && !!utilisateur,
@@ -202,10 +199,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
             staffData,
             clubAdminData,
         }: {
-            utilisateurData?: Partial<PublicUtilisateur>;
-            joueurData?: Partial<PublicJoueur>;
-            staffData?: Partial<PublicStaff>;
-            clubAdminData?: Partial<PublicClubAdmin>;
+            utilisateurData?: Database['public']['Tables']['utilisateurs']['Update'];
+            joueurData?: Partial<Database['public']['Tables']['joueurs']['Update']>;
+            staffData?: Partial<Database['public']['Tables']['staff']['Update']>;
+            clubAdminData?: Partial<Database['public']['Tables']['clubs_admins']['Update']>;
         }) => {
             if (!session) {
                 console.warn('Cannot update user data: user is not logged in');

@@ -7,6 +7,7 @@
         "start:android": "expo run:android",
         "start:ios": "expo run:ios",
         "web": "expo start --web",
+        "generate:types": "supabase gen types typescript --project-id vkcojgudsrypkyxoendl > types/database.types.ts",
         "build": "expo export",
         "build:web": "expo export -p web",
         "build:android": "expo export -p android",
@@ -109,6 +110,7 @@
         "metro-config": "^0.82.0",
         "metro-resolver": "^0.82.0",
         "prettier": "^3.6.2",
+        "supabase": "^2.33.9",
         "typescript": "^5.3.0"
     }
 }

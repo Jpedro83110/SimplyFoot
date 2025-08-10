@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
 
+export type GetCoachMessagesPrives = Awaited<ReturnType<typeof getCoachMessagesPrives>>;
+
 export const getCoachMessagesPrives = async (args: { coachId: string }) => {
     const { coachId } = args;
 
@@ -11,7 +13,7 @@ export const getCoachMessagesPrives = async (args: { coachId: string }) => {
 
     if (error) {
         throw error;
-    } // FIXME custom exception
+    }
 
     return data;
 };

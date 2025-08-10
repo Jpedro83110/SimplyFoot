@@ -6,7 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '@/lib/supabase';
 import { DARK_GRADIENT, COLOR_GREEN_300 } from '@/utils/styleContants.util';
-import { getJoueurAndDechargesGeneralesByUtilisateurId } from '@/helpers/joueurs.helper';
+import { getAccepteTransportByUtilisateurId } from '@/helpers/joueurs.helper';
 
 export default function MessagesIndex() {
     const router = useRouter();
@@ -20,19 +20,11 @@ export default function MessagesIndex() {
             return;
         }
 
-        const utilisateur = await getJoueurAndDechargesGeneralesByUtilisateurId({
+        const accepteTransport = await getAccepteTransportByUtilisateurId({
             utilisateurId,
-            joueurFields: ['id'],
-            utilisateurFields: ['id'],
-            dechargeGeneraleFields: ['id', 'accepte_transport'],
         });
 
-        if (
-            utilisateur.joueurs.decharges_generales.length > 0 &&
-            utilisateur.joueurs.decharges_generales[0].accepte_transport
-        ) {
-            setCanAnswerTransportRequest(true);
-        }
+        setCanAnswerTransportRequest(accepteTransport);
     }, []);
 
     useEffectOnce(() => {

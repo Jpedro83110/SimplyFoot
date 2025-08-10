@@ -2,7 +2,6 @@ import { renderHook } from '@testing-library/react';
 import { AuthContext } from '@/context/AuthContext';
 import { useSession } from '../useSession';
 import { ReactNode } from 'react';
-import { UtilisateurRole } from '@/types/Utilisateur';
 
 // Mock Supabase to avoid ES module issues
 jest.mock('@/lib/supabase', () => ({
@@ -31,10 +30,27 @@ describe('useSession', () => {
             isLoading: false,
             utilisateur: {
                 id: '1',
-                role: 'joueur' as UtilisateurRole,
+                role: 'joueur',
                 email: 'player@example.com',
+                nom: null,
+                prenom: null,
+                club_id: null,
+                joueur_id: null,
+                date_creation: null,
+                date_naissance: null,
+                telephone: null,
             },
-            joueur: { id: '1' },
+            joueur: {
+                id: '1',
+                equipe_id: null,
+                poste: null,
+                numero_licence: null,
+                visite_medicale_valide: null,
+                photo_url: null,
+                date_naissance: null,
+                equipement: null,
+                photo_profil_url: null,
+            },
             updateUserData: jest.fn(),
         };
 

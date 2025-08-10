@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import { PublicClubAdmin } from '@/types/ClubAdmin';
+import { Database } from '@/types/database.types';
+
+export type GetClubAdminByUserId = Awaited<ReturnType<typeof getClubAdminByUserId>>;
 
 export const getClubAdminByUserId = async (args: { userId: string }) => {
     const { userId } = args;
@@ -14,12 +16,12 @@ export const getClubAdminByUserId = async (args: { userId: string }) => {
         throw error;
     }
 
-    return data as PublicClubAdmin;
+    return data;
 };
 
 export const updateClubAdmin = async (args: {
-    clubAdminId: string;
-    dataToUpdate: Partial<PublicClubAdmin>;
+    clubAdminId: number;
+    dataToUpdate: Partial<Database['public']['Tables']['clubs_admins']['Update']>;
 }) => {
     const { clubAdminId, dataToUpdate } = args;
 

@@ -1,10 +1,10 @@
 import { FC } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { EquipeWithJoueurs } from '@/types/Equipe';
+import { GetCoachEquipesWithJoueursCount } from '@/helpers/equipes.helper';
 
 interface TeamCardProps {
-    equipe: EquipeWithJoueurs;
+    equipe: GetCoachEquipesWithJoueursCount[number];
 }
 
 export const TeamCard: FC<TeamCardProps> = ({ equipe }) => {

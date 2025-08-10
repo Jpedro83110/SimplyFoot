@@ -8,13 +8,12 @@ import {
     RefreshControl,
     Alert,
 } from 'react-native';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
-import { getEvenementByCoachId } from '@/helpers/evenements.helper';
-import { CoachEvenements } from '@/types/Evenement';
+import { GetEvenementByCoachId, getEvenementByCoachId } from '@/helpers/evenements.helper';
 
 export default function ListeCompositions() {
-    const [evenements, setEvenements] = useState<CoachEvenements>([]);
+    const [evenements, setEvenements] = useState<GetEvenementByCoachId>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [lastRefresh, setLastRefresh] = useState(0);
