@@ -8,8 +8,21 @@ import * as JoueursHelper from '@/helpers/joueurs.helper';
 import * as UtilisateursHelper from '@/helpers/utilisateurs.helper';
 import * as StaffHelper from '@/helpers/staff.helper';
 import * as ClubAdminsHelper from '@/helpers/clubsAdmins.helper';
-import { useStorageState } from '@/hooks/useStorageState';
 import { localStorageMock } from '../../.jest/localStorageMock';
+
+// Mock SecureStore
+jest.mock('expo-secure-store', () => ({
+    getItemAsync: jest.fn(),
+    setItemAsync: jest.fn(),
+    deleteItemAsync: jest.fn(),
+}));
+
+// Mock Platform
+jest.mock('react-native', () => ({
+    Platform: {
+        OS: 'web',
+    },
+}));
 
 // Mock dependencies
 jest.mock('@/lib/supabase', () => ({
@@ -31,8 +44,6 @@ jest.mock('react-native-toast-message', () => ({
     show: jest.fn(),
 }));
 
-jest.mock('@/hooks/useStorageState');
-
 jest.mock('@/helpers/joueurs.helper');
 jest.mock('@/helpers/utilisateurs.helper');
 jest.mock('@/helpers/staff.helper');
@@ -47,13 +58,10 @@ const TestConsumer = ({ onContextValue }: { onContextValue: jest.Mock }) => {
     return null;
 };
 
-const setSession = (value: string) => {
-    localStorageMock.setItem('user-data', value);
-};
-
 describe('AuthContext', () => {
     // Reset mocks before each test
     beforeEach(() => {
+        localStorage.clear();
         jest.clearAllMocks();
     });
 
@@ -76,7 +84,6 @@ describe('AuthContext', () => {
             });
             (UtilisateursHelper.getUtilisateurById as jest.Mock).mockResolvedValue(mockUtilisateur);
             (JoueursHelper.getJoueurById as jest.Mock).mockResolvedValue(mockJoueur);
-            (useStorageState as jest.Mock).mockReturnValue([[false, '{}'], setSession]);
 
             // Render and act
             const onContextValue = jest.fn();
@@ -149,7 +156,6 @@ describe('AuthContext', () => {
             });
             (UtilisateursHelper.getUtilisateurById as jest.Mock).mockResolvedValue(mockUtilisateur);
             (StaffHelper.getStaffByUtilisateurId as jest.Mock).mockResolvedValue(mockStaff);
-            (useStorageState as jest.Mock).mockReturnValue([[false, '{}'], setSession]);
 
             // Render and act
             const onContextValue = jest.fn();
@@ -217,7 +223,6 @@ describe('AuthContext', () => {
             });
             (UtilisateursHelper.getUtilisateurById as jest.Mock).mockResolvedValue(mockUtilisateur);
             (ClubAdminsHelper.getClubAdminByUserId as jest.Mock).mockResolvedValue(mockClubAdmin);
-            (useStorageState as jest.Mock).mockReturnValue([[false, '{}'], setSession]);
 
             // Render and act
             const onContextValue = jest.fn();
@@ -394,17 +399,12 @@ describe('AuthContext', () => {
         test('should successfully sign out', async () => {
             // Mock initial state with logged in user
             const mockUtilisateur = { id: 'user123', role: 'joueur' };
+            localStorage.setItem('user-data', JSON.stringify({ utilisateur: mockUtilisateur }));
 
             // Set up mocks
             (supabase.auth.signOut as jest.Mock).mockResolvedValue({
                 error: null,
             });
-            (useStorageState as jest.Mock)
-                .mockReturnValueOnce([
-                    [false, JSON.stringify({ utilisateur: mockUtilisateur })],
-                    setSession,
-                ])
-                .mockReturnValue([[false, undefined], setSession]);
 
             // Render and act
             const onContextValue = jest.fn();
@@ -437,7 +437,6 @@ describe('AuthContext', () => {
             // Check localStorage was cleared
             expect(localStorageMock.getItem('user-data')).toBeUndefined();
 
-            console.log('before rerender');
             // Force rerender to update context after signOut
             rerender(
                 <AuthProvider>
@@ -455,17 +454,8 @@ describe('AuthContext', () => {
         });
 
         test('should sign out even if error occurs', async () => {
-            // Mock initial state with logged in user
-            const mockUtilisateur = { id: 'user123', role: 'joueur' };
-
             // Set up mocks to throw error on signOut
             (supabase.auth.signOut as jest.Mock).mockRejectedValue(new Error('Network error'));
-            (useStorageState as jest.Mock)
-                .mockReturnValueOnce([
-                    [false, JSON.stringify({ utilisateur: mockUtilisateur })],
-                    setSession,
-                ])
-                .mockReturnValue([[false, undefined], setSession]);
 
             // Mock console.error to avoid cluttering test output
             const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -523,13 +513,7 @@ describe('AuthContext', () => {
         test('should update utilisateur data', async () => {
             // Mock initial state with logged in user
             const mockUtilisateur = { id: 'user123', role: 'joueur', email: 'old@example.com' };
-
-            // Set up mocks
-            (UtilisateursHelper.updateUtilisateur as jest.Mock).mockResolvedValue({});
-            (useStorageState as jest.Mock).mockReturnValue([
-                [false, JSON.stringify({ utilisateur: mockUtilisateur })],
-                setSession,
-            ]);
+            localStorage.setItem('user-data', JSON.stringify({ utilisateur: mockUtilisateur }));
 
             // Render
             const onContextValue = jest.fn();
@@ -584,13 +568,10 @@ describe('AuthContext', () => {
             // Mock initial state
             const mockUtilisateur = { id: 'user123', role: 'joueur' };
             const mockJoueur = { id: 'joueur123', position: 'attaquant' };
-
-            // Set up mocks
-            (JoueursHelper.updateJoueur as jest.Mock).mockResolvedValue({});
-            (useStorageState as jest.Mock).mockReturnValue([
-                [false, JSON.stringify({ utilisateur: mockUtilisateur, joueur: mockJoueur })],
-                setSession,
-            ]);
+            localStorage.setItem(
+                'user-data',
+                JSON.stringify({ utilisateur: mockUtilisateur, joueur: mockJoueur }),
+            );
 
             // Render
             const onContextValue = jest.fn();
@@ -645,13 +626,10 @@ describe('AuthContext', () => {
             // Mock initial state
             const mockUtilisateur = { id: 'user123', role: 'coach' };
             const mockStaff = { id: 'staff123', niveau_diplome: 'CFF1' };
-
-            // Set up mocks
-            (StaffHelper.updateStaff as jest.Mock).mockResolvedValue({});
-            (useStorageState as jest.Mock).mockReturnValue([
-                [false, JSON.stringify({ utilisateur: mockUtilisateur, staff: mockStaff })],
-                setSession,
-            ]);
+            localStorage.setItem(
+                'user-data',
+                JSON.stringify({ utilisateur: mockUtilisateur, staff: mockStaff }),
+            );
 
             // Render
             const onContextValue = jest.fn();
@@ -706,13 +684,10 @@ describe('AuthContext', () => {
             // Mock initial state
             const mockUtilisateur = { id: 'user123', role: 'president' };
             const mockClubAdmin = { id: 'clubadmin123', role: 'president' };
-
-            // Set up mocks
-            (ClubAdminsHelper.updateClubAdmin as jest.Mock).mockResolvedValue({});
-            (useStorageState as jest.Mock).mockReturnValue([
-                [false, JSON.stringify({ utilisateur: mockUtilisateur, clubAdmin: mockClubAdmin })],
-                setSession,
-            ]);
+            localStorage.setItem(
+                'user-data',
+                JSON.stringify({ utilisateur: mockUtilisateur, clubAdmin: mockClubAdmin }),
+            );
 
             // Render
             const onContextValue = jest.fn();
@@ -767,14 +742,14 @@ describe('AuthContext', () => {
             // Mock initial state
             const mockUtilisateur = { id: 'user123', role: 'coach', telephone: '0123456789' };
             const mockStaff = { id: 'staff123', niveau_diplome: 'CFF1', experience: '2 ans' };
+            localStorage.setItem(
+                'user-data',
+                JSON.stringify({ utilisateur: mockUtilisateur, staff: mockStaff }),
+            );
 
             // Set up mocks
             (UtilisateursHelper.updateUtilisateur as jest.Mock).mockResolvedValue({});
             (StaffHelper.updateStaff as jest.Mock).mockResolvedValue({});
-            (useStorageState as jest.Mock).mockReturnValue([
-                [false, JSON.stringify({ utilisateur: mockUtilisateur, staff: mockStaff })],
-                setSession,
-            ]);
 
             // Render
             const onContextValue = jest.fn();
@@ -846,7 +821,6 @@ describe('AuthContext', () => {
 
             // Set up mocks
             (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null });
-            (useStorageState as jest.Mock).mockReturnValue([[false, null], setSession]);
 
             // Mock console.warn to avoid test output clutter
             const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -885,9 +859,6 @@ describe('AuthContext', () => {
     // Tests for general functionality
     describe('general functionality', () => {
         test('should initialize context with user not logged in', async () => {
-            // Mock no session
-            (useStorageState as jest.Mock).mockReturnValue([[false, null], setSession]);
-
             // Render
             const onContextValue = jest.fn();
             render(
@@ -897,7 +868,7 @@ describe('AuthContext', () => {
             );
 
             // Check context values
-            const contextValue = onContextValue.mock.calls[0][0];
+            const contextValue = onContextValue.mock.calls[1][0];
             expect(contextValue.isLoggedIn).toBe(false);
             expect(contextValue.isLoggedOut).toBe(true);
             expect(contextValue.isLoading).toBe(false);
@@ -914,13 +885,13 @@ describe('AuthContext', () => {
             // Mock session data for a player
             const mockUtilisateur = { id: 'user123', role: 'joueur' };
             const mockJoueur = { id: 'joueur123', position: 'attaquant' };
-            const sessionData = JSON.stringify({
-                utilisateur: mockUtilisateur,
-                joueur: mockJoueur,
-            });
-
-            // Set up mocks
-            (useStorageState as jest.Mock).mockReturnValue([[false, sessionData], setSession]);
+            localStorage.setItem(
+                'user-data',
+                JSON.stringify({
+                    utilisateur: mockUtilisateur,
+                    joueur: mockJoueur,
+                }),
+            );
 
             // Render
             const onContextValue = jest.fn();
@@ -958,13 +929,13 @@ describe('AuthContext', () => {
             // Mock session data for a coach
             const mockUtilisateur = { id: 'user123', role: 'coach' };
             const mockStaff = { id: 'staff123', niveau_diplome: 'CFF1' };
-            const sessionData = JSON.stringify({
-                utilisateur: mockUtilisateur,
-                staff: mockStaff,
-            });
-
-            // Set up mocks
-            (useStorageState as jest.Mock).mockReturnValue([[false, sessionData], setSession]);
+            localStorage.setItem(
+                'user-data',
+                JSON.stringify({
+                    utilisateur: mockUtilisateur,
+                    staff: mockStaff,
+                }),
+            );
 
             // Render
             const onContextValue = jest.fn();
@@ -1002,13 +973,13 @@ describe('AuthContext', () => {
             // Mock session data for a president
             const mockUtilisateur = { id: 'user123', role: 'president' };
             const mockClubAdmin = { id: 'clubadmin123', role: 'president' };
-            const sessionData = JSON.stringify({
-                utilisateur: mockUtilisateur,
-                clubAdmin: mockClubAdmin,
-            });
-
-            // Set up mocks
-            (useStorageState as jest.Mock).mockReturnValue([[false, sessionData], setSession]);
+            localStorageMock.setItem(
+                'user-data',
+                JSON.stringify({
+                    utilisateur: mockUtilisateur,
+                    clubAdmin: mockClubAdmin,
+                }),
+            );
 
             // Render
             const onContextValue = jest.fn();

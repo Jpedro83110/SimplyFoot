@@ -12,13 +12,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
 import { getCoachMessagesPrives } from '@/helpers/messagesPrives.helper';
-import { Equipe } from '@/types/Equipe';
 import { useCachedApi } from '@/hooks/useCachedApi';
-import { CoachMessagesPrives } from '@/types/MessagePrive';
+import { Database } from '@/types/database.types';
 
 export default function MessagesPrivesCoach() {
     const [coachId, setCoachId] = useState<string>();
-    const [equipes, setEquipes] = useState<Equipe[]>([]);
+    const [equipes, setEquipes] = useState<Database['public']['Tables']['equipes']['Row'][]>([]);
     const [joueurs, setJoueurs] = useState<
         // FIXME
         {
@@ -39,6 +38,10 @@ export default function MessagesPrivesCoach() {
             const userId = session.data.session?.user.id;
             setCoachId(userId);
 
+            if (!userId) {
+                return; // FIXME: gestion erreur
+            }
+
             const { data: equipes } = await supabase
                 .from('equipes')
                 .select('*')
@@ -57,24 +60,22 @@ export default function MessagesPrivesCoach() {
         }
     }, [selectedEquipe]);
 
-    const [coachMessages, , fetchCoachMessages, refreshCoachMessages] =
-        useCachedApi<CoachMessagesPrives>(
-            `messages_prives_${coachId}_${selectedJoueurId}`,
-            useCallback(async () => {
-                if (!coachId || !selectedJoueurId) {
-                    return [];
-                }
-                const data = await getCoachMessagesPrives({ coachId });
-                const messages = (data || []).filter(
-                    (message) =>
-                        (message.emetteur_id === coachId &&
-                            message.recepteur_id === selectedJoueurId) ||
-                        (message.recepteur_id === coachId &&
-                            message.emetteur_id === selectedJoueurId),
-                );
-                return messages || [];
-            }, [coachId, selectedJoueurId]),
-        );
+    const [coachMessages, , fetchCoachMessages, refreshCoachMessages] = useCachedApi(
+        `messages_prives_${coachId}_${selectedJoueurId}`,
+        useCallback(async () => {
+            if (!coachId || !selectedJoueurId) {
+                return [];
+            }
+            const data = await getCoachMessagesPrives({ coachId });
+            const messages = (data || []).filter(
+                (message) =>
+                    (message.emetteur_id === coachId &&
+                        message.recepteur_id === selectedJoueurId) ||
+                    (message.recepteur_id === coachId && message.emetteur_id === selectedJoueurId),
+            );
+            return messages || [];
+        }, [coachId, selectedJoueurId]),
+    );
 
     useEffect(() => {
         fetchCoachMessages();
@@ -157,7 +158,9 @@ export default function MessagesPrivesCoach() {
                             >
                                 <Text style={styles.texte}>{message.texte}</Text>
                                 <Text style={styles.meta}>
-                                    {new Date(message.created_at).toLocaleString()}
+                                    {/* FIXME: ne devrait pas pouvoir être null */}
+                                    {message.created_at &&
+                                        new Date(message.created_at).toLocaleString()}
                                 </Text>
                             </View>
                         ))}

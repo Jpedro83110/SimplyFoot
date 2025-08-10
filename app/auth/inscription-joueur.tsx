@@ -17,8 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import Input from '@/components/atoms/Input';
 import Button from '@/components/atoms/Button';
-import { Equipe } from '@/types/Equipe';
-import { Staff } from '@/types/Staff';
+import { Database } from '@/types/database.types';
 
 // DatePicker mobile
 let DateTimePicker: any = null;
@@ -104,8 +103,12 @@ export default function InscriptionJoueur() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [codeEquipe, setCodeEquipe] = useState('');
-    const [equipeData, setEquipeData] = useState<Partial<Equipe> | null>(null); // FIXME
-    const [coachData, setCoachData] = useState<Partial<Staff> | null>(null); // FIXME
+    const [equipeData, setEquipeData] = useState<
+        Database['public']['Tables']['equipes']['Insert'] | null
+    >(null); // FIXME
+    const [coachData, setCoachData] = useState<
+        Database['public']['Tables']['staff']['Insert'] | null
+    >(null); // FIXME
     const [errors, setErrors] = React.useState<Record<string, string>>({});
 
     const [nom, setNom] = useState('');

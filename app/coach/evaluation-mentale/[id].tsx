@@ -11,10 +11,10 @@ import {
     Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import Slider from '@react-native-community/slider';
-import useCacheData from '../../../lib/cache';
-import { Utilisateur } from '@/types/Utilisateur';
+import useCacheData from '@/lib/cache';
+import { GetUtilisateurById, getUtilisateurById } from '@/helpers/utilisateurs.helper';
 
 export default function EvaluationMentale() {
     const { id } = useLocalSearchParams();
@@ -28,8 +28,7 @@ export default function EvaluationMentale() {
         respect: 50,
     });
 
-    const [joueurInfo, setJoueurInfo] =
-        useState<Pick<Utilisateur, 'id' | 'nom' | 'prenom' | 'role' | 'joueur_id'>>();
+    const [joueurInfo, setJoueurInfo] = useState<GetUtilisateurById>();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -40,15 +39,9 @@ export default function EvaluationMentale() {
 
             try {
                 // Étape 1: Récupérer les infos utilisateur
-                const { data: utilisateur, error: userError } = await supabase
-                    .from('utilisateurs')
-                    .select('id, nom, prenom, role, joueur_id')
-                    .eq('id', id)
-                    .maybeSingle();
-
-                if (userError && userError.code !== 'PGRST116') {
-                    console.error('Erreur utilisateur:', userError);
-                }
+                const utilisateur = await getUtilisateurById({
+                    utilisateurId: id as string,
+                });
 
                 if (utilisateur) {
                     setJoueurInfo(utilisateur);
@@ -57,7 +50,7 @@ export default function EvaluationMentale() {
                     const { data: userByJoueurId, error: joueurError } = await supabase
                         .from('utilisateurs')
                         .select('id, nom, prenom, role, joueur_id')
-                        .eq('joueur_id', id)
+                        .eq('joueur_id', id as string)
                         .maybeSingle();
 
                     if (joueurError && joueurError.code !== 'PGRST116') {
@@ -65,7 +58,7 @@ export default function EvaluationMentale() {
                     }
 
                     if (userByJoueurId) {
-                        setJoueurInfo(userByJoueurId);
+                        setJoueurInfo(userByJoueurId as GetUtilisateurById); // FIXME: fonctionne mais type à corriger
                     } else {
                         Alert.alert('Erreur', 'Joueur introuvable dans le système');
                     }

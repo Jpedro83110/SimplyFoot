@@ -10,20 +10,18 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { COLOR_GREEN_300 } from '@/utils/styleContants.util';
-import { getJoueurByUtilisateurId } from '@/helpers/joueurs.helper';
-import { MessagesBesoinTransportWithEvenementAndUtilisateurPicked } from '@/types/MessagesBesoinTransport';
-import { getMessagesBesoinTransportAndUtilisateurByEquipeId } from '@/helpers/messagesBesoinTransport.helper';
+import { getEquipeIdByUtilisateurId } from '@/helpers/joueurs.helper';
+import {
+    GetMessagesBesoinTransportAndUtilisateurByEquipeId,
+    getMessagesBesoinTransportAndUtilisateurByEquipeId,
+} from '@/helpers/messagesBesoinTransport.helper';
 import useEffectOnce from 'react-use/lib/useEffectOnce';
 
 export default function BesoinTransportJoueur() {
     const [loading, setLoading] = useState(true);
-    const [demandes, setDemandes] = useState<
-        MessagesBesoinTransportWithEvenementAndUtilisateurPicked<
-            'id' | 'adresse_demande' | 'heure_demande' | 'etat',
-            'id' | 'titre' | 'date' | 'heure' | 'lieu',
-            'id' | 'prenom' | 'nom'
-        >[]
-    >([]);
+    const [demandes, setDemandes] = useState<GetMessagesBesoinTransportAndUtilisateurByEquipeId>(
+        [],
+    );
     const router = useRouter();
 
     async function fetchDemandes() {
@@ -37,21 +35,16 @@ export default function BesoinTransportJoueur() {
                 return; // FIXME: manage error
             }
 
-            const fetchedUtilisateur = await getJoueurByUtilisateurId({
+            const equipeId = await getEquipeIdByUtilisateurId({
                 utilisateurId,
-                joueurFields: ['id', 'equipe_id'],
-                utilisateurFields: ['id', 'nom', 'prenom'],
             });
 
-            if (!fetchedUtilisateur.joueurs?.equipe_id) {
+            if (!equipeId) {
                 return; // FIXME: manage error
             }
 
             const fetchedDemandes = await getMessagesBesoinTransportAndUtilisateurByEquipeId({
-                equipeId: fetchedUtilisateur.joueurs.equipe_id,
-                messagesBesoinTransportFields: ['id', 'adresse_demande', 'heure_demande', 'etat'],
-                evenementFields: ['id', 'titre', 'date', 'heure', 'lieu', 'equipe_id'],
-                utilisateurFields: ['id', 'prenom', 'nom'],
+                equipeId,
             });
 
             setDemandes(fetchedDemandes);
@@ -89,7 +82,7 @@ export default function BesoinTransportJoueur() {
                 {demandes.map((demande) => (
                     <View key={demande.id} style={styles.card}>
                         <Text style={styles.joueur}>
-                            👤 {demande.utilisateur?.prenom} {demande.utilisateur?.nom}
+                            👤 {demande.utilisateurs?.prenom} {demande.utilisateurs?.nom}
                         </Text>
 
                         {/* Affichage de l'événement associé */}

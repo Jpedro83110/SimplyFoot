@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import { PublicUtilisateur } from '@/types/Utilisateur';
+import { Database } from '@/types/database.types';
+
+export type GetUtilisateurById = Awaited<ReturnType<typeof getUtilisateurById>>;
 
 export const getUtilisateurById = async (args: { utilisateurId: string }) => {
     let { utilisateurId } = args;
@@ -16,12 +18,12 @@ export const getUtilisateurById = async (args: { utilisateurId: string }) => {
         throw error;
     }
 
-    return data as PublicUtilisateur;
+    return data;
 };
 
 export const updateUtilisateur = async (args: {
     utilisateurId: string;
-    dataToUpdate: Partial<PublicUtilisateur>;
+    dataToUpdate: Database['public']['Tables']['utilisateurs']['Update'];
 }) => {
     const { utilisateurId, dataToUpdate } = args;
 

@@ -1,11 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import { DechargeGeneraleFields } from '@/types/DechargesGenerales';
-import { JoueurFields, PublicJoueur } from '@/types/Joueur';
-import {
-    UtilisateurFields,
-    UtilisateurWithJoueurAndDechargesGeneralesPicked,
-    UtilisateurWithJoueurPicked,
-} from '@/types/Utilisateur';
+import { Database } from '@/types/database.types';
+
+export type GetJoueurById = Awaited<ReturnType<typeof getJoueurById>>;
 
 export const getJoueurById = async (args: { joueurId: string }) => {
     let { joueurId } = args;
@@ -22,86 +18,52 @@ export const getJoueurById = async (args: { joueurId: string }) => {
         throw error;
     }
 
-    return data as PublicJoueur;
+    return data;
 };
 
-export const getJoueurByUtilisateurId = async <
-    U extends UtilisateurFields,
-    J extends JoueurFields,
->(args: {
-    utilisateurId: string;
-    joueurFields?: J[];
-    utilisateurFields?: U[];
-}): Promise<UtilisateurWithJoueurPicked<U, J>> => {
-    let { utilisateurId, joueurFields, utilisateurFields } = args;
+export type GetEquipeIdByUtilisateurId = Awaited<ReturnType<typeof getEquipeIdByUtilisateurId>>;
 
-    if (!joueurFields || joueurFields.length === 0) {
-        joueurFields = ['id'] as J[];
-    }
-
-    if (!utilisateurFields || utilisateurFields.length === 0) {
-        utilisateurFields = ['id'] as U[];
-    }
+export const getEquipeIdByUtilisateurId = async (args: { utilisateurId: string }) => {
+    let { utilisateurId } = args;
 
     const { data, error } = await supabase
         .from('utilisateurs')
-        .select(`${utilisateurFields.join(', ')}, joueurs:joueur_id(${joueurFields.join(', ')})`)
+        .select(`joueurs:joueur_id(equipe_id)`)
         .eq('id', utilisateurId)
         .single();
 
     if (error) {
         throw error;
-    } else if (!data) {
-        throw new Error(`Utilisateur with id ${utilisateurId} not found`); // FIXME custom exception
     }
 
-    return data as unknown as UtilisateurWithJoueurPicked<U, J>;
+    return data?.joueurs ? data.joueurs.equipe_id : null;
 };
 
-export const getJoueurAndDechargesGeneralesByUtilisateurId = async <
-    U extends UtilisateurFields,
-    J extends JoueurFields,
-    D extends DechargeGeneraleFields,
->(args: {
-    utilisateurId: string;
-    joueurFields?: J[];
-    utilisateurFields?: U[];
-    dechargeGeneraleFields?: D[];
-}): Promise<UtilisateurWithJoueurAndDechargesGeneralesPicked<U, J, D>> => {
-    let { utilisateurId, joueurFields, utilisateurFields, dechargeGeneraleFields } = args;
+export type GetAccepteTransportByUtilisateurId = Awaited<
+    ReturnType<typeof getAccepteTransportByUtilisateurId>
+>;
 
-    if (!joueurFields || joueurFields.length === 0) {
-        joueurFields = ['id'] as J[];
-    }
-
-    if (!utilisateurFields || utilisateurFields.length === 0) {
-        utilisateurFields = ['id'] as U[];
-    }
-
-    if (!dechargeGeneraleFields || dechargeGeneraleFields.length === 0) {
-        dechargeGeneraleFields = ['id'] as D[];
-    }
+export const getAccepteTransportByUtilisateurId = async (args: { utilisateurId: string }) => {
+    let { utilisateurId } = args;
 
     const { data, error } = await supabase
         .from('utilisateurs')
-        .select(
-            `${utilisateurFields.join(', ')}, joueurs:joueur_id(${joueurFields.join(', ')}, decharges_generales(${dechargeGeneraleFields.join(', ')}))`,
-        )
+        .select(`joueurs:joueur_id(decharges_generales(accepte_transport))`)
         .eq('id', utilisateurId)
         .single();
 
     if (error) {
         throw error;
-    } else if (!data) {
-        throw new Error(`Utilisateur with id ${utilisateurId} not found`); // FIXME custom exception
     }
 
-    return data as unknown as UtilisateurWithJoueurAndDechargesGeneralesPicked<U, J, D>;
+    return data?.joueurs?.decharges_generales?.length === 1
+        ? (data.joueurs.decharges_generales[0].accepte_transport ?? false)
+        : false;
 };
 
 export const updateJoueur = async (args: {
     joueurId: string;
-    dataToUpdate: Partial<PublicJoueur>;
+    dataToUpdate: Database['public']['Tables']['joueurs']['Update'];
 }) => {
     const { joueurId, dataToUpdate } = args;
 

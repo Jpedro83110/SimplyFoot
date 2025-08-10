@@ -20,21 +20,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { TeamCard } from '@/components/business/TeamCard';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
-import { Club } from '@/types/Club';
-import { Staff } from '@/types/Staff';
-import { Stage } from '@/types/Stage';
-import { Evenement } from '@/types/Evenement';
-import { ParticipationsEvenement } from '@/types/ParticipationsEvenement';
 import { useCachedApi } from '@/hooks/useCachedApi';
-import { EquipeWithJoueurs } from '@/types/Equipe';
 import { useSession } from '@/hooks/useSession';
+import { Database } from '@/types/database.types';
+import { getCoachEquipesWithJoueursCount } from '@/helpers/equipes.helper';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GREEN = '#00ff88';
 const DARK = '#101415';
 
 export default function CoachDashboard() {
-    const [club, setClub] = useState<Club>();
+    const [club, setClub] = useState<Pick<
+        Database['public']['Tables']['clubs']['Row'],
+        'id' | 'nom' | 'facebook_url' | 'instagram_url' | 'boutique_url' | 'logo_url'
+    > | null>(null);
     const [refreshKey, setRefreshKey] = useState<number>(Date.now());
     const [uploadingPhoto, setUploadingPhoto] = useState<boolean>(false);
     const [showEditModal, setShowEditModal] = useState<boolean>(false);
@@ -42,41 +41,32 @@ export default function CoachDashboard() {
 
     const { signOut, utilisateur, staff, updateUserData } = useSession();
 
-    const [editData, setEditData] = useState<
-        Required<Pick<Staff, 'telephone' | 'email' | 'niveau_diplome' | 'experience'>>
-    >({
+    const [editData, setEditData] = useState<Database['public']['Tables']['staff']['Update']>({
         telephone: '',
         email: '',
         niveau_diplome: '',
         experience: '',
-    });
+    }); // FIXME: revoir le typage, il combine des champs staff et utilisateur en réalité
 
-    const [equipes, loadingEquipes, fetchCoachEquipes] = useCachedApi<EquipeWithJoueurs[]>(
+    const [equipes, loadingEquipes, fetchCoachEquipes] = useCachedApi(
         'fetch_coach_equipes',
         useCallback(async () => {
             if (!utilisateur?.id) {
                 return undefined;
             }
 
-            const { data, error } = await supabase
-                .from('equipes')
-                .select('*, joueurs(count)')
-                .eq('coach_id', utilisateur.id);
+            const data = await getCoachEquipesWithJoueursCount({ coachId: utilisateur.id });
 
-            if (error) {
-                throw error;
-            }
-
-            return data as EquipeWithJoueurs[];
+            return data;
         }, [utilisateur?.id]),
         1,
     );
 
-    const [stage, , fetchClubStage] = useCachedApi<Stage>(
+    const [stage, , fetchClubStage] = useCachedApi(
         'fetch_club_stage',
         useCallback(async () => {
             if (!staff?.club_id) {
-                return undefined;
+                return null;
             }
 
             const { data } = await supabase
@@ -88,11 +78,11 @@ export default function CoachDashboard() {
         }, [staff?.club_id]),
     );
 
-    const [evenements, loadingEvenements, fetchCoachEvenements] = useCachedApi<Evenement[]>(
+    const [evenements, loadingEvenements, fetchCoachEvenements] = useCachedApi(
         'fetch_coach_evenements',
         useCallback(async () => {
             if (!utilisateur?.id) {
-                return undefined;
+                return null;
             }
 
             const today = new Date();
@@ -113,16 +103,14 @@ export default function CoachDashboard() {
         }, [utilisateur?.id]),
     );
 
-    const evenement: Evenement | null = useMemo(
+    const evenement: Database['public']['Tables']['evenements']['Row'] | null = useMemo(
         () => (evenements && evenements.length > 0 ? evenements[0] : null),
         [evenements],
     );
 
-    const [participations, , fetchEvenementParticipations] = useCachedApi<
-        ParticipationsEvenement[]
-    >(
+    const [participations, , fetchEvenementParticipations] = useCachedApi(
         'fetch_evenement_participations',
-        useCallback(async (): Promise<ParticipationsEvenement[]> => {
+        useCallback(async () => {
             if (!evenement?.id) {
                 return [];
             }
@@ -167,13 +155,13 @@ export default function CoachDashboard() {
 
     const fetchClub = useCallback(async () => {
         if (utilisateur?.club_id) {
-            const { data: clubData }: { data: Club | null } = await supabase
+            const { data: clubData } = await supabase
                 .from('clubs')
                 .select('id, nom, facebook_url, instagram_url, boutique_url, logo_url')
                 .eq('id', utilisateur.club_id)
                 .single();
 
-            setClub(clubData || undefined);
+            setClub(clubData);
         }
     }, [utilisateur?.club_id]);
 
@@ -383,12 +371,12 @@ export default function CoachDashboard() {
         try {
             await updateUserData({
                 utilisateurData: {
-                    telephone: editData.telephone.trim(),
-                    email: editData.email.trim(),
+                    telephone: editData.telephone?.trim(),
+                    email: editData.email?.trim(),
                 },
                 staffData: {
-                    niveau_diplome: editData.niveau_diplome.trim(),
-                    experience: editData.experience.trim(),
+                    niveau_diplome: editData.niveau_diplome?.trim(),
+                    experience: editData.experience?.trim(),
                 },
             });
 
@@ -491,7 +479,7 @@ export default function CoachDashboard() {
                             onLoad={() => {
                                 console.log(
                                     '✅ Image chargée avec succès:',
-                                    getImageUrlWithCacheBuster(staff.photo_url),
+                                    staff.photo_url && getImageUrlWithCacheBuster(staff.photo_url),
                                 );
                             }}
                         />
@@ -614,21 +602,21 @@ export default function CoachDashboard() {
             {/* Équipes */}
             <Text style={styles.subtitle}>📌 Vos équipes</Text>
             {equipes && equipes.length > 0 ? (
-                equipes.map((eq) => (
+                equipes.map((equipe) => (
                     <View
-                        key={eq.id}
+                        key={equipe.id}
                         style={{
                             marginBottom: 12,
                             maxWidth: 790,
                             width: '92%',
                         }}
                     >
-                        <TouchableOpacity onPress={() => router.push(`/coach/equipe/${eq.id}`)}>
-                            <TeamCard equipe={eq} />
+                        <TouchableOpacity onPress={() => router.push(`/coach/equipe/${equipe.id}`)}>
+                            <TeamCard equipe={equipe} />
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.deleteButton}
-                            onPress={() => handleDeleteEquipe(eq.id, eq.nom)}
+                            onPress={() => handleDeleteEquipe(equipe.id, equipe.nom)}
                         >
                             <Ionicons name="trash-outline" size={18} color="#ff4444" />
                             <Text
@@ -677,7 +665,8 @@ export default function CoachDashboard() {
                     )}
                     {evenement.meteo && (
                         <Text style={[styles.eventInfo, { color: '#00ff88' }]}>
-                            🌦️ {evenement.meteo}
+                            {/* FIXME meteo est de type JSON, mais semble ne contenir qu'une string */}
+                            🌦️ {evenement.meteo.toString()}
                         </Text>
                     )}
                     {evenement.latitude && evenement.longitude && (
@@ -828,7 +817,8 @@ export default function CoachDashboard() {
                             <Text style={styles.inputLabel}>Téléphone</Text>
                             <TextInput
                                 style={styles.textInput}
-                                value={editData.telephone}
+                                // FIXME: est initialisé avec une valeur non null, d'où le !
+                                value={editData.telephone!}
                                 onChangeText={(text) =>
                                     setEditData((prev) => ({ ...prev, telephone: text }))
                                 }
@@ -842,7 +832,8 @@ export default function CoachDashboard() {
                             <Text style={styles.inputLabel}>Niveau diplôme</Text>
                             <TextInput
                                 style={styles.textInput}
-                                value={editData.niveau_diplome}
+                                // FIXME: est initialisé avec une valeur non null, d'où le !
+                                value={editData.niveau_diplome!}
                                 onChangeText={(text) =>
                                     setEditData((prev) => ({ ...prev, niveau_diplome: text }))
                                 }
@@ -855,7 +846,8 @@ export default function CoachDashboard() {
                             <Text style={styles.inputLabel}>Expérience</Text>
                             <TextInput
                                 style={styles.textInput}
-                                value={editData.experience}
+                                // FIXME: est initialisé avec une valeur non null, d'où le !
+                                value={editData.experience!}
                                 onChangeText={(text) =>
                                     setEditData((prev) => ({ ...prev, experience: text }))
                                 }
