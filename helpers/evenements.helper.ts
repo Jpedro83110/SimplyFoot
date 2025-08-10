@@ -18,7 +18,7 @@ export const getEvenementByCoachId = async (args: { coachId: string; filterDate?
 
     if (error) {
         throw error;
-    } // FIXME custom exception
+    }
 
     return data;
 };
@@ -45,28 +45,7 @@ export const getEvenementInfosByUtilisateurId = async (args: {
 
     if (error) {
         throw error;
-    } else if (!data) {
-        throw new Error(
-            `MessagesBesoinTransport with utilisateur_id ${utilisateurId} and evenement_id ${evenementId} not found`,
-        ); // FIXME custom exception
     }
-
-    // because supabase type inference is not always accurate
-    // let dataRefined = data;
-
-    // dataRefined.participations_evenement[0].utilisateurs = [
-    //     {
-    //         ...(data.participations_evenement[0].utilisateurs as any),
-    //         joueurs: [(data.participations_evenement[0].utilisateurs as any).joueurs as any],
-    //     },
-    // ];
-
-    // dataRefined.messages_besoin_transport = data.messages_besoin_transport.map((message: any) => {
-    //     return {
-    //         ...message,
-    //         utilisateurs: [message.utilisateurs],
-    //     };
-    // });
 
     return data;
 };
