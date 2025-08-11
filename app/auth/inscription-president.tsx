@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, FC } from 'react';
 import {
     View,
     Text,
@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     StyleSheet,
     Alert,
-    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -18,9 +17,10 @@ import { formatDateForDisplay, calculateAge } from '../../lib/formatDate';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import * as Clipboard from 'expo-clipboard';
+import Button from '@/components/atoms/Button';
 
 // Import conditionnel du DateTimePicker (seulement pour mobile)
-let DateTimePicker = null;
+let DateTimePicker: any = null;
 if (Platform.OS !== 'web') {
     try {
         DateTimePicker = require('@react-native-community/datetimepicker').default;
@@ -30,19 +30,19 @@ if (Platform.OS !== 'web') {
 }
 
 // Validation email
-function isValidEmail(email) {
+function isValidEmail(email: string) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 }
 
 // Validation téléphone
-function isValidPhone(phone) {
+function isValidPhone(phone: string) {
     const phoneRegex = /^[0-9+\s\-\.()]{8,15}$/;
     return phoneRegex.test(phone.replace(/\s/g, ''));
 }
 
 // Fonction pour formater la date en YYYY-MM-DD pour l'input HTML
-function formatDateForInput(date) {
+function formatDateForInput(date: Date) {
     if (!date) {
         return '';
     }
@@ -53,7 +53,7 @@ function formatDateForInput(date) {
 }
 
 // Fonction pour parser une date depuis un input HTML (YYYY-MM-DD)
-function parseDateFromInput(dateString) {
+function parseDateFromInput(dateString: string) {
     if (!dateString) {
         return null;
     }
@@ -61,8 +61,16 @@ function parseDateFromInput(dateString) {
     return new Date(year, month - 1, day);
 }
 
+interface WebDateInputProps {
+    value: Date | undefined;
+    onChange: (dateString: string) => void;
+    disabled?: boolean;
+    style?: React.CSSProperties;
+    placeholder?: string;
+}
+
 // Composant d'input date spécifique pour le web
-const WebDateInput = ({ value, onChange, disabled, style, placeholder }) => {
+const WebDateInput: FC<WebDateInputProps> = ({ value, onChange, disabled, style, placeholder }) => {
     if (Platform.OS !== 'web') {
         return null;
     }
@@ -70,7 +78,7 @@ const WebDateInput = ({ value, onChange, disabled, style, placeholder }) => {
     return (
         <input
             type="date"
-            value={formatDateForInput(value)}
+            value={value ? formatDateForInput(value) : ''}
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled}
             max={formatDateForInput(new Date())}
@@ -120,7 +128,7 @@ export default function InscriptionPresident() {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [calculatedAge, setCalculatedAge] = useState(null);
+    const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
     const [notificationsInitializing, setNotificationsInitializing] = useState(false);
     const [clubCode, setClubCode] = useState('');
     const [clubCreated, setClubCreated] = useState(false);
@@ -154,7 +162,7 @@ export default function InscriptionPresident() {
         setShowDatePicker(true);
     };
 
-    const onDateChange = (event, selectedDate) => {
+    const onDateChange = (event: Event, selectedDate: Date | undefined) => {
         if (Platform.OS === 'android') {
             setShowDatePicker(false);
         }
@@ -167,7 +175,7 @@ export default function InscriptionPresident() {
     };
 
     // Gestion de la date pour le web
-    const handleWebDateChange = (dateString) => {
+    const handleWebDateChange = (dateString: string) => {
         if (!dateString) {
             return;
         }
@@ -178,7 +186,7 @@ export default function InscriptionPresident() {
     };
 
     // Fonction commune de validation et définition de date
-    const handleDateValidationAndSet = (selectedDate) => {
+    const handleDateValidationAndSet = (selectedDate: Date) => {
         const today = new Date();
         if (selectedDate > today) {
             Alert.alert('Erreur', 'La date de naissance ne peut pas être dans le futur.');
@@ -197,98 +205,91 @@ export default function InscriptionPresident() {
     };
 
     // 🔍 Validation complète des champs
-    const validateForm = () => {
+    const isFormValid = useMemo(() => {
         if (!email.trim()) {
-            Alert.alert('Erreur', "L'email est obligatoire.");
             return false;
         }
         if (!isValidEmail(email.trim())) {
-            Alert.alert('Erreur', "Format d'email invalide.");
             return false;
         }
         if (!password.trim()) {
-            Alert.alert('Erreur', 'Le mot de passe est obligatoire.');
             return false;
         }
         if (password.length < 6) {
-            Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères.');
             return false;
         }
         if (password !== confirmPassword) {
-            Alert.alert('Erreur', 'Les mots de passe ne correspondent pas.');
             return false;
         }
         if (!nom.trim()) {
-            Alert.alert('Erreur', 'Le nom est obligatoire.');
             return false;
         }
         if (!prenom.trim()) {
-            Alert.alert('Erreur', 'Le prénom est obligatoire.');
             return false;
         }
         if (!telephone.trim()) {
-            Alert.alert('Erreur', 'Le téléphone est obligatoire.');
             return false;
         }
         if (!isValidPhone(telephone.trim())) {
-            Alert.alert('Erreur', 'Format de téléphone invalide.');
             return false;
         }
         if (!dateNaissance) {
-            Alert.alert('Erreur', 'La date de naissance est obligatoire.');
             return false;
         }
         const today = new Date();
         if (dateNaissance >= today) {
-            Alert.alert('Erreur', "La date de naissance doit être antérieure à aujourd'hui.");
             return false;
         }
         const age = calculateAge(dateNaissance);
         if (age < 18) {
-            Alert.alert('Erreur', 'Un président doit être majeur (18 ans minimum).');
             return false;
         }
         if (!clubNom.trim()) {
-            Alert.alert('Erreur', 'Le nom du club est obligatoire.');
             return false;
         }
         if (!adresse.trim()) {
-            Alert.alert('Erreur', "L'adresse du club est obligatoire.");
             return false;
         }
         if (!ville.trim()) {
-            Alert.alert('Erreur', 'La ville est obligatoire.');
             return false;
         }
         if (!codePostal.trim()) {
-            Alert.alert('Erreur', 'Le code postal est obligatoire.');
             return false;
         }
         if (!/^\d{5}$/.test(codePostal.trim())) {
-            Alert.alert('Erreur', 'Le code postal doit contenir 5 chiffres.');
             return false;
         }
         if (!emailClub.trim()) {
-            Alert.alert('Erreur', "L'email de contact du club est obligatoire.");
             return false;
         }
         if (!isValidEmail(emailClub.trim())) {
-            Alert.alert('Erreur', "Format d'email du club invalide.");
             return false;
         }
         if (!telephoneClub.trim()) {
-            Alert.alert('Erreur', 'Le téléphone du club est obligatoire.');
             return false;
         }
         if (!isValidPhone(telephoneClub.trim())) {
-            Alert.alert('Erreur', 'Format de téléphone du club invalide.');
             return false;
         }
         return true;
-    };
+    }, [
+        adresse,
+        clubNom,
+        codePostal,
+        confirmPassword,
+        dateNaissance,
+        email,
+        emailClub,
+        nom,
+        password,
+        prenom,
+        telephone,
+        telephoneClub,
+        ville,
+    ]);
 
     // 🔔 Initialiser les notifications après inscription
-    const initializeNotifications = async (userId) => {
+    const initializeNotifications = async (userId: string) => {
         try {
             setNotificationsInitializing(true);
             const { token } = await initializeNotificationsForUser(userId);
@@ -306,7 +307,7 @@ export default function InscriptionPresident() {
 
     // 🚀 Création du club et inscription président
     const creerPresidentEtClub = async () => {
-        if (!validateForm()) {
+        if (!isFormValid) {
             return;
         }
         setLoading(true);
@@ -480,7 +481,10 @@ export default function InscriptionPresident() {
             );
         } catch (error) {
             console.error('💥 Erreur générale:', error);
-            Alert.alert('Erreur', `Une erreur inattendue s'est produite: ${error.message}`);
+            Alert.alert(
+                'Erreur',
+                `Une erreur inattendue s'est produite: ${(error as Error).message}`,
+            );
         } finally {
             setLoading(false);
         }
@@ -492,34 +496,6 @@ export default function InscriptionPresident() {
             await Clipboard.setStringAsync(clubCode);
             Alert.alert('Copié ! 📋', 'Le code club a été copié dans le presse-papier.');
         }
-    };
-
-    // 🎨 Rendu du bouton avec états de chargement
-    const renderSubmitButton = () => {
-        const isSubmitting = loading || notificationsInitializing;
-        let buttonText = 'Créer mon club';
-        if (notificationsInitializing) {
-            buttonText = 'Configuration notifications...';
-        } else if (loading) {
-            buttonText = 'Création du club...';
-        }
-        return (
-            <TouchableOpacity
-                style={[styles.button, isSubmitting && styles.buttonDisabled]}
-                onPress={creerPresidentEtClub}
-                disabled={isSubmitting}
-                activeOpacity={0.8}
-            >
-                {isSubmitting ? (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator color="#000" size="small" />
-                        <Text style={styles.loadingText}>{buttonText}</Text>
-                    </View>
-                ) : (
-                    <Text style={styles.buttonText}>{buttonText}</Text>
-                )}
-            </TouchableOpacity>
-        );
     };
 
     // Rendu du sélecteur de date adaptatif (web/mobile)
@@ -597,11 +573,7 @@ export default function InscriptionPresident() {
     };
 
     return (
-        <ScrollView
-            contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-        >
+        <>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={styles.container}
@@ -614,333 +586,345 @@ export default function InscriptionPresident() {
                     </Text>
                 </View>
 
-                {/* Formulaire */}
-                <View style={styles.form}>
-                    {/* Section Informations du club */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>
-                            <Ionicons name="trophy-outline" size={16} color="#00ff88" />{' '}
-                            Informations du club
-                        </Text>
+                <ScrollView
+                    contentContainerStyle={styles.scroll}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Formulaire */}
+                    <View style={styles.form}>
+                        {/* Section Informations du club */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>
+                                <Ionicons name="trophy-outline" size={16} color="#00ff88" />{' '}
+                                Informations du club
+                            </Text>
 
-                        {/* Nom du club */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="football-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Nom du club"
-                                placeholderTextColor="#aaa"
-                                value={clubNom}
-                                onChangeText={setClubNom}
-                                autoCapitalize="words"
-                                editable={!loading && !notificationsInitializing}
-                            />
-                        </View>
-
-                        {/* Adresse */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="location-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Adresse du club"
-                                placeholderTextColor="#aaa"
-                                value={adresse}
-                                onChangeText={setAdresse}
-                                autoCapitalize="sentences"
-                                editable={!loading && !notificationsInitializing}
-                            />
-                        </View>
-
-                        {/* Ville et Code postal (VERTICAL, OPTIMISÉ) */}
-                        <View style={{ marginBottom: 16 }}>
+                            {/* Nom du club */}
                             <View style={styles.inputGroup}>
                                 <Ionicons
-                                    name="business-outline"
+                                    name="football-outline"
                                     size={20}
                                     color="#888"
                                     style={styles.inputIcon}
                                 />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Ville"
+                                    placeholder="Nom du club"
                                     placeholderTextColor="#aaa"
-                                    value={ville}
-                                    onChangeText={setVille}
+                                    value={clubNom}
+                                    onChangeText={setClubNom}
                                     autoCapitalize="words"
                                     editable={!loading && !notificationsInitializing}
-                                    returnKeyType="next"
                                 />
                             </View>
+
+                            {/* Adresse */}
                             <View style={styles.inputGroup}>
                                 <Ionicons
-                                    name="pin-outline"
+                                    name="location-outline"
                                     size={20}
                                     color="#888"
                                     style={styles.inputIcon}
                                 />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Code postal"
+                                    placeholder="Adresse du club"
                                     placeholderTextColor="#aaa"
-                                    value={codePostal}
-                                    onChangeText={setCodePostal}
-                                    keyboardType="numeric"
-                                    maxLength={5}
+                                    value={adresse}
+                                    onChangeText={setAdresse}
+                                    autoCapitalize="sentences"
                                     editable={!loading && !notificationsInitializing}
-                                    returnKeyType="done"
+                                />
+                            </View>
+
+                            {/* Ville et Code postal (VERTICAL, OPTIMISÉ) */}
+                            <View style={{ marginBottom: 16 }}>
+                                <View style={styles.inputGroup}>
+                                    <Ionicons
+                                        name="business-outline"
+                                        size={20}
+                                        color="#888"
+                                        style={styles.inputIcon}
+                                    />
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Ville"
+                                        placeholderTextColor="#aaa"
+                                        value={ville}
+                                        onChangeText={setVille}
+                                        autoCapitalize="words"
+                                        editable={!loading && !notificationsInitializing}
+                                        returnKeyType="next"
+                                    />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Ionicons
+                                        name="pin-outline"
+                                        size={20}
+                                        color="#888"
+                                        style={styles.inputIcon}
+                                    />
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Code postal"
+                                        placeholderTextColor="#aaa"
+                                        value={codePostal}
+                                        onChangeText={setCodePostal}
+                                        keyboardType="numeric"
+                                        maxLength={5}
+                                        editable={!loading && !notificationsInitializing}
+                                        returnKeyType="done"
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Email du club */}
+                            <View style={styles.inputGroup}>
+                                <Ionicons
+                                    name="mail-outline"
+                                    size={20}
+                                    color="#888"
+                                    style={styles.inputIcon}
+                                />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Email de contact du club"
+                                    placeholderTextColor="#aaa"
+                                    value={emailClub}
+                                    onChangeText={setEmailClub}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                    editable={!loading && !notificationsInitializing}
+                                />
+                            </View>
+
+                            {/* Téléphone du club */}
+                            <View style={styles.inputGroup}>
+                                <Ionicons
+                                    name="call-outline"
+                                    size={20}
+                                    color="#888"
+                                    style={styles.inputIcon}
+                                />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Téléphone du club"
+                                    placeholderTextColor="#aaa"
+                                    value={telephoneClub}
+                                    onChangeText={setTelephoneClub}
+                                    keyboardType="phone-pad"
+                                    editable={!loading && !notificationsInitializing}
                                 />
                             </View>
                         </View>
 
-                        {/* Email du club */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="mail-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Email de contact du club"
-                                placeholderTextColor="#aaa"
-                                value={emailClub}
-                                onChangeText={setEmailClub}
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                                editable={!loading && !notificationsInitializing}
-                            />
-                        </View>
+                        {/* Section Informations personnelles */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>
+                                <Ionicons name="person-outline" size={16} color="#00ff88" /> Vos
+                                informations de président
+                            </Text>
 
-                        {/* Téléphone du club */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="call-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Téléphone du club"
-                                placeholderTextColor="#aaa"
-                                value={telephoneClub}
-                                onChangeText={setTelephoneClub}
-                                keyboardType="phone-pad"
-                                editable={!loading && !notificationsInitializing}
-                            />
-                        </View>
-                    </View>
-
-                    {/* Section Informations personnelles */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>
-                            <Ionicons name="person-outline" size={16} color="#00ff88" /> Vos
-                            informations de président
-                        </Text>
-
-                        {/* Email personnel */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="mail-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Votre email personnel"
-                                placeholderTextColor="#aaa"
-                                value={email}
-                                onChangeText={setEmail}
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                                textContentType="emailAddress"
-                                editable={!loading && !notificationsInitializing}
-                            />
-                        </View>
-
-                        {/* Mot de passe */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="lock-closed-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={[styles.input, { paddingRight: 50 }]}
-                                placeholder="Mot de passe (min. 6 caractères)"
-                                placeholderTextColor="#aaa"
-                                secureTextEntry={!showPassword}
-                                value={password}
-                                onChangeText={setPassword}
-                                textContentType="newPassword"
-                                editable={!loading && !notificationsInitializing}
-                            />
-                            <TouchableOpacity
-                                style={styles.eyeButton}
-                                onPress={() => setShowPassword(!showPassword)}
-                                disabled={loading || notificationsInitializing}
-                            >
+                            {/* Email personnel */}
+                            <View style={styles.inputGroup}>
                                 <Ionicons
-                                    name={showPassword ? 'eye' : 'eye-off'}
-                                    size={22}
-                                    color="#888"
-                                />
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Confirmation mot de passe */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="lock-closed-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={[styles.input, { paddingRight: 50 }]}
-                                placeholder="Confirmer le mot de passe"
-                                placeholderTextColor="#aaa"
-                                secureTextEntry={!showConfirmPassword}
-                                value={confirmPassword}
-                                onChangeText={setConfirmPassword}
-                                textContentType="newPassword"
-                                editable={!loading && !notificationsInitializing}
-                            />
-                            <TouchableOpacity
-                                style={styles.eyeButton}
-                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                                disabled={loading || notificationsInitializing}
-                            >
-                                <Ionicons
-                                    name={showConfirmPassword ? 'eye' : 'eye-off'}
-                                    size={22}
-                                    color="#888"
-                                />
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Nom */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="person-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Nom"
-                                placeholderTextColor="#aaa"
-                                value={nom}
-                                onChangeText={setNom}
-                                textContentType="familyName"
-                                editable={!loading && !notificationsInitializing}
-                            />
-                        </View>
-
-                        {/* Prénom */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="person-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Prénom"
-                                placeholderTextColor="#aaa"
-                                value={prenom}
-                                onChangeText={setPrenom}
-                                textContentType="givenName"
-                                editable={!loading && !notificationsInitializing}
-                            />
-                        </View>
-
-                        {/* Téléphone personnel */}
-                        <View style={styles.inputGroup}>
-                            <Ionicons
-                                name="call-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Votre téléphone personnel"
-                                placeholderTextColor="#aaa"
-                                value={telephone}
-                                onChangeText={setTelephone}
-                                keyboardType="phone-pad"
-                                textContentType="telephoneNumber"
-                                editable={!loading && !notificationsInitializing}
-                            />
-                        </View>
-
-                        {/* Date de naissance */}
-                        {renderDatePicker()}
-
-                        {/* Indicateur âge */}
-                        {calculatedAge !== null && (
-                            <View style={styles.ageIndicator}>
-                                <Ionicons
-                                    name="checkmark-circle-outline"
+                                    name="mail-outline"
                                     size={20}
-                                    color="#00ff88"
+                                    color="#888"
+                                    style={styles.inputIcon}
                                 />
-                                <Text style={[styles.ageText, { color: '#00ff88' }]}>
-                                    {calculatedAge} ans - Âge validé pour diriger un club
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Votre email personnel"
+                                    placeholderTextColor="#aaa"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                    textContentType="emailAddress"
+                                    editable={!loading && !notificationsInitializing}
+                                />
+                            </View>
+
+                            {/* Mot de passe */}
+                            <View style={styles.inputGroup}>
+                                <Ionicons
+                                    name="lock-closed-outline"
+                                    size={20}
+                                    color="#888"
+                                    style={styles.inputIcon}
+                                />
+                                <TextInput
+                                    style={[styles.input, { paddingRight: 50 }]}
+                                    placeholder="Mot de passe (min. 6 caractères)"
+                                    placeholderTextColor="#aaa"
+                                    secureTextEntry={!showPassword}
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    textContentType="newPassword"
+                                    editable={!loading && !notificationsInitializing}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeButton}
+                                    onPress={() => setShowPassword(!showPassword)}
+                                    disabled={loading || notificationsInitializing}
+                                >
+                                    <Ionicons
+                                        name={showPassword ? 'eye' : 'eye-off'}
+                                        size={22}
+                                        color="#888"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Confirmation mot de passe */}
+                            <View style={styles.inputGroup}>
+                                <Ionicons
+                                    name="lock-closed-outline"
+                                    size={20}
+                                    color="#888"
+                                    style={styles.inputIcon}
+                                />
+                                <TextInput
+                                    style={[styles.input, { paddingRight: 50 }]}
+                                    placeholder="Confirmer le mot de passe"
+                                    placeholderTextColor="#aaa"
+                                    secureTextEntry={!showConfirmPassword}
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    textContentType="newPassword"
+                                    editable={!loading && !notificationsInitializing}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeButton}
+                                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    disabled={loading || notificationsInitializing}
+                                >
+                                    <Ionicons
+                                        name={showConfirmPassword ? 'eye' : 'eye-off'}
+                                        size={22}
+                                        color="#888"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Nom */}
+                            <View style={styles.inputGroup}>
+                                <Ionicons
+                                    name="person-outline"
+                                    size={20}
+                                    color="#888"
+                                    style={styles.inputIcon}
+                                />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Nom"
+                                    placeholderTextColor="#aaa"
+                                    value={nom}
+                                    onChangeText={setNom}
+                                    textContentType="familyName"
+                                    editable={!loading && !notificationsInitializing}
+                                />
+                            </View>
+
+                            {/* Prénom */}
+                            <View style={styles.inputGroup}>
+                                <Ionicons
+                                    name="person-outline"
+                                    size={20}
+                                    color="#888"
+                                    style={styles.inputIcon}
+                                />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Prénom"
+                                    placeholderTextColor="#aaa"
+                                    value={prenom}
+                                    onChangeText={setPrenom}
+                                    textContentType="givenName"
+                                    editable={!loading && !notificationsInitializing}
+                                />
+                            </View>
+
+                            {/* Téléphone personnel */}
+                            <View style={styles.inputGroup}>
+                                <Ionicons
+                                    name="call-outline"
+                                    size={20}
+                                    color="#888"
+                                    style={styles.inputIcon}
+                                />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Votre téléphone personnel"
+                                    placeholderTextColor="#aaa"
+                                    value={telephone}
+                                    onChangeText={setTelephone}
+                                    keyboardType="phone-pad"
+                                    textContentType="telephoneNumber"
+                                    editable={!loading && !notificationsInitializing}
+                                />
+                            </View>
+
+                            {/* Date de naissance */}
+                            {renderDatePicker()}
+
+                            {/* Indicateur âge */}
+                            {calculatedAge !== null && (
+                                <View style={styles.ageIndicator}>
+                                    <Ionicons
+                                        name="checkmark-circle-outline"
+                                        size={20}
+                                        color="#00ff88"
+                                    />
+                                    <Text style={[styles.ageText, { color: '#00ff88' }]}>
+                                        {calculatedAge} ans - Âge validé pour diriger un club
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Code club généré */}
+                        {clubCreated && clubCode && (
+                            <View style={styles.clubCodeSection}>
+                                <Text style={styles.clubCodeTitle}>
+                                    <Ionicons name="key-outline" size={16} color="#00ff88" /> Votre
+                                    code club
+                                </Text>
+                                <View style={styles.clubCodeBox}>
+                                    <Text selectable style={styles.clubCode}>
+                                        {clubCode}
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.copyButton}
+                                        onPress={copierCodeClub}
+                                    >
+                                        <Ionicons name="copy-outline" size={18} color="#000" />
+                                        <Text style={styles.copyButtonText}>Copier</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <Text style={styles.clubCodeInfo}>
+                                    Partagez ce code avec vos joueurs et coachs pour qu&apos;ils
+                                    puissent rejoindre le club. Vous pourrez configurer les autres
+                                    informations (site web, réseaux sociaux, etc.) dans votre
+                                    dashboard.
                                 </Text>
                             </View>
                         )}
                     </View>
-
-                    {/* Bouton de création */}
-                    {renderSubmitButton()}
-
-                    {/* Code club généré */}
-                    {clubCreated && clubCode && (
-                        <View style={styles.clubCodeSection}>
-                            <Text style={styles.clubCodeTitle}>
-                                <Ionicons name="key-outline" size={16} color="#00ff88" /> Votre code
-                                club
-                            </Text>
-                            <View style={styles.clubCodeBox}>
-                                <Text selectable style={styles.clubCode}>
-                                    {clubCode}
-                                </Text>
-                                <TouchableOpacity
-                                    style={styles.copyButton}
-                                    onPress={copierCodeClub}
-                                >
-                                    <Ionicons name="copy-outline" size={18} color="#000" />
-                                    <Text style={styles.copyButtonText}>Copier</Text>
-                                </TouchableOpacity>
-                            </View>
-                            <Text style={styles.clubCodeInfo}>
-                                Partagez ce code avec vos joueurs et coachs pour qu&apos;ils
-                                puissent rejoindre le club. Vous pourrez configurer les autres
-                                informations (site web, réseaux sociaux, etc.) dans votre dashboard.
-                            </Text>
-                        </View>
-                    )}
-                </View>
+                </ScrollView>
             </KeyboardAvoidingView>
-            <ReturnButton />
-        </ScrollView>
+            <Button
+                style={{ marginTop: 20 }}
+                text="Créer mon club"
+                onPress={creerPresidentEtClub}
+                loading={loading}
+                disabled={!isFormValid}
+                color="primary"
+            />
+            <ReturnButton forceBackRoute="/auth/login-club" />
+        </>
     );
 }
 
@@ -948,16 +932,15 @@ const styles = StyleSheet.create({
     scroll: {
         flexGrow: 1,
         backgroundColor: '#121212',
-        paddingVertical: 40,
-        paddingHorizontal: 24,
     },
     container: {
+        width: '100%',
         flex: 1,
         justifyContent: 'center',
     },
     header: {
         alignItems: 'center',
-        marginBottom: 30,
+        marginBottom: 12,
     },
     logo: {
         width: 80,
@@ -979,19 +962,14 @@ const styles = StyleSheet.create({
     form: {
         backgroundColor: 'rgba(30,30,30,0.85)',
         borderRadius: 18,
-        padding: 24,
+        padding: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
         shadowRadius: 16,
         elevation: 2,
     },
     section: {
-        marginBottom: 24,
-        backgroundColor: '#1a1a1a',
-        padding: 16,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#333',
+        marginBottom: 12,
     },
     sectionTitle: {
         color: '#00ff88',
@@ -1082,7 +1060,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         borderRadius: 8,
-        marginBottom: 16,
         gap: 8,
         borderLeftWidth: 3,
         borderLeftColor: '#00ff88',
@@ -1090,22 +1067,6 @@ const styles = StyleSheet.create({
     ageText: {
         fontSize: 14,
         fontWeight: '600',
-    },
-    button: {
-        backgroundColor: '#00ff88',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        marginTop: 8,
-        marginBottom: 20,
-    },
-    buttonDisabled: {
-        backgroundColor: '#555',
-    },
-    buttonText: {
-        color: '#000',
-        fontWeight: '700',
-        fontSize: 16,
     },
     loadingContainer: {
         flexDirection: 'row',

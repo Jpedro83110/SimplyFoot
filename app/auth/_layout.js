@@ -1,19 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { isAdmin } from '@/lib/authGuard';
 import { useSessionReady } from '../../lib/useSessionReady';
 import * as Linking from 'expo-linking';
-import { useSession } from '@/hooks/useSession';
 
 export default function AuthLayout() {
     const router = useRouter();
     const { session, checking } = useSessionReady();
     const [redirecting, setRedirecting] = useState(false);
     const segments = useSegments();
-
-    const { signOut } = useSession();
 
     // 🔗 Interception des liens Supabase (type=recovery)
     useEffect(() => {
@@ -133,10 +130,9 @@ export default function AuthLayout() {
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
+        height: '100%',
         backgroundColor: '#121212',
         alignItems: 'center',
-        justifyContent: 'center',
         padding: 20,
     },
     loadingContainer: {
@@ -152,6 +148,7 @@ const styles = StyleSheet.create({
         marginBottom: 30,
     },
     logo: {
+        marginTop: '20%',
         width: 100,
         height: 100,
         marginBottom: 20,

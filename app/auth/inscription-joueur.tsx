@@ -34,10 +34,12 @@ function isValidEmail(email: string) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 }
+
 function isValidPhone(phone: string) {
     const phoneRegex = /^[0-9+\s\-\.()]{8,15}$/;
     return phoneRegex.test(phone.replace(/\s/g, ''));
 }
+
 function formatDateForInput(date: Date) {
     if (!date) {
         return '';
@@ -47,6 +49,7 @@ function formatDateForInput(date: Date) {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
+
 function parseDateFromInput(dateString: string) {
     if (!dateString) {
         return null;
@@ -121,7 +124,7 @@ export default function InscriptionJoueur() {
     const [prenomParent, setPrenomParent] = useState('');
     const [telephoneParent, setTelephoneParent] = useState('');
 
-    const [dateNaissance, setDateNaissance] = useState<Date>();
+    const [dateNaissance, setDateNaissance] = useState<Date>(new Date(2020, 0, 1));
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [waiverAccepted, setWaiverAccepted] = useState<boolean | null>(null);
 
@@ -190,6 +193,7 @@ export default function InscriptionJoueur() {
             setShowDatePicker(true);
         }
     };
+
     const onDateChange = (event: Event, selectedDate: Date | undefined) => {
         // FIXME pas sûr des types
         if (Platform.OS !== 'web') {
@@ -202,6 +206,7 @@ export default function InscriptionJoueur() {
             handleDateValidationAndSet(selectedDate);
         }
     };
+
     const handleWebDateChange = (dateString: string) => {
         if (!dateString) {
             return;
@@ -211,6 +216,7 @@ export default function InscriptionJoueur() {
             handleDateValidationAndSet(selectedDate);
         }
     };
+
     const handleDateValidationAndSet = (selectedDate: Date) => {
         const today = new Date();
         if (selectedDate > today) {
@@ -746,25 +752,16 @@ export default function InscriptionJoueur() {
                         )}
                     </View>
                 </ScrollView>
-                <View
-                    style={{
-                        width: '100%',
-                        marginTop: 50,
-                        alignItems: 'center',
-                        flex: 1,
-                        justifyContent: 'center',
-                    }}
-                >
-                    <Button
-                        text="Créer mon compte"
-                        onPress={handleInscription}
-                        loading={loading}
-                        disabled={!isFormValid}
-                        color="primary"
-                    />
-                </View>
             </KeyboardAvoidingView>
-            <ReturnButton />
+            <Button
+                style={{ marginTop: 20 }}
+                text="Créer mon compte"
+                onPress={handleInscription}
+                loading={loading}
+                disabled={!isFormValid}
+                color="primary"
+            />
+            <ReturnButton forceBackRoute="/auth/login-joueur" />
         </>
     );
 }
@@ -786,7 +783,7 @@ const styles = StyleSheet.create({
     form: {
         backgroundColor: 'rgba(30,30,30,0.85)',
         borderRadius: 18,
-        padding: 24,
+        padding: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
         shadowRadius: 16,
@@ -859,7 +856,7 @@ const styles = StyleSheet.create({
     ageIndicatorMajor: { borderLeftWidth: 3, borderLeftColor: '#00ff88' },
     ageText: { fontSize: 14, fontWeight: '600' },
     waiverBlock: {
-        marginBottom: 24,
+        marginBottom: 6,
         backgroundColor: '#1a1a1a',
         padding: 16,
         borderRadius: 12,
@@ -895,16 +892,6 @@ const styles = StyleSheet.create({
     waiverButtonSelected: { backgroundColor: '#00ff88', borderColor: '#00ff88' },
     waiverButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
     waiverButtonTextSelected: { color: '#121212' },
-    button: {
-        backgroundColor: '#00ff88',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        marginTop: 8,
-        marginBottom: 20,
-    },
-    buttonDisabled: { backgroundColor: '#555' },
-    buttonText: { color: '#000', fontWeight: '700', fontSize: 16 },
     loadingContainer: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     loadingText: { color: '#000', fontWeight: '600', fontSize: 14 },
     backLink: { alignItems: 'center' },

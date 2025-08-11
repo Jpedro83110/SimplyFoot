@@ -56,7 +56,6 @@ export default function LoginClub() {
             await signIn(email, password);
         } catch (error) {
             console.log('Erreur générale', error);
-            Alert.alert('Erreur', 'Problème de connexion, réessaie plus tard.');
         } finally {
             setLoading(false);
         }
@@ -129,7 +128,7 @@ export default function LoginClub() {
                     color="secondary"
                 />
 
-                <ReturnButton />
+                <ReturnButton forceBackRoute="/" />
             </ScrollView>
         </KeyboardAvoidingView>
     );
