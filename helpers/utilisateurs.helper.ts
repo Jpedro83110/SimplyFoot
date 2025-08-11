@@ -9,7 +9,7 @@ export const getUtilisateurById = async (args: { utilisateurId: string }) => {
     const { data, error } = await supabase
         .from('utilisateurs')
         .select(
-            'id, email, nom, prenom, role, club_id, joueur_id, date_creation, date_naissance, telephone',
+            'id, email, nom, prenom, role, club_id, joueur_id, date_creation, date_naissance, telephone, expo_push_token',
         )
         .eq('id', utilisateurId)
         .single();
