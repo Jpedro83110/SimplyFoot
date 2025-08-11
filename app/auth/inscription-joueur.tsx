@@ -8,11 +8,12 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
+    Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
-import { setupNotifications, initializeNotificationsForUser } from '../../lib/notifications';
-import { formatDateToISO, formatDateForDisplay, calculateAge } from '../../lib/formatDate';
+import { supabase } from '@/lib/supabase';
+import { setupNotifications, initializeNotificationsForUser } from '@/lib/notifications';
+import { formatDateToISO, formatDateForDisplay, calculateAge } from '@/lib/formatDate';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import Input from '@/components/atoms/Input';
@@ -411,9 +412,11 @@ export default function InscriptionJoueur() {
                 style={styles.container}
             >
                 <View style={styles.header}>
+                    <Image source={require('../../assets/logo-v2.png')} style={styles.logo} />
                     <Text style={styles.title}>Créer un compte Joueur</Text>
                     <Text style={styles.subtitle}>Rejoignez votre club sur Simply Foot</Text>
                 </View>
+
                 <ScrollView
                     contentContainerStyle={styles.scroll}
                     keyboardShouldPersistTaps="handled"
@@ -761,17 +764,29 @@ export default function InscriptionJoueur() {
                 disabled={!isFormValid}
                 color="primary"
             />
-            <ReturnButton forceBackRoute="/auth/login-joueur" />
+            <ReturnButton style={{ marginBottom: 24 }} forceBackRoute="/auth/login-joueur" />
         </>
     );
 }
 
 // Styles : exactement les tiens d'origine + block équipe
 const styles = StyleSheet.create({
-    scroll: { flexGrow: 1, backgroundColor: '#121212' },
-    container: { flex: 1, justifyContent: 'center' },
-    header: { alignItems: 'center', marginBottom: 30 },
-    logo: { width: 80, height: 80, marginBottom: 16 },
+    scroll: {
+        flexGrow: 1,
+    },
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    header: {
+        alignItems: 'center',
+        marginTop: 24,
+        marginBottom: 24,
+    },
+    logo: {
+        width: 80,
+        height: 80,
+    },
     title: {
         fontSize: 28,
         color: '#00ff88',
@@ -783,6 +798,8 @@ const styles = StyleSheet.create({
     form: {
         backgroundColor: 'rgba(30,30,30,0.85)',
         borderRadius: 18,
+        marginLeft: 12,
+        marginRight: 12,
         padding: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },

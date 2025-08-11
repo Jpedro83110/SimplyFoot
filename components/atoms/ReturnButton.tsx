@@ -1,14 +1,15 @@
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { FC } from 'react';
 
 interface ReturnButtonProps {
+    style?: ViewStyle;
     defaultBackRoute?: string;
     forceBackRoute?: string;
 }
 
-const ReturnButton: FC<ReturnButtonProps> = ({ defaultBackRoute, forceBackRoute }) => {
+const ReturnButton: FC<ReturnButtonProps> = ({ style, defaultBackRoute, forceBackRoute }) => {
     const router = useRouter();
 
     const goBack = () => {
@@ -22,7 +23,7 @@ const ReturnButton: FC<ReturnButtonProps> = ({ defaultBackRoute, forceBackRoute 
     };
 
     return (
-        <TouchableOpacity onPress={goBack} style={styles.button}>
+        <TouchableOpacity onPress={goBack} style={[styles.button, style]}>
             <Ionicons name="arrow-back" size={20} color="#fff" style={{ marginRight: 8 }} />
             <Text style={styles.buttonText}>Retour</Text>
         </TouchableOpacity>

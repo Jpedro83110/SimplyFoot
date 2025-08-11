@@ -116,7 +116,7 @@ const PrivateGlobalLayout: FC = () => {
         <>
             <StatusBar barStyle="light-content" />
             <WebSocketManager />
-            <View style={styles.overlay}>
+            <View style={styles.container}>
                 {role === 'admin' && <Text style={styles.badge}>👑 MODE ADMIN</Text>}
                 <Slot />
             </View>
@@ -137,10 +137,7 @@ export default function GlobalLayout() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backgroundColor: '#121212',
     },
     badge: {
         color: '#00ff88',

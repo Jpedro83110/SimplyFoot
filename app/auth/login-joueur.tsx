@@ -10,7 +10,7 @@ import {
     Platform,
     StatusBar,
     Switch,
-    ScrollView,
+    Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -80,12 +80,10 @@ export default function LoginJoueur() {
     };
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.container}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <StatusBar barStyle="light-content" />
-            <ScrollView keyboardShouldPersistTaps="handled">
+            <View style={styles.container}>
+                <Image source={require('../../assets/logo-v2.png')} style={styles.logo} />
                 <Text style={styles.title}>Connexion Joueur / Parent</Text>
                 <TextInput
                     style={styles.input}
@@ -151,15 +149,21 @@ export default function LoginJoueur() {
                 />
 
                 <ReturnButton forceBackRoute="/" />
-            </ScrollView>
+            </View>
         </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#121212',
+        flex: 1,
         justifyContent: 'center',
+        alignItems: 'center',
+    },
+    logo: {
+        width: 100,
+        height: 100,
+        marginBottom: 20,
     },
     title: {
         fontSize: 24,
@@ -169,7 +173,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     input: {
-        width: '100%',
+        maxWidth: '50%', // FIXME: règle le souci de taille variable quand il y a beaucoup de caractère, je ne sais pas pourquoi
         backgroundColor: '#1e1e1e',
         color: '#fff',
         borderRadius: 10,

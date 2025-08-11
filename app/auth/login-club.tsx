@@ -9,7 +9,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     StatusBar,
-    ScrollView,
+    Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -64,10 +64,8 @@ export default function LoginClub() {
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <StatusBar barStyle="light-content" />
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-            >
+            <View style={styles.container}>
+                <Image source={require('../../assets/logo-v2.png')} style={styles.logo} />
                 <Text style={styles.title}>Connexion Club</Text>
                 <TextInput
                     style={styles.input}
@@ -129,19 +127,21 @@ export default function LoginClub() {
                 />
 
                 <ReturnButton forceBackRoute="/" />
-            </ScrollView>
+            </View>
         </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#121212',
-        justifyContent: 'center',
-    },
-    scrollContent: {
+        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    logo: {
+        width: 100,
+        height: 100,
+        marginBottom: 20,
     },
     title: {
         fontSize: 24,
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     input: {
-        width: '100%',
+        maxWidth: '50%', // FIXME: règle le souci de taille variable quand il y a beaucoup de caractère, je ne sais pas pourquoi
         backgroundColor: '#1e1e1e',
         color: '#fff',
         borderRadius: 10,
@@ -170,21 +170,6 @@ const styles = StyleSheet.create({
         padding: 5,
         zIndex: 2,
     },
-    button: {
-        backgroundColor: '#00ff88',
-        paddingVertical: 14,
-        borderRadius: 10,
-        alignItems: 'center',
-        marginTop: 8,
-        width: '100%',
-        maxWidth: 400,
-        elevation: 2,
-    },
-    buttonText: {
-        color: '#000',
-        fontWeight: '700',
-        fontSize: 16,
-    },
     forgotContainer: {
         width: '100%',
         alignItems: 'flex-end',
@@ -195,13 +180,6 @@ const styles = StyleSheet.create({
         marginTop: 18,
         textAlign: 'right',
         textDecorationLine: 'underline',
-    },
-    switchText: {
-        color: '#00ff88',
-        marginTop: 30,
-        textDecorationLine: 'underline',
-        fontSize: 14,
-        textAlign: 'center',
     },
     separator: {
         height: 1,

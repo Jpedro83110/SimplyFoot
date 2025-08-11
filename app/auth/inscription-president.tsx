@@ -9,6 +9,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
+    Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -578,8 +579,8 @@ export default function InscriptionPresident() {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={styles.container}
             >
-                {/* Header avec logo */}
                 <View style={styles.header}>
+                    <Image source={require('../../assets/logo-v2.png')} style={styles.logo} />
                     <Text style={styles.title}>Créer votre club</Text>
                     <Text style={styles.subtitle}>
                         Créez votre club et commencez l&apos;aventure
@@ -923,7 +924,7 @@ export default function InscriptionPresident() {
                 disabled={!isFormValid}
                 color="primary"
             />
-            <ReturnButton forceBackRoute="/auth/login-club" />
+            <ReturnButton style={{ marginBottom: 24 }} forceBackRoute="/auth/login-club" />
         </>
     );
 }
@@ -931,7 +932,6 @@ export default function InscriptionPresident() {
 const styles = StyleSheet.create({
     scroll: {
         flexGrow: 1,
-        backgroundColor: '#121212',
     },
     container: {
         width: '100%',
@@ -940,12 +940,12 @@ const styles = StyleSheet.create({
     },
     header: {
         alignItems: 'center',
-        marginBottom: 12,
+        marginTop: 24,
+        marginBottom: 24,
     },
     logo: {
         width: 80,
         height: 80,
-        marginBottom: 16,
     },
     title: {
         fontSize: 28,
@@ -962,6 +962,8 @@ const styles = StyleSheet.create({
     form: {
         backgroundColor: 'rgba(30,30,30,0.85)',
         borderRadius: 18,
+        marginLeft: 12,
+        marginRight: 12,
         padding: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
