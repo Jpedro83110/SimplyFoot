@@ -23,7 +23,7 @@ Notifications.setNotificationHandler({
 });
 
 const PrivateGlobalLayout: FC = () => {
-    const [role, setRole] = useState(null);
+    const [role, setRole] = useState<string | null>(null);
     const [, setLoading] = useState(true); // FIXME
 
     useEffect(() => {
@@ -102,7 +102,7 @@ const PrivateGlobalLayout: FC = () => {
             if (userId && expoToken) {
                 await supabase
                     .from('utilisateurs')
-                    .update({ expo_token: expoToken })
+                    .update({ expo_push_token: expoToken })
                     .eq('id', userId);
             }
         };
