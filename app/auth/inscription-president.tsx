@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, FC } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -14,21 +14,12 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '../../lib/notifications';
-import { formatDateForDisplay, calculateAge } from '../../lib/formatDate';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import * as Clipboard from 'expo-clipboard';
 import Button from '@/components/atoms/Button';
-
-// Import conditionnel du DateTimePicker (seulement pour mobile)
-let DateTimePicker: any = null;
-if (Platform.OS !== 'web') {
-    try {
-        DateTimePicker = require('@react-native-community/datetimepicker').default;
-    } catch (error) {
-        console.warn('DateTimePicker non disponible:', error);
-    }
-}
+import InputDate from '@/components/molecules/InputDate';
+import { calculateAge } from '@/utils/date.util';
 
 // Validation email
 function isValidEmail(email: string) {
@@ -42,68 +33,6 @@ function isValidPhone(phone: string) {
     return phoneRegex.test(phone.replace(/\s/g, ''));
 }
 
-// Fonction pour formater la date en YYYY-MM-DD pour l'input HTML
-function formatDateForInput(date: Date) {
-    if (!date) {
-        return '';
-    }
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-// Fonction pour parser une date depuis un input HTML (YYYY-MM-DD)
-function parseDateFromInput(dateString: string) {
-    if (!dateString) {
-        return null;
-    }
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day);
-}
-
-interface WebDateInputProps {
-    value: Date | undefined;
-    onChange: (dateString: string) => void;
-    disabled?: boolean;
-    style?: React.CSSProperties;
-    placeholder?: string;
-}
-
-// Composant d'input date spécifique pour le web
-const WebDateInput: FC<WebDateInputProps> = ({ value, onChange, disabled, style, placeholder }) => {
-    if (Platform.OS !== 'web') {
-        return null;
-    }
-
-    return (
-        <input
-            type="date"
-            value={value ? formatDateForInput(value) : ''}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={disabled}
-            max={formatDateForInput(new Date())}
-            min={formatDateForInput(new Date(1940, 0, 1))}
-            style={{
-                flex: 1,
-                backgroundColor: '#1e1e1e',
-                color: '#fff',
-                border: '1px solid #333',
-                borderRadius: '10px',
-                paddingTop: '14px',
-                paddingBottom: '14px',
-                paddingLeft: '45px',
-                paddingRight: '18px',
-                fontSize: '16px',
-                outline: 'none',
-                fontFamily: 'inherit',
-                ...style,
-            }}
-            placeholder={placeholder}
-        />
-    );
-};
-
 export default function InscriptionPresident() {
     const router = useRouter();
     const [email, setEmail] = useState('');
@@ -115,7 +44,6 @@ export default function InscriptionPresident() {
 
     // Date de naissance avec valeur par défaut (45 ans)
     const [dateNaissance, setDateNaissance] = useState(new Date(1979, 0, 1));
-    const [showDatePicker, setShowDatePicker] = useState(false);
 
     // Informations du club
     const [clubNom, setClubNom] = useState('');
@@ -155,45 +83,17 @@ export default function InscriptionPresident() {
         return `SF-${code}`;
     }
 
-    // Gestion du DatePicker pour mobile
-    const handleDatePickerOpen = () => {
-        if (Platform.OS === 'web') {
+    const handleDateChange = (date?: Date) => {
+        if (!date) {
             return;
         }
-        setShowDatePicker(true);
-    };
 
-    const onDateChange = (event: Event, selectedDate: Date | undefined) => {
-        if (Platform.OS === 'android') {
-            setShowDatePicker(false);
-        }
-        if (event.type === 'dismissed') {
-            return;
-        }
-        if (selectedDate) {
-            handleDateValidationAndSet(selectedDate);
-        }
-    };
-
-    // Gestion de la date pour le web
-    const handleWebDateChange = (dateString: string) => {
-        if (!dateString) {
-            return;
-        }
-        const selectedDate = parseDateFromInput(dateString);
-        if (selectedDate) {
-            handleDateValidationAndSet(selectedDate);
-        }
-    };
-
-    // Fonction commune de validation et définition de date
-    const handleDateValidationAndSet = (selectedDate: Date) => {
         const today = new Date();
-        if (selectedDate > today) {
+        if (date > today) {
             Alert.alert('Erreur', 'La date de naissance ne peut pas être dans le futur.');
             return;
         }
-        const age = calculateAge(selectedDate);
+        const age = calculateAge(date);
         if (age < 18) {
             Alert.alert('Erreur', 'Un président doit être majeur (18 ans minimum).');
             return;
@@ -202,7 +102,7 @@ export default function InscriptionPresident() {
             Alert.alert('Erreur', 'Âge non valide (plus de 100 ans).');
             return;
         }
-        setDateNaissance(selectedDate);
+        setDateNaissance(date);
     };
 
     // 🔍 Validation complète des champs
@@ -311,6 +211,7 @@ export default function InscriptionPresident() {
         if (!isFormValid) {
             return;
         }
+
         setLoading(true);
         try {
             console.log("🚀 Début de l'inscription président...");
@@ -496,80 +397,6 @@ export default function InscriptionPresident() {
         if (clubCode) {
             await Clipboard.setStringAsync(clubCode);
             Alert.alert('Copié ! 📋', 'Le code club a été copié dans le presse-papier.');
-        }
-    };
-
-    // Rendu du sélecteur de date adaptatif (web/mobile)
-    const renderDatePicker = () => {
-        if (Platform.OS === 'web') {
-            return (
-                <View style={styles.inputGroup}>
-                    <Ionicons
-                        name="calendar-outline"
-                        size={20}
-                        color="#888"
-                        style={styles.inputIcon}
-                    />
-                    <WebDateInput
-                        value={dateNaissance}
-                        onChange={handleWebDateChange}
-                        disabled={loading || notificationsInitializing}
-                        placeholder="Date de naissance"
-                    />
-                </View>
-            );
-        } else {
-            return (
-                <>
-                    <View style={styles.inputGroup}>
-                        <Ionicons
-                            name="calendar-outline"
-                            size={20}
-                            color="#888"
-                            style={styles.inputIcon}
-                        />
-                        <TouchableOpacity
-                            style={styles.datePickerButton}
-                            onPress={handleDatePickerOpen}
-                            disabled={loading || notificationsInitializing}
-                            activeOpacity={0.7}
-                        >
-                            <Text
-                                style={[
-                                    styles.datePickerText,
-                                    !dateNaissance && styles.datePickerPlaceholder,
-                                ]}
-                            >
-                                {dateNaissance
-                                    ? formatDateForDisplay(dateNaissance)
-                                    : 'Sélectionner la date de naissance'}
-                            </Text>
-                            <Ionicons name="chevron-down" size={20} color="#888" />
-                        </TouchableOpacity>
-                    </View>
-                    {showDatePicker && DateTimePicker && (
-                        <View style={styles.datePickerContainer}>
-                            <DateTimePicker
-                                value={dateNaissance}
-                                mode="date"
-                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                onChange={onDateChange}
-                                maximumDate={new Date()}
-                                minimumDate={new Date(1940, 0, 1)}
-                                style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
-                            />
-                            {Platform.OS === 'ios' && (
-                                <TouchableOpacity
-                                    style={styles.closeDatePickerButton}
-                                    onPress={() => setShowDatePicker(false)}
-                                >
-                                    <Text style={styles.closeDatePickerText}>Confirmer</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    )}
-                </>
-            );
         }
     };
 
@@ -869,7 +696,12 @@ export default function InscriptionPresident() {
                             </View>
 
                             {/* Date de naissance */}
-                            {renderDatePicker()}
+                            <InputDate
+                                value={dateNaissance}
+                                onChange={handleDateChange}
+                                placeholder="Date de naissance"
+                                maximumDate={new Date()}
+                            />
 
                             {/* Indicateur âge */}
                             {calculatedAge !== null && (

@@ -1,7 +1,7 @@
-import { calculateAge } from '@/utils/date.util';
+import { calculateAgeFromString } from '@/utils/date.util';
 
 describe('date utilities', () => {
-    describe('calculateAge', () => {
+    describe('calculateAgeFromString', () => {
         it('should return the correct age with an YYYY-MM-DD date format', () => {
             const now = new Date();
             const birthdate = new Date(now.getTime() - 1000 * 3600 * 24 * 365.25 * 33);
@@ -10,7 +10,7 @@ describe('date utilities', () => {
 
             expect(birthdateStr).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
-            const age = calculateAge(birthdateStr);
+            const age = calculateAgeFromString(birthdateStr);
             expect(age).toBe(expectedAge);
         });
 
@@ -26,7 +26,7 @@ describe('date utilities', () => {
 
             expect(birthdateStr).toMatch(/^\d{1,2}\/\d{1,2}\/\d{4}$/);
 
-            const age = calculateAge(birthdateStr);
+            const age = calculateAgeFromString(birthdateStr);
             expect(age).toBe(expectedAge);
         });
     });

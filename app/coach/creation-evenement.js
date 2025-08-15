@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
+import InputDate from '@/components/molecules/InputDate';
+import { formatDateToISO } from '@/lib/formatDate';
 
 const LOCATIONIQ_KEY = 'pk.1bc03891ccd317c6ca47a6d1b87bdbe1';
 const OPENWEATHER_KEY = '1c27efe2712135cb33936abb88a3d28a';
@@ -29,7 +31,7 @@ const TYPE_LABELS = [
 export default function CreateEvent() {
     const [type, setType] = useState('match');
     const [titre, setTitre] = useState('');
-    const [date, setDate] = useState('');
+    const [date, setDate] = useState(new Date());
     const [heure, setHeure] = useState('');
     const [lieu, setLieu] = useState('');
     const [lieuxResultats, setLieuxResultats] = useState([]);
@@ -210,7 +212,7 @@ export default function CreateEvent() {
             const insertPayload = {
                 type,
                 titre,
-                date,
+                date: date ? formatDateToISO(date) : '',
                 heure,
                 lieu,
                 lieu_complement: complement,
@@ -293,7 +295,7 @@ export default function CreateEvent() {
             // Reset le formulaire
             setType('match');
             setTitre('');
-            setDate('');
+            setDate(new Date());
             setHeure('');
             setLieu('');
             setLieuxResultats([]);
@@ -433,12 +435,14 @@ export default function CreateEvent() {
 
                 {/* Date */}
                 <Text style={styles.label}>Date</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Date (ex: 2025-06-30)"
-                    placeholderTextColor="#aaa"
+                <InputDate
                     value={date}
-                    onChangeText={setDate}
+                    onChange={(selectedDate) => {
+                        if (selectedDate) {
+                            setDate(selectedDate);
+                        }
+                    }}
+                    placeholder="Date de naissance"
                 />
 
                 {/* Heure */}
