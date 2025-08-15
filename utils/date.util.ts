@@ -1,4 +1,33 @@
-export const calculateAge = (birthdateStr: string) => {
+export const formatDateForDisplay = (date: Date | undefined): string => {
+    if (!date) {
+        return '';
+    }
+    return date.toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+};
+
+export const formatDateForInput = (date: Date | undefined): string => {
+    if (!date) {
+        return '';
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+export const parseDateFromInput = (dateString: string): Date | null => {
+    if (!dateString) {
+        return null;
+    }
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+};
+
+export const calculateAgeFromString = (birthdateStr: string) => {
     let birthdate: Date;
 
     if (birthdateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -10,6 +39,10 @@ export const calculateAge = (birthdateStr: string) => {
         throw new Error('Invalid date format. Use YYYY-MM-DD or DD/MM/YYYY.');
     }
 
+    return calculateAge(birthdate);
+};
+
+export const calculateAge = (birthdate: Date) => {
     let timeDiff = Math.abs(Date.now() - birthdate.getTime());
     let age = Math.floor(timeDiff / (1000 * 3600 * 24) / 365.25);
 
