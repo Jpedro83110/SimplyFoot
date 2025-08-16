@@ -18,3 +18,19 @@ export const getCoachEquipesWithJoueursCount = async (args: { coachId: string })
 
     return data;
 };
+
+export type GetJoueurEquipeById = Awaited<ReturnType<typeof getJoueurEquipeById>>;
+
+export const getJoueurEquipeById = async (equipeId: string) => {
+    const { data, error } = await supabase
+        .from('equipes')
+        .select('*, club:club_id(logo_url)')
+        .eq('id', equipeId)
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};

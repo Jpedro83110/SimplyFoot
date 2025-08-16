@@ -23,10 +23,10 @@
         "sourceMap": true,
         "baseUrl": ".",
         "paths": {
-            "@/*": ["./*"]
+            "@/*": ["./src/*"]
         }
     },
-    "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+    "include": ["src/**/*"],
     "exclude": ["node_modules", ".expo", "dist", "build"],
     "extends": "./node_modules/expo/tsconfig.base"
 }

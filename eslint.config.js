@@ -7,6 +7,14 @@ module.exports = defineConfig([
     expoConfig,
     eslintPluginPrettierRecommended,
     {
+        settings: {
+            'import/resolver': {
+                node: {
+                    extensions: ['.ts', '.tsx'],
+                    moduleDirectory: ['src', 'node_modules'],
+                },
+            },
+        },
         ignores: ['dist/*', 'node_modules/*', '.expo/*'],
         rules: {
             'prettier/prettier': [

@@ -24,6 +24,8 @@ import { useCachedApi } from '@/hooks/useCachedApi';
 import { useSession } from '@/hooks/useSession';
 import { Database } from '@/types/database.types';
 import { getCoachEquipesWithJoueursCount } from '@/helpers/equipes.helper';
+import { calculateAgeFromString } from '@/utils/date.util';
+import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GREEN = '#00ff88';
@@ -40,6 +42,14 @@ export default function CoachDashboard() {
     const router = useRouter();
 
     const { signOut, utilisateur, staff, updateUserData } = useSession();
+
+    const age = useMemo(
+        () =>
+            utilisateur?.date_naissance
+                ? calculateAgeFromString(utilisateur?.date_naissance)
+                : null,
+        [utilisateur?.date_naissance],
+    );
 
     const [editData, setEditData] = useState<Database['public']['Tables']['staff']['Update']>({
         telephone: '',
@@ -136,21 +146,6 @@ export default function CoachDashboard() {
     const loading = useMemo(
         () => loadingEquipes || loadingEvenements,
         [loadingEquipes, loadingEvenements],
-    );
-
-    // Fonction helper pour ajouter un cache-buster à l'affichage
-    // TODO: move this to a separate utilities file
-    const getImageUrlWithCacheBuster = useCallback(
-        (url?: string): string | undefined => {
-            if (!url) {
-                return url;
-            }
-
-            // Si l'URL contient déjà un paramètre, ajouter avec &, sinon avec ?
-            const separator = url.includes('?') ? '&' : '?';
-            return `${url}${separator}v=${refreshKey}`;
-        },
-        [refreshKey],
     );
 
     const fetchClub = useCallback(async () => {
@@ -407,21 +402,6 @@ export default function CoachDashboard() {
         );
     };
 
-    // Calculer âge
-    const calculAge = (date?: string): string | null => {
-        if (!date) {
-            return null;
-        }
-        const birth = new Date(date);
-        const today = new Date();
-        let age = today.getFullYear() - birth.getFullYear();
-        const m = today.getMonth() - birth.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-            age--;
-        }
-        return age + ' ans';
-    };
-
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -469,7 +449,12 @@ export default function CoachDashboard() {
                         </View>
                     ) : staff?.photo_url ? (
                         <Image
-                            source={{ uri: getImageUrlWithCacheBuster(staff.photo_url) }}
+                            source={{
+                                uri: getImageUrlWithCacheBuster({
+                                    url: staff.photo_url,
+                                    refreshKey,
+                                }),
+                            }}
                             style={styles.profilePhoto}
                             key={`${staff.photo_url}_${refreshKey}`} // Clé qui change à chaque refresh
                             onError={(error) => {
@@ -479,7 +464,11 @@ export default function CoachDashboard() {
                             onLoad={() => {
                                 console.log(
                                     '✅ Image chargée avec succès:',
-                                    staff.photo_url && getImageUrlWithCacheBuster(staff.photo_url),
+                                    staff.photo_url &&
+                                        getImageUrlWithCacheBuster({
+                                            url: staff.photo_url,
+                                            refreshKey,
+                                        }),
                                 );
                             }}
                         />
@@ -555,7 +544,7 @@ export default function CoachDashboard() {
                         </View>
                     )}
 
-                    {calculAge(utilisateur?.date_naissance) && (
+                    {age && (
                         <View style={styles.infoRow}>
                             <Ionicons
                                 name="calendar-outline"
@@ -564,7 +553,7 @@ export default function CoachDashboard() {
                                 style={styles.infoIcon}
                             />
                             <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
-                                {calculAge(utilisateur?.date_naissance)}
+                                {age}
                             </Text>
                         </View>
                     )}

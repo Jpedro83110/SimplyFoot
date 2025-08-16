@@ -8,7 +8,7 @@ import * as JoueursHelper from '@/helpers/joueurs.helper';
 import * as UtilisateursHelper from '@/helpers/utilisateurs.helper';
 import * as StaffHelper from '@/helpers/staff.helper';
 import * as ClubAdminsHelper from '@/helpers/clubsAdmins.helper';
-import { localStorageMock } from '../../.jest/localStorageMock';
+import { localStorageMock } from '../../../.jest/localStorageMock';
 
 // Mock SecureStore
 jest.mock('expo-secure-store', () => ({
