@@ -170,7 +170,7 @@ function analyzeCodebase(options = {}) {
     }
 
     for (const sourceDir of SOURCE_DIRS) {
-        const dirPath = path.resolve(sourceDir);
+        const dirPath = path.resolve(`src/${sourceDir}`);
 
         if (!fs.existsSync(dirPath)) {
             if (verbose) {

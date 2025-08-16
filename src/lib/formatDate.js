@@ -5,9 +5,13 @@
  * @param {Date | string | number} dateInput
  */
 export function formatDateFR(dateInput) {
-    if (!dateInput) return '';
+    if (!dateInput) {
+        return '';
+    }
     const d = new Date(dateInput);
-    if (isNaN(d)) return '';
+    if (isNaN(d)) {
+        return '';
+    }
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
@@ -21,9 +25,13 @@ export function formatDateFR(dateInput) {
  * @param {boolean} options.useH - true pour 'h' (14h30), false pour ':' (14:30)
  */
 export function formatHourFR(dateInput, options = { useH: false }) {
-    if (!dateInput) return '';
+    if (!dateInput) {
+        return '';
+    }
     const d = new Date(dateInput);
-    if (isNaN(d)) return '';
+    if (isNaN(d)) {
+        return '';
+    }
     const hour = String(d.getHours()).padStart(2, '0');
     const min = String(d.getMinutes()).padStart(2, '0');
     return options.useH ? `${hour}h${min}` : `${hour}:${min}`;
@@ -37,7 +45,9 @@ export function formatHourFR(dateInput, options = { useH: false }) {
  * @param {boolean} options.withA - true pour 'à' (ex: 18/02/2025 à 14h30)
  */
 export function formatDateTimeFR(dateInput, options = { useH: false, withA: false }) {
-    if (!dateInput) return '';
+    if (!dateInput) {
+        return '';
+    }
     const date = formatDateFR(dateInput);
     const hour = formatHourFR(dateInput, options);
     if (options.withA) {
@@ -52,13 +62,19 @@ export function formatDateTimeFR(dateInput, options = { useH: false, withA: fals
  * @returns {string}
  */
 export function normalizeHour(str) {
-    if (!str) return '';
+    if (!str) {
+        return '';
+    }
     // Nettoie les espaces et remplace h/H par :
     let cleaned = String(str).replace(/[hH]/g, ':').replace(/\s/g, '');
     // On force le split :
     let [h, m] = cleaned.split(':');
-    if (!h) return '';
-    if (!m) m = '00';
+    if (!h) {
+        return '';
+    }
+    if (!m) {
+        m = '00';
+    }
     h = h.padStart(2, '0');
     m = m.padStart(2, '0');
     return `${h}:${m}`;
@@ -74,11 +90,15 @@ export function normalizeHour(str) {
  * @returns {string} Format YYYY-MM-DD
  */
 export function formatDateToISO(dateInput) {
-    if (!dateInput) return '';
+    if (!dateInput) {
+        return '';
+    }
 
     try {
         const d = new Date(dateInput);
-        if (isNaN(d)) return '';
+        if (isNaN(d)) {
+            return '';
+        }
 
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -97,11 +117,15 @@ export function formatDateToISO(dateInput) {
  * @returns {string} Format JJ/MM/AAAA
  */
 export function formatDateForDisplay(dateInput) {
-    if (!dateInput) return '';
+    if (!dateInput) {
+        return '';
+    }
 
     try {
         const d = new Date(dateInput);
-        if (isNaN(d)) return '';
+        if (isNaN(d)) {
+            return '';
+        }
 
         return formatDateFR(d);
     } catch (error) {
@@ -116,7 +140,9 @@ export function formatDateForDisplay(dateInput) {
  * @returns {string} Format YYYY-MM-DD
  */
 export function parseDateInputToISO(dateString) {
-    if (!dateString) return '';
+    if (!dateString) {
+        return '';
+    }
 
     try {
         const trimmed = dateString.trim();
@@ -126,20 +152,26 @@ export function parseDateInputToISO(dateString) {
             const [day, month, year] = trimmed.split('/');
             const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
 
-            if (isNaN(date)) return '';
+            if (isNaN(date)) {
+                return '';
+            }
             return formatDateToISO(date);
         }
 
         // Format ISO YYYY-MM-DD
         if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(trimmed)) {
             const date = new Date(trimmed);
-            if (isNaN(date)) return '';
+            if (isNaN(date)) {
+                return '';
+            }
             return formatDateToISO(date);
         }
 
         // Essayer de parser comme date générique
         const date = new Date(trimmed);
-        if (isNaN(date)) return '';
+        if (isNaN(date)) {
+            return '';
+        }
         return formatDateToISO(date);
     } catch (error) {
         console.error('❌ Erreur parseDateInputToISO:', error);
@@ -153,13 +185,17 @@ export function parseDateInputToISO(dateString) {
  * @returns {number} Âge en années
  */
 export function calculateAge(birthDate) {
-    if (!birthDate) return 0;
+    if (!birthDate) {
+        return 0;
+    }
 
     try {
         const birth = new Date(birthDate);
         const today = new Date();
 
-        if (isNaN(birth)) return 0;
+        if (isNaN(birth)) {
+            return 0;
+        }
 
         let age = today.getFullYear() - birth.getFullYear();
         const monthDiff = today.getMonth() - birth.getMonth();
@@ -190,21 +226,33 @@ export function isMinor(birthDate) {
  * @returns {string}
  */
 export function formatRelativeDate(dateInput) {
-    if (!dateInput) return '';
+    if (!dateInput) {
+        return '';
+    }
 
     try {
         const date = new Date(dateInput);
         const today = new Date();
 
-        if (isNaN(date)) return '';
+        if (isNaN(date)) {
+            return '';
+        }
 
         const diffTime = date.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        if (diffDays === 0) return "Aujourd'hui";
-        if (diffDays === 1) return 'Demain';
-        if (diffDays === -1) return 'Hier';
-        if (diffDays > 0) return `Dans ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+        if (diffDays === 0) {
+            return "Aujourd'hui";
+        }
+        if (diffDays === 1) {
+            return 'Demain';
+        }
+        if (diffDays === -1) {
+            return 'Hier';
+        }
+        if (diffDays > 0) {
+            return `Dans ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+        }
         return `Il y a ${Math.abs(diffDays)} jour${Math.abs(diffDays) > 1 ? 's' : ''}`;
     } catch (error) {
         console.error('❌ Erreur formatRelativeDate:', error);
@@ -218,7 +266,9 @@ export function formatRelativeDate(dateInput) {
  * @returns {boolean}
  */
 export function isValidDate(dateInput) {
-    if (!dateInput) return false;
+    if (!dateInput) {
+        return false;
+    }
 
     try {
         const date = new Date(dateInput);

@@ -24,6 +24,7 @@ import { useCachedApi } from '@/hooks/useCachedApi';
 import { useSession } from '@/hooks/useSession';
 import { Database } from '@/types/database.types';
 import { getCoachEquipesWithJoueursCount } from '@/helpers/equipes.helper';
+import { calculateAgeFromString } from '@/utils/date.util';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GREEN = '#00ff88';
@@ -40,6 +41,14 @@ export default function CoachDashboard() {
     const router = useRouter();
 
     const { signOut, utilisateur, staff, updateUserData } = useSession();
+
+    const age = useMemo(
+        () =>
+            utilisateur?.date_naissance
+                ? calculateAgeFromString(utilisateur?.date_naissance)
+                : null,
+        [utilisateur?.date_naissance],
+    );
 
     const [editData, setEditData] = useState<Database['public']['Tables']['staff']['Update']>({
         telephone: '',
@@ -407,21 +416,6 @@ export default function CoachDashboard() {
         );
     };
 
-    // Calculer âge
-    const calculAge = (date?: string): string | null => {
-        if (!date) {
-            return null;
-        }
-        const birth = new Date(date);
-        const today = new Date();
-        let age = today.getFullYear() - birth.getFullYear();
-        const m = today.getMonth() - birth.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-            age--;
-        }
-        return age + ' ans';
-    };
-
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -555,7 +549,7 @@ export default function CoachDashboard() {
                         </View>
                     )}
 
-                    {calculAge(utilisateur?.date_naissance) && (
+                    {age && (
                         <View style={styles.infoRow}>
                             <Ionicons
                                 name="calendar-outline"
@@ -564,7 +558,7 @@ export default function CoachDashboard() {
                                 style={styles.infoIcon}
                             />
                             <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
-                                {calculAge(utilisateur?.date_naissance)}
+                                {age}
                             </Text>
                         </View>
                     )}

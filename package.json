@@ -8,6 +8,7 @@
         "start:ios": "expo run:ios",
         "web": "expo start --web",
         "generate:types": "supabase gen types typescript --project-id vkcojgudsrypkyxoendl > types/database.types.ts",
+        "type-check": "tsc --noEmit",
         "build": "expo export",
         "build:web": "expo export -p web",
         "build:android": "expo export -p android",
@@ -28,13 +29,7 @@
         "testEnvironment": "jsdom",
         "rootDir": ".",
         "roots": [
-            "<rootDir>/app",
-            "<rootDir>/components",
-            "<rootDir>/context",
-            "<rootDir>/helpers",
-            "<rootDir>/hooks",
-            "<rootDir>/lib",
-            "<rootDir>/utils"
+            "<rootDir>/src"
         ],
         "collectCoverageFrom": [
             "**/*.{js,jsx,ts,tsx}",

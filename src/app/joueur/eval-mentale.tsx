@@ -62,7 +62,13 @@ export default function EvalMentale() {
                 const currentRole = utilisateur?.role || 'joueur';
                 setRole(currentRole);
 
-                const joueurId = user || userId;
+                let joueurId = '';
+
+                if (Array.isArray(user)) {
+                    joueurId = user[0];
+                } else {
+                    joueurId = user;
+                }
 
                 const { data, error } = await supabase
                     .from('evaluations_mentales')

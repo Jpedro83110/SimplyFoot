@@ -5,7 +5,9 @@ export function isAdmin(email) {
 export function canAccessSection(user, section) {
     const role = user?.role;
 
-    if (isAdmin(user?.email)) return true;
+    if (isAdmin(user?.email)) {
+        return true;
+    }
 
     const rules = {
         president: ['president'],

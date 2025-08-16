@@ -39,6 +39,7 @@ describe('useSession', () => {
                 date_creation: null,
                 date_naissance: null,
                 telephone: null,
+                expo_push_token: null,
             },
             joueur: {
                 id: '1',
