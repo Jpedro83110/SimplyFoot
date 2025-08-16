@@ -21,52 +21,59 @@ import * as Linking from 'expo-linking';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
 import { useSession } from '@/hooks/useSession';
-
-const GREEN = '#00ff88';
-const DARK = '#101415';
-const DARK_LIGHT = '#161b20';
+import {
+    COLOR_BLACK_900,
+    COLOR_BLACK_LIGHT_900,
+    COLOR_GREEN_300,
+} from '@/utils/styleContants.util';
+import { Database } from '@/types/database.types';
+import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
+import { GetClubById, getClubById } from '@/helpers/clubs.helpers';
+import { GetJoueurEquipeById, getJoueurEquipeById } from '@/helpers/equipes.helper';
 
 const LAST_MESSAGES_VIEWED = 'last-messages-viewed';
 const DEADLINE_LICENCE = new Date('2025-10-15T23:59:59');
 
+interface TimeLeft {
+    days?: number;
+    hours?: number;
+    minutes?: number;
+    expired?: boolean;
+}
+
 export default function JoueurDashboard() {
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
-    const [timeLeft, setTimeLeft] = useState({});
+    const [timeLeft, setTimeLeft] = useState<TimeLeft>({});
     const [refreshKey, setRefreshKey] = useState(Date.now());
-    const [user, setUser] = useState(null);
-    const [joueur, setJoueur] = useState(null);
-    const [equipe, setEquipe] = useState(null);
-    const [club, setClub] = useState(null);
-    const [evenement, setEvenement] = useState(null);
-    const [participations, setParticipations] = useState([]);
+    const [equipe, setEquipe] = useState<GetJoueurEquipeById | null>(null);
+    const [club, setClub] = useState<GetClubById | null>(null);
+    const [evenement, setEvenement] = useState<
+        Database['public']['Tables']['evenements']['Row'] | null
+    >(null);
+    const [participations, setParticipations] = useState<
+        Database['public']['Tables']['participations_evenement']['Row'][]
+    >([]);
     const [nouveauMessage, setNouveauMessage] = useState(false);
 
-    const { signOut } = useSession();
+    const { signOut, utilisateur, joueur, updateUserData } = useSession();
 
-    const [editData, setEditData] = useState({
-        licence: '',
-        visite_medicale: false,
-        equipement: false,
+    const [editData, setEditData] = useState<Database['public']['Tables']['joueurs']['Update']>({
+        numero_licence: '',
+        visite_medicale_valide: false,
+        equipement: 'false',
         photo_profil_url: '',
     });
 
     const router = useRouter();
 
-    const getImageUrlWithCacheBuster = (url) => {
-        if (!url) {
-            return url;
-        }
-        const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}v=${refreshKey}`;
-    };
-
     const sendNotificationToStaff = useCallback(async () => {
-        if (!joueur || !equipe) {
+        if (!utilisateur || !joueur || !equipe?.club_id) {
             return;
         }
+
         try {
             const { data: staffData } = await supabase
                 .from('utilisateurs')
@@ -74,14 +81,16 @@ export default function JoueurDashboard() {
                 .in('role', ['president', 'coach'])
                 .eq('club_id', equipe.club_id)
                 .not('expo_push_token', 'is', null);
+
             if (staffData && staffData.length > 0) {
                 const notificationsDB = staffData.map((staff) => ({
                     recepteur_id: staff.id,
                     titre: '⚠️ Licence manquante',
-                    contenu: `Le joueur ${joueur.prenom} ${joueur.nom} n'a pas renseigné son numéro de licence avant la date limite du 15/10/2025.`,
+                    contenu: `Le joueur ${utilisateur.prenom} ${utilisateur.nom} n'a pas renseigné son numéro de licence avant la date limite du 15/10/2025.`,
                     type: 'alerte_licence',
                     created_at: new Date().toISOString(),
                 }));
+
                 await supabase.from('notifications').insert(notificationsDB);
                 const pushNotifications = staffData
                     .filter((staff) => staff.expo_push_token && staff.expo_push_token.trim() !== '')
@@ -89,11 +98,11 @@ export default function JoueurDashboard() {
                         to: staff.expo_push_token,
                         sound: 'default',
                         title: '⚠️ Licence manquante',
-                        body: `${joueur.prenom} ${joueur.nom} n'a pas sa licence !`,
+                        body: `${utilisateur.prenom} ${utilisateur.nom} n'a pas sa licence !`,
                         data: {
                             type: 'licence_manquante',
                             joueur_id: joueur.id,
-                            joueur_nom: `${joueur.prenom} ${joueur.nom}`,
+                            joueur_nom: `${utilisateur.prenom} ${utilisateur.nom}`,
                             equipe_id: equipe.id,
                             timestamp: new Date().toISOString(),
                         },
@@ -115,7 +124,7 @@ export default function JoueurDashboard() {
         } catch (error) {
             console.error('❌ Erreur envoi notification:', error);
         }
-    }, [equipe, joueur]);
+    }, [equipe?.club_id, equipe?.id, joueur, utilisateur]);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -144,48 +153,28 @@ export default function JoueurDashboard() {
     }, [joueur, sendNotificationToStaff]);
 
     const fetchAll = useCallback(async () => {
+        if (!joueur?.equipe_id || !utilisateur?.id || equipe) {
+            return;
+        }
+
         try {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const session = sessionData?.session;
-            if (!session) {
-                throw new Error('Session expirée, reconnectez-vous.');
-            }
-            const { data: userData } = await supabase
-                .from('utilisateurs')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-            if (!userData?.joueur_id) {
-                throw new Error('Utilisateur non lié à un joueur.');
-            }
-            setUser(userData);
-            const { data: joueurData } = await supabase
-                .from('joueurs')
-                .select('*')
-                .eq('id', userData.joueur_id)
-                .single();
-            if (joueurData?.photo_profil_url) {
-                joueurData.photo_profil_url = joueurData.photo_profil_url.split('?')[0];
-            }
-            setJoueur(joueurData);
             setEditData({
-                licence: joueurData?.numero_licence || '',
-                visite_medicale: joueurData?.visite_medicale_valide === true,
-                equipement: joueurData?.equipement === 'Complet',
-                photo_profil_url: joueurData?.photo_profil_url || '',
+                numero_licence: joueur?.numero_licence,
+                visite_medicale_valide: joueur?.visite_medicale_valide,
+                equipement: joueur?.equipement,
+                photo_profil_url: joueur?.photo_profil_url,
             });
-            const { data: equipeData } = await supabase
-                .from('equipes')
-                .select('*, club:club_id(logo_url)')
-                .eq('id', joueurData.equipe_id)
-                .single();
+
+            const equipeData = await getJoueurEquipeById(joueur.equipe_id);
             setEquipe(equipeData);
-            const { data: clubData } = await supabase
-                .from('clubs')
-                .select('id, nom, logo_url, facebook_url, instagram_url, boutique_url')
-                .eq('id', equipeData.club_id)
-                .single();
+
+            if (!equipeData?.club_id) {
+                return;
+            }
+
+            const clubData = await getClubById({ clubId: equipeData.club_id });
             setClub(clubData);
+
             const { data: eventData } = await supabase
                 .from('evenements')
                 .select('*')
@@ -194,34 +183,48 @@ export default function JoueurDashboard() {
                 .order('date', { ascending: true })
                 .limit(1)
                 .single();
-            setEvenement(eventData || null);
+            setEvenement(eventData);
+
             const { data: participData } = await supabase
                 .from('participations_evenement')
                 .select('*')
-                .eq('utilisateur_id', joueurData.id);
+                .eq('utilisateur_id', utilisateur.id);
             setParticipations(participData || []);
+
             const lastViewed = await AsyncStorage.getItem(LAST_MESSAGES_VIEWED);
             const lastDate = lastViewed ? new Date(lastViewed) : new Date(0);
             const { data: messagesPrives } = await supabase
                 .from('messages_prives')
                 .select('created_at')
-                .eq('recepteur_id', session.user.id);
+                .eq('recepteur_id', utilisateur.id);
             const { data: messagesGroupes } = await supabase
                 .from('messages_groupe_coach')
                 .select('created_at')
                 .eq('equipe_id', equipeData.id);
             const allDates = [
-                ...(messagesPrives?.map((m) => new Date(m.created_at)) || []),
-                ...(messagesGroupes?.map((m) => new Date(m.created_at)) || []),
+                ...(messagesPrives
+                    ?.filter((message) => message.created_at)
+                    .map((message) => new Date(message.created_at!)) || []),
+                ...(messagesGroupes
+                    ?.filter((message) => message.created_at)
+                    .map((message) => new Date(message.created_at!)) || []),
             ];
             const nouveau = allDates.some((date) => date > lastDate);
             setNouveauMessage(nouveau);
             setLoading(false);
-        } catch (e) {
-            setError(e.message);
+        } catch (error) {
+            setError((error as Error).message);
             setLoading(false);
         }
-    }, []);
+    }, [
+        equipe,
+        joueur?.equipe_id,
+        joueur?.equipement,
+        joueur?.numero_licence,
+        joueur?.photo_profil_url,
+        joueur?.visite_medicale_valide,
+        utilisateur?.id,
+    ]);
 
     useEffect(() => {
         fetchAll();
@@ -230,6 +233,7 @@ export default function JoueurDashboard() {
     const handleImagePicker = async () => {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
@@ -237,16 +241,19 @@ export default function JoueurDashboard() {
                 );
                 return;
             }
+
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ['images'],
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.7,
                 base64: true,
             });
+
             if (!result.canceled && result.assets[0]) {
                 const image = result.assets[0];
                 setUploadingPhoto(true);
+
                 try {
                     if (joueur?.photo_profil_url) {
                         try {
@@ -255,6 +262,7 @@ export default function JoueurDashboard() {
                             const folderIndex = pathParts.findIndex(
                                 (part) => part === 'photos_profils_joueurs',
                             );
+
                             if (folderIndex !== -1 && pathParts[folderIndex + 1]) {
                                 const fileName = pathParts[folderIndex + 1];
                                 const oldFilePath = `photos_profils_joueurs/${fileName}`;
@@ -267,11 +275,14 @@ export default function JoueurDashboard() {
                             );
                         }
                     }
+
                     let fileData,
                         fileExt = 'jpg';
+
                     if (Platform.OS === 'web') {
                         const response = await fetch(image.uri);
                         fileData = await response.blob();
+
                         if (image.uri.includes('.png')) {
                             fileExt = 'png';
                         } else if (image.uri.includes('.jpeg') || image.uri.includes('.jpg')) {
@@ -283,7 +294,9 @@ export default function JoueurDashboard() {
                         if (!image.base64) {
                             throw new Error('Pas de données base64 disponibles');
                         }
+
                         fileData = decode(image.base64);
+
                         if (image.uri.includes('png') || image.type?.includes('png')) {
                             fileExt = 'png';
                         } else if (
@@ -296,30 +309,33 @@ export default function JoueurDashboard() {
                             fileExt = 'gif';
                         }
                     }
-                    const fileName = `photos_profils_joueurs/${user.id}_${Date.now()}.${fileExt}`;
+
+                    const fileName = `photos_profils_joueurs/${utilisateur?.id}_${Date.now()}.${fileExt}`;
                     const { error: uploadError } = await supabase.storage
                         .from('fichiers')
                         .upload(fileName, fileData, {
                             contentType: `image/${fileExt}`,
                             upsert: true,
                         });
+
                     if (uploadError) {
                         throw new Error(`Upload échoué: ${uploadError.message}`);
                     }
+
                     const { data: urlData } = supabase.storage
                         .from('fichiers')
                         .getPublicUrl(fileName);
                     const basePhotoUrl = urlData.publicUrl;
-                    const { error: updateError } = await supabase
-                        .from('joueurs')
-                        .update({ photo_profil_url: basePhotoUrl })
-                        .eq('id', joueur.id);
-                    if (updateError) {
-                        throw new Error(`Sauvegarde échouée: ${updateError.message}`);
-                    }
-                    setJoueur((prev) => ({ ...prev, photo_profil_url: basePhotoUrl }));
+
+                    await updateUserData({
+                        joueurData: {
+                            photo_profil_url: basePhotoUrl,
+                        },
+                    });
+
                     setEditData((prev) => ({ ...prev, photo_profil_url: basePhotoUrl }));
                     setRefreshKey(Date.now());
+
                     Alert.alert(
                         'Succès ! 📸',
                         'Photo de profil mise à jour sur toutes les plateformes !',
@@ -327,7 +343,7 @@ export default function JoueurDashboard() {
                 } catch (error) {
                     Alert.alert(
                         'Erreur',
-                        `Impossible de mettre à jour la photo:\n${error.message}`,
+                        `Impossible de mettre à jour la photo:\n${(error as Error).message}`,
                     );
                 } finally {
                     setUploadingPhoto(false);
@@ -343,15 +359,17 @@ export default function JoueurDashboard() {
     const handleSaveChanges = async () => {
         try {
             const updateData = {
-                numero_licence: editData.licence.trim(),
-                visite_medicale_valide: editData.visite_medicale,
+                numero_licence: editData.numero_licence?.trim(),
+                visite_medicale_valide: editData.visite_medicale_valide,
                 equipement: editData.equipement ? 'Complet' : 'En attente',
             };
-            const { error } = await supabase.from('joueurs').update(updateData).eq('id', joueur.id);
-            if (error) {
-                throw error;
-            }
-            setJoueur((prev) => ({ ...prev, ...updateData }));
+
+            await updateUserData({
+                joueurData: {
+                    ...updateData,
+                },
+            });
+
             setShowEditModal(false);
             Alert.alert('Succès', 'Informations mises à jour !');
         } catch (error) {
@@ -372,14 +390,18 @@ export default function JoueurDashboard() {
 
     const shortcuts = [
         {
-            icon: <Ionicons name="calendar" size={28} color={GREEN} />,
+            icon: <Ionicons name="calendar" size={28} color={COLOR_GREEN_300} />,
             label: 'Convocations',
             go: () => router.push('/joueur/convocation'),
         },
         {
             icon: (
                 <View style={{ position: 'relative' }}>
-                    <MaterialCommunityIcons name="message-text-outline" size={28} color={GREEN} />
+                    <MaterialCommunityIcons
+                        name="message-text-outline"
+                        size={28}
+                        color={COLOR_GREEN_300}
+                    />
                     {nouveauMessage && (
                         <View
                             style={{
@@ -399,32 +421,44 @@ export default function JoueurDashboard() {
             go: handleOpenMessages,
         },
         {
-            icon: <MaterialCommunityIcons name="star-circle-outline" size={28} color={GREEN} />,
+            icon: (
+                <MaterialCommunityIcons
+                    name="star-circle-outline"
+                    size={28}
+                    color={COLOR_GREEN_300}
+                />
+            ),
             label: 'Note globale',
             go: () => router.push('/joueur/note-globale'),
         },
         {
-            icon: <MaterialCommunityIcons name="account-tie" size={28} color={GREEN} />,
+            icon: <MaterialCommunityIcons name="account-tie" size={28} color={COLOR_GREEN_300} />,
             label: 'Suivi coach',
             go: () => router.push('/joueur/suivi-coach'),
         },
         {
-            icon: <MaterialCommunityIcons name="calendar-month-outline" size={28} color={GREEN} />,
+            icon: (
+                <MaterialCommunityIcons
+                    name="calendar-month-outline"
+                    size={28}
+                    color={COLOR_GREEN_300}
+                />
+            ),
             label: 'Programme',
             go: () => router.push('/joueur/programme-stage'),
         },
         {
-            icon: <MaterialCommunityIcons name="cake-variant" size={28} color={GREEN} />,
+            icon: <MaterialCommunityIcons name="cake-variant" size={28} color={COLOR_GREEN_300} />,
             label: 'Anniversaires',
             go: () => router.push('/joueur/anniversaires'),
         },
         {
-            icon: <Ionicons name="people" size={28} color={GREEN} />,
+            icon: <Ionicons name="people" size={28} color={COLOR_GREEN_300} />,
             label: 'Mon équipe',
             go: () => router.push('/joueur/equipe'),
         },
         {
-            icon: <Ionicons name="nutrition" size={28} color={GREEN} />,
+            icon: <Ionicons name="nutrition" size={28} color={COLOR_GREEN_300} />,
             label: 'Conseils',
             go: () => router.push('/joueur/nutrition/scanner'),
         },
@@ -437,10 +471,10 @@ export default function JoueurDashboard() {
                     flex: 1,
                     justifyContent: 'center',
                     alignItems: 'center',
-                    backgroundColor: DARK,
+                    backgroundColor: COLOR_BLACK_900,
                 }}
             >
-                <ActivityIndicator size="large" color={GREEN} />
+                <ActivityIndicator size="large" color={COLOR_GREEN_300} />
             </View>
         );
     }
@@ -451,14 +485,14 @@ export default function JoueurDashboard() {
                     flex: 1,
                     justifyContent: 'center',
                     alignItems: 'center',
-                    backgroundColor: DARK,
+                    backgroundColor: COLOR_BLACK_900,
                 }}
             >
                 <Text style={{ color: '#fc2b3a', marginBottom: 30, fontWeight: 'bold' }}>
                     {error}
                 </Text>
                 <TouchableOpacity
-                    style={{ backgroundColor: GREEN, padding: 14, borderRadius: 12 }}
+                    style={{ backgroundColor: COLOR_GREEN_300, padding: 14, borderRadius: 12 }}
                     onPress={() => router.replace('/auth/login-joueur')}
                 >
                     <Text style={{ color: '#111', fontWeight: '700' }}>Reconnexion</Text>
@@ -467,34 +501,24 @@ export default function JoueurDashboard() {
         );
     }
 
-    const joueurFusionne =
-        joueur && user
-            ? {
-                  ...joueur,
-                  ...user,
-                  equipe: equipe?.nom || 'Non affecté',
-                  categorie: equipe?.categorie || 'Non renseignée',
-              }
-            : joueur || {};
-
     return (
         <ScrollView
-            style={{ flex: 1, backgroundColor: DARK }}
+            style={{ flex: 1, backgroundColor: COLOR_BLACK_900 }}
             contentContainerStyle={{ alignItems: 'center', paddingBottom: 48 }}
             showsVerticalScrollIndicator={false}
         >
             <Text
                 style={{
-                    color: GREEN,
+                    color: COLOR_GREEN_300,
                     fontSize: 22,
                     fontWeight: 'bold',
                     marginTop: 20,
                     marginBottom: 0,
                 }}
             >
-                Bienvenue {joueurFusionne?.prenom} {joueurFusionne?.nom} –{' '}
+                Bienvenue {utilisateur?.prenom} {utilisateur?.nom} –{' '}
                 <Text style={{ color: '#aaa', fontWeight: '400' }}>
-                    {user?.role === 'parent' ? 'Parent' : 'Joueur'}
+                    {utilisateur?.role === 'parent' ? 'Parent' : 'Joueur'}
                 </Text>
             </Text>
             {/* Header avec photo de profil */}
@@ -511,17 +535,20 @@ export default function JoueurDashboard() {
                     <TouchableOpacity style={styles.avatarContainer} onPress={handleImagePicker}>
                         <View style={styles.avatarCircle}>
                             {uploadingPhoto ? (
-                                <ActivityIndicator size="small" color={GREEN} />
+                                <ActivityIndicator size="small" color={COLOR_GREEN_300} />
                             ) : joueur?.photo_profil_url ? (
                                 <Image
                                     source={{
-                                        uri: getImageUrlWithCacheBuster(joueur.photo_profil_url),
+                                        uri: getImageUrlWithCacheBuster({
+                                            url: joueur.photo_profil_url,
+                                            refreshKey,
+                                        }),
                                     }}
                                     style={styles.avatarImg}
                                     key={`${joueur.photo_profil_url}_${refreshKey}`}
                                 />
                             ) : (
-                                <Ionicons name="person" size={30} color={GREEN} />
+                                <Ionicons name="person" size={30} color={COLOR_GREEN_300} />
                             )}
                         </View>
                         {!uploadingPhoto && (
@@ -543,28 +570,25 @@ export default function JoueurDashboard() {
                 <View style={styles.infoSection}>
                     <View style={styles.nameAndEditRow}>
                         <Text style={styles.headerName}>
-                            {joueurFusionne?.prenom} {joueurFusionne?.nom}
+                            {utilisateur?.prenom} {utilisateur?.nom}
                         </Text>
                         <TouchableOpacity
                             onPress={() => setShowEditModal(true)}
                             style={styles.editButton}
                         >
-                            <Ionicons name="create-outline" size={20} color={GREEN} />
+                            <Ionicons name="create-outline" size={20} color={COLOR_GREEN_300} />
                         </TouchableOpacity>
                     </View>
-                    <Text style={styles.headerCat}>
-                        {user?.role === 'parent' ? 'Parent' : 'Joueur'} · {joueurFusionne?.equipe} ·{' '}
-                        {joueurFusionne?.categorie}
-                    </Text>
+                    <Text style={styles.headerCat}>{`${equipe?.nom} · ${equipe?.categorie}`}</Text>
                     <View style={styles.rowWrap}>
                         <View style={styles.statusItem}>
                             <Ionicons name="card-outline" style={styles.infoIcon} />
                             <Text style={styles.headerInfo}>
-                                Licence {joueurFusionne?.numero_licence || 'Non renseignée'}
+                                Licence {joueur?.numero_licence || 'Non renseignée'}
                             </Text>
-                            {(!joueurFusionne?.numero_licence ||
-                                joueurFusionne.numero_licence === 'N/C' ||
-                                joueurFusionne.numero_licence === 'NC') && (
+                            {(!joueur?.numero_licence ||
+                                joueur.numero_licence === 'N/C' ||
+                                joueur.numero_licence === 'NC') && (
                                 <Ionicons
                                     name="warning-outline"
                                     size={14}
@@ -577,13 +601,13 @@ export default function JoueurDashboard() {
                             <Ionicons name="medkit-outline" style={styles.infoIcon} />
                             <Text style={styles.headerInfo}>
                                 Visite médicale{' '}
-                                {joueurFusionne?.visite_medicale_valide ? 'Validée' : 'En attente'}
+                                {joueur?.visite_medicale_valide ? 'Validée' : 'En attente'}
                             </Text>
-                            {joueurFusionne?.visite_medicale_valide && (
+                            {joueur?.visite_medicale_valide && (
                                 <Ionicons
                                     name="checkmark-circle"
                                     size={14}
-                                    color={GREEN}
+                                    color={COLOR_GREEN_300}
                                     style={{ marginLeft: 5 }}
                                 />
                             )}
@@ -591,13 +615,13 @@ export default function JoueurDashboard() {
                         <View style={styles.statusItem}>
                             <Ionicons name="shirt-outline" style={styles.infoIcon} />
                             <Text style={styles.headerInfo}>
-                                Équipement {joueurFusionne?.equipement || 'En attente'}
+                                Équipement {joueur?.equipement || 'En attente'}
                             </Text>
-                            {joueurFusionne?.equipement === 'Complet' && (
+                            {joueur?.equipement === 'Complet' && (
                                 <Ionicons
                                     name="checkmark-circle"
                                     size={14}
-                                    color={GREEN}
+                                    color={COLOR_GREEN_300}
                                     style={{ marginLeft: 5 }}
                                 />
                             )}
@@ -605,7 +629,7 @@ export default function JoueurDashboard() {
                         <View style={styles.statusItem}>
                             <Ionicons name="walk-outline" style={styles.infoIcon} />
                             <Text style={styles.headerInfo}>
-                                Poste : {joueurFusionne?.poste || 'Non renseigné'}
+                                Poste : {joueur?.poste || 'Non renseigné'}
                             </Text>
                         </View>
                     </View>
@@ -660,7 +684,7 @@ export default function JoueurDashboard() {
                         style={{
                             height: 9,
                             width: `${tauxPresence}%`,
-                            backgroundColor: GREEN,
+                            backgroundColor: COLOR_GREEN_300,
                             borderRadius: 8,
                         }}
                     />
@@ -670,7 +694,7 @@ export default function JoueurDashboard() {
             <View style={styles.eventCard}>
                 <Text style={styles.eventTitle}>
                     {evenement ? (
-                        <Ionicons name="calendar" size={17} color={GREEN} />
+                        <Ionicons name="calendar" size={17} color={COLOR_GREEN_300} />
                     ) : (
                         <Ionicons name="close-circle" size={17} color="#fc2b3a" />
                     )}{' '}
@@ -679,7 +703,7 @@ export default function JoueurDashboard() {
                 {evenement ? (
                     <>
                         <Text style={styles.eventText}>
-                            {evenement?.type} – {new Date(evenement?.date).toLocaleString()}
+                            {`${evenement?.type} - ${evenement?.date ? new Date(evenement?.date).toLocaleString() : ''}`}
                         </Text>
                         <Text style={styles.eventText}>Lieu : {evenement?.lieu}</Text>
                         {evenement?.lieu_complement && (
@@ -700,7 +724,14 @@ export default function JoueurDashboard() {
                 )}
             </View>
             {/* Aide */}
-            <Text style={{ color: GREEN, marginBottom: 10, textAlign: 'center', fontSize: 13 }}>
+            <Text
+                style={{
+                    color: COLOR_GREEN_300,
+                    marginBottom: 10,
+                    textAlign: 'center',
+                    fontSize: 13,
+                }}
+            >
                 👉 Clique sur &quot;Convocations&quot; pour voir et répondre à tous tes prochains
                 événements !
             </Text>
@@ -721,7 +752,7 @@ export default function JoueurDashboard() {
                     <MaterialCommunityIcons
                         name="emoticon-happy-outline"
                         size={18}
-                        color={GREEN}
+                        color={COLOR_GREEN_300}
                         style={{ marginRight: 7 }}
                     />
                     <Text style={styles.evalLabel}>Éval. mentale</Text>
@@ -733,7 +764,7 @@ export default function JoueurDashboard() {
                     <MaterialCommunityIcons
                         name="soccer-field"
                         size={18}
-                        color={GREEN}
+                        color={COLOR_GREEN_300}
                         style={{ marginRight: 7 }}
                     />
                     <Text style={styles.evalLabel}>Éval. technique</Text>
@@ -745,7 +776,7 @@ export default function JoueurDashboard() {
                     {club.facebook_url ? (
                         <TouchableOpacity
                             onPress={async () => {
-                                const url = club.facebook_url;
+                                const url = club.facebook_url ?? '';
                                 const app = `fb://facewebmodal/f?href=${url}`;
                                 const supported = await Linking.canOpenURL(app);
                                 Linking.openURL(supported ? app : url);
@@ -760,10 +791,10 @@ export default function JoueurDashboard() {
                     {club.instagram_url ? (
                         <TouchableOpacity
                             onPress={async () => {
-                                const username = club.instagram_url.split('/').pop();
+                                const username = club.instagram_url?.split('/').pop();
                                 const app = `instagram://user?username=${username}`;
                                 const supported = await Linking.canOpenURL(app);
-                                Linking.openURL(supported ? app : club.instagram_url);
+                                Linking.openURL(supported ? app : (club.instagram_url ?? ''));
                             }}
                         >
                             <Image
@@ -773,7 +804,7 @@ export default function JoueurDashboard() {
                         </TouchableOpacity>
                     ) : null}
                     {club.boutique_url ? (
-                        <TouchableOpacity onPress={() => Linking.openURL(club.boutique_url)}>
+                        <TouchableOpacity onPress={() => Linking.openURL(club.boutique_url ?? '')}>
                             <Image
                                 source={require('../../assets/minilogo/boutique.png')}
                                 style={styles.iconSocial}
@@ -786,7 +817,7 @@ export default function JoueurDashboard() {
             <TouchableOpacity
                 style={{
                     marginTop: 28,
-                    borderColor: GREEN,
+                    borderColor: COLOR_GREEN_300,
                     borderWidth: 2,
                     paddingVertical: 14,
                     borderRadius: 10,
@@ -794,13 +825,20 @@ export default function JoueurDashboard() {
                     width: '92%',
                     alignSelf: 'center',
                     maxWidth: 790,
-                    backgroundColor: DARK_LIGHT,
+                    backgroundColor: COLOR_BLACK_LIGHT_900,
                 }}
                 onPress={async () => {
                     await signOut();
                 }}
             >
-                <Text style={{ color: GREEN, fontSize: 16, fontWeight: '700', borderRadius: 10 }}>
+                <Text
+                    style={{
+                        color: COLOR_GREEN_300,
+                        fontSize: 16,
+                        fontWeight: '700',
+                        borderRadius: 10,
+                    }}
+                >
                     🚪 Se déconnecter
                 </Text>
             </TouchableOpacity>
@@ -818,9 +856,9 @@ export default function JoueurDashboard() {
                             <Text style={styles.inputLabel}>Numéro de licence</Text>
                             <TextInput
                                 style={styles.textInput}
-                                value={editData.licence}
+                                value={editData.numero_licence || ''}
                                 onChangeText={(text) =>
-                                    setEditData((prev) => ({ ...prev, licence: text }))
+                                    setEditData((prev) => ({ ...prev, numero_licence: text }))
                                 }
                                 placeholder="Ex: 12345678"
                                 placeholderTextColor="#666"
@@ -829,22 +867,28 @@ export default function JoueurDashboard() {
                         <View style={styles.switchContainer}>
                             <Text style={styles.inputLabel}>Visite médicale validée</Text>
                             <Switch
-                                value={editData.visite_medicale}
+                                value={editData.visite_medicale_valide ?? false}
                                 onValueChange={(value) =>
-                                    setEditData((prev) => ({ ...prev, visite_medicale: value }))
+                                    setEditData((prev) => ({
+                                        ...prev,
+                                        visite_medicale_valide: value,
+                                    }))
                                 }
-                                trackColor={{ false: '#767577', true: GREEN }}
-                                thumbColor={editData.visite_medicale ? '#fff' : '#f4f3f4'}
+                                trackColor={{ false: '#767577', true: COLOR_GREEN_300 }}
+                                thumbColor={editData.visite_medicale_valide ? '#fff' : '#f4f3f4'}
                             />
                         </View>
                         <View style={styles.switchContainer}>
                             <Text style={styles.inputLabel}>Équipement reçu</Text>
                             <Switch
-                                value={editData.equipement}
-                                onValueChange={(value) =>
-                                    setEditData((prev) => ({ ...prev, equipement: value }))
+                                value={editData.equipement === 'Complet'}
+                                onValueChange={(value: boolean) =>
+                                    setEditData((prev) => ({
+                                        ...prev,
+                                        equipement: value ? 'Complet' : null,
+                                    }))
                                 }
-                                trackColor={{ false: '#767577', true: GREEN }}
+                                trackColor={{ false: '#767577', true: COLOR_GREEN_300 }}
                                 thumbColor={editData.equipement ? '#fff' : '#f4f3f4'}
                             />
                         </View>
@@ -856,7 +900,7 @@ export default function JoueurDashboard() {
                                 <Text style={styles.modalButtonText}>Annuler</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.modalButton, { backgroundColor: GREEN }]}
+                                style={[styles.modalButton, { backgroundColor: COLOR_GREEN_300 }]}
                                 onPress={handleSaveChanges}
                             >
                                 <Text style={[styles.modalButtonText, { color: '#000' }]}>
@@ -875,12 +919,12 @@ const styles = StyleSheet.create({
     headerCard: {
         marginTop: 28,
         marginBottom: 16,
-        backgroundColor: DARK_LIGHT,
+        backgroundColor: COLOR_BLACK_LIGHT_900,
         borderRadius: 22,
         padding: 20,
         borderWidth: 2,
-        borderColor: GREEN,
-        shadowColor: GREEN,
+        borderColor: COLOR_GREEN_300,
+        shadowColor: COLOR_GREEN_300,
         shadowOpacity: 0.08,
         shadowRadius: 10,
         elevation: 4,
@@ -902,7 +946,7 @@ const styles = StyleSheet.create({
         height: 64,
         borderRadius: 32,
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
         backgroundColor: '#232b28',
         alignItems: 'center',
         justifyContent: 'center',
@@ -916,7 +960,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     attendanceTracker: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontWeight: 'bold',
     },
     nameAndEditRow: {
@@ -934,7 +978,7 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     headerCat: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontSize: 13,
         fontWeight: '700',
         marginTop: 1,
@@ -945,7 +989,7 @@ const styles = StyleSheet.create({
         borderRadius: 15,
         padding: 8,
         borderWidth: 1,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
     },
     rowWrap: {
         flexDirection: 'row',
@@ -958,7 +1002,7 @@ const styles = StyleSheet.create({
     },
     infoIcon: {
         width: 20,
-        color: GREEN,
+        color: COLOR_GREEN_300,
     },
     headerInfo: {
         color: '#fff',
@@ -976,7 +1020,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
     },
     avatarImg: {
         width: 60,
@@ -988,14 +1032,14 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         right: 0,
-        backgroundColor: GREEN,
+        backgroundColor: COLOR_GREEN_300,
         borderRadius: 10,
         width: 20,
         height: 20,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: DARK_LIGHT,
+        borderColor: COLOR_BLACK_LIGHT_900,
     },
     deadlineCard: {
         backgroundColor: '#2d1b1b',
@@ -1024,7 +1068,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#171e20',
         borderRadius: 18,
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
         padding: 16,
         marginBottom: 20,
         width: '92%',
@@ -1032,7 +1076,7 @@ const styles = StyleSheet.create({
         maxWidth: 790,
     },
     eventTitle: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontWeight: '700',
         fontSize: 15,
         marginBottom: 6,
@@ -1056,14 +1100,14 @@ const styles = StyleSheet.create({
         backgroundColor: '#181f22',
         borderRadius: 18,
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 18,
         width: '30%',
         minWidth: 100,
         maxWidth: 160,
-        shadowColor: GREEN,
+        shadowColor: COLOR_GREEN_300,
         shadowOpacity: 0.08,
         shadowRadius: 8,
         elevation: 2,
@@ -1095,7 +1139,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#171e20',
         borderRadius: 16,
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
         paddingVertical: 14,
     },
     evalLabel: {
@@ -1121,16 +1165,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     modalContent: {
-        backgroundColor: DARK_LIGHT,
+        backgroundColor: COLOR_BLACK_LIGHT_900,
         borderRadius: 20,
         padding: 24,
         width: '100%',
         maxWidth: 400,
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
     },
     modalTitle: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontSize: 20,
         fontWeight: 'bold',
         textAlign: 'center',
@@ -1149,7 +1193,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#232b28',
         borderRadius: 12,
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
         padding: 12,
         color: '#fff',
         fontSize: 16,

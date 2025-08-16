@@ -25,6 +25,7 @@ import { useSession } from '@/hooks/useSession';
 import { Database } from '@/types/database.types';
 import { getCoachEquipesWithJoueursCount } from '@/helpers/equipes.helper';
 import { calculateAgeFromString } from '@/utils/date.util';
+import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GREEN = '#00ff88';
@@ -145,21 +146,6 @@ export default function CoachDashboard() {
     const loading = useMemo(
         () => loadingEquipes || loadingEvenements,
         [loadingEquipes, loadingEvenements],
-    );
-
-    // Fonction helper pour ajouter un cache-buster à l'affichage
-    // TODO: move this to a separate utilities file
-    const getImageUrlWithCacheBuster = useCallback(
-        (url?: string): string | undefined => {
-            if (!url) {
-                return url;
-            }
-
-            // Si l'URL contient déjà un paramètre, ajouter avec &, sinon avec ?
-            const separator = url.includes('?') ? '&' : '?';
-            return `${url}${separator}v=${refreshKey}`;
-        },
-        [refreshKey],
     );
 
     const fetchClub = useCallback(async () => {
@@ -463,7 +449,12 @@ export default function CoachDashboard() {
                         </View>
                     ) : staff?.photo_url ? (
                         <Image
-                            source={{ uri: getImageUrlWithCacheBuster(staff.photo_url) }}
+                            source={{
+                                uri: getImageUrlWithCacheBuster({
+                                    url: staff.photo_url,
+                                    refreshKey,
+                                }),
+                            }}
                             style={styles.profilePhoto}
                             key={`${staff.photo_url}_${refreshKey}`} // Clé qui change à chaque refresh
                             onError={(error) => {
@@ -473,7 +464,11 @@ export default function CoachDashboard() {
                             onLoad={() => {
                                 console.log(
                                     '✅ Image chargée avec succès:',
-                                    staff.photo_url && getImageUrlWithCacheBuster(staff.photo_url),
+                                    staff.photo_url &&
+                                        getImageUrlWithCacheBuster({
+                                            url: staff.photo_url,
+                                            refreshKey,
+                                        }),
                                 );
                             }}
                         />
