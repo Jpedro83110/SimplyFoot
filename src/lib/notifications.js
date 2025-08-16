@@ -150,7 +150,9 @@ export async function getTokenFromDatabase(userId) {
 // 🔄 Récupérer le token stocké localement
 //
 export async function getStoredExpoPushToken() {
-    if (Platform.OS === 'web') return null;
+    if (Platform.OS === 'web') {
+        return null;
+    }
 
     try {
         const token = await AsyncStorage.getItem('expo_push_token');
@@ -259,7 +261,9 @@ export async function envoyerNotificationLocale(titre, corps, data = {}) {
 // 📱 Configuration des listeners pour les notifications reçues
 //
 export function setupNotificationListeners() {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web') {
+        return;
+    }
 
     // Listener pour les notifications reçues quand l'app est ouverte
     const notificationListener = Notifications.addNotificationReceivedListener((notification) => {
@@ -325,7 +329,8 @@ export async function getVuEvenements() {
             const data = await AsyncStorage.getItem('vu_evenements');
             return data ? JSON.parse(data) : [];
         }
-    } catch (e) {
+    } catch (error) {
+        console.error('❌ Erreur getVuEvenements:', error);
         return [];
     }
 }
