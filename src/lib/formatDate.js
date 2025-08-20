@@ -112,29 +112,6 @@ export function formatDateToISO(dateInput) {
 }
 
 /**
- * Formate une date pour l'affichage dans l'interface (JJ/MM/AAAA)
- * @param {Date | string} dateInput
- * @returns {string} Format JJ/MM/AAAA
- */
-export function formatDateForDisplay(dateInput) {
-    if (!dateInput) {
-        return '';
-    }
-
-    try {
-        const d = new Date(dateInput);
-        if (isNaN(d)) {
-            return '';
-        }
-
-        return formatDateFR(d);
-    } catch (error) {
-        console.error('❌ Erreur formatDateForDisplay:', error);
-        return '';
-    }
-}
-
-/**
  * Parse une date d'input (JJ/MM/AAAA ou YYYY-MM-DD) vers le format ISO
  * @param {string} dateString
  * @returns {string} Format YYYY-MM-DD

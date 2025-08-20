@@ -1,28 +1,32 @@
-export const formatDateForDisplay = (date: Date | undefined): string => {
+export const formatDateForDisplay = ({ date, locale }: { date?: Date; locale?: string }) => {
     if (!date) {
         return '';
     }
-    return date.toLocaleDateString('fr-FR', {
+
+    return date.toLocaleDateString(locale || 'fr-FR', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
     });
 };
 
-export const formatDateForInput = (date: Date | undefined): string => {
+export const formatDateForInput = (date?: Date) => {
     if (!date) {
-        return '';
+        return date;
     }
+
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
+
     return `${year}-${month}-${day}`;
 };
 
-export const parseDateFromInput = (dateString: string): Date | null => {
-    if (!dateString) {
-        return null;
+export const parseDateFromInput = (dateString: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return undefined;
     }
+
     const [year, month, day] = dateString.split('-').map(Number);
     return new Date(year, month - 1, day);
 };

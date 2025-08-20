@@ -45,11 +45,11 @@ const WebDateInput: FC<WebDateInputProps> = ({
     return (
         <input
             type="date"
-            value={value ? formatDateForInput(value) : ''}
+            value={formatDateForInput(value)}
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled}
-            min={minimumDate ? formatDateForInput(minimumDate) : undefined}
-            max={maximumDate ? formatDateForInput(maximumDate) : undefined}
+            min={formatDateForInput(minimumDate)}
+            max={formatDateForInput(maximumDate)}
             style={{
                 flex: 1,
                 backgroundColor: '#1e1e1e',
@@ -136,6 +136,7 @@ const InputDate: FC<InputDateProps> = ({
             onChange(undefined);
             return;
         }
+
         const selectedDate = parseDateFromInput(dateString);
         if (selectedDate) {
             handleDateValidationAndSet(selectedDate);
@@ -173,7 +174,7 @@ const InputDate: FC<InputDateProps> = ({
             <Input
                 type="date"
                 icon={icon}
-                value={value ? formatDateForDisplay(value) : ''}
+                value={value ? formatDateForDisplay({ date: value }) : ''}
                 onChangeText={() => {}} // Ne fait rien, géré par le TouchableOpacity
                 placeholder={placeholder}
                 mandatory={mandatory}
