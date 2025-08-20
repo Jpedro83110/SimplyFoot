@@ -16,10 +16,10 @@ import { supabase } from '../../lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '../../lib/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
-import * as Clipboard from 'expo-clipboard';
 import Button from '@/components/atoms/Button';
 import InputDate from '@/components/molecules/InputDate';
 import { calculateAge } from '@/utils/date.util';
+import { copyToClipboard } from '@/utils/copyToClipboard.utils';
 
 // Validation email
 function isValidEmail(email: string) {
@@ -376,7 +376,7 @@ export default function InscriptionPresident() {
                     },
                     {
                         text: 'Copier le code',
-                        onPress: () => copierCodeClub(),
+                        onPress: () => copyToClipboard(generatedCode),
                         style: 'cancel',
                     },
                 ],
@@ -389,14 +389,6 @@ export default function InscriptionPresident() {
             );
         } finally {
             setLoading(false);
-        }
-    };
-
-    // Fonction de copie du code club
-    const copierCodeClub = async () => {
-        if (clubCode) {
-            await Clipboard.setStringAsync(clubCode);
-            Alert.alert('Copié ! 📋', 'Le code club a été copié dans le presse-papier.');
         }
     };
 
@@ -731,7 +723,7 @@ export default function InscriptionPresident() {
                                     </Text>
                                     <TouchableOpacity
                                         style={styles.copyButton}
-                                        onPress={copierCodeClub}
+                                        onPress={() => copyToClipboard(clubCode)}
                                     >
                                         <Ionicons name="copy-outline" size={18} color="#000" />
                                         <Text style={styles.copyButtonText}>Copier</Text>
