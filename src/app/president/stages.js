@@ -15,9 +15,9 @@ import {
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
-import { supabase } from '../../lib/supabase';
-import useCacheData from '../../lib/cache';
-import { formatDateFR, normalizeHour } from '../../lib/formatDate'; // <-- AJOUT ICI
+import { supabase } from '@/lib/supabase';
+import useCacheData from '@/lib/cache';
+import { formatDateForDisplay, normalizeHour } from '@/utils/date.utils';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
@@ -314,7 +314,7 @@ export default function Stages() {
         </style>
         </head><body>
         <h2>${titre}</h2>
-        <p><strong>Dates :</strong> du ${formatDateFR(dateDebut)} au ${formatDateFR(dateFin)}</p>
+        <p><strong>Dates :</strong> du ${formatDateForDisplay({ date: dateDebut })} au ${formatDateForDisplay({ date: dateFin })}</p>
         ${ageMin && ageMax ? `<p><strong>Âge :</strong> ${ageMin} à ${ageMax} ans</p>` : ''}
         <p><strong>Heure :</strong> ${normalizeHour(heureDebut)} - ${normalizeHour(heureFin)}</p>
         <table>
@@ -404,8 +404,8 @@ export default function Stages() {
                                 >
                                     <Text style={styles.stageTitle}>{item.titre}</Text>
                                     <Text style={styles.stageDate}>
-                                        Du {formatDateFR(item.date_debut)} au{' '}
-                                        {formatDateFR(item.date_fin)}
+                                        Du {formatDateForDisplay({ date: item.date_debut })} au{' '}
+                                        {formatDateForDisplay({ date: item.date_fin })}
                                     </Text>
                                     {item.age_min && item.age_max && (
                                         <Text style={styles.stageAge}>

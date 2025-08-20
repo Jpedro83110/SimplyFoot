@@ -3,7 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import Input from '../atoms/Input';
-import { formatDateForDisplay, formatDateForInput, parseDateFromInput } from '@/utils/date.utils';
+import {
+    formatDateForDisplay,
+    formatDateForInput,
+    parseDateFromYYYYMMDD,
+} from '@/utils/date.utils';
 
 interface InputDateProps {
     value: Date | undefined;
@@ -137,7 +141,7 @@ const InputDate: FC<InputDateProps> = ({
             return;
         }
 
-        const selectedDate = parseDateFromInput(dateString);
+        const selectedDate = parseDateFromYYYYMMDD(dateString);
         if (selectedDate) {
             handleDateValidationAndSet(selectedDate);
         }

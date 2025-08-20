@@ -13,7 +13,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { supabase } from '../../lib/supabase';
-import { normalizeHour } from '../../lib/formatDate';
+import { formatDateForDisplay, normalizeHour } from '@/utils/date.utils';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
@@ -30,13 +30,6 @@ function downloadCSVWeb(filename, csv) {
     document.body.removeChild(link);
 }
 
-function formatDateFR(dateStr) {
-    if (!dateStr) {
-        return '';
-    }
-    const [y, m, d] = dateStr.split('-');
-    return `${d}/${m}/${y}`;
-}
 const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
 
 export default function ProgrammeStage() {
@@ -95,7 +88,7 @@ export default function ProgrammeStage() {
         </style>
         </head><body>
         <h2>${stage.titre}</h2>
-        <p><strong>Dates :</strong> du ${formatDateFR(stage.date_debut)} au ${formatDateFR(stage.date_fin)}</p>
+        <p><strong>Dates :</strong> du ${formatDateForDisplay({ date: stage.date_debut })} au ${formatDateForDisplay({ date: stage.date_fin })}</p>
         ${stage.age_min && stage.age_max ? `<p><strong>Âge :</strong> ${stage.age_min} à ${stage.age_max} ans</p>` : ''}
         <table>
           <thead><tr><th>Jour</th><th>Lieu</th><th>Horaires</th><th>Matin</th><th>Après-midi</th></tr></thead>
@@ -191,8 +184,8 @@ export default function ProgrammeStage() {
                         >
                             <Text style={styles.stageTitle}>{stage.titre}</Text>
                             <Text style={styles.stageDate}>
-                                🗓️ Du {formatDateFR(stage.date_debut)} au{' '}
-                                {formatDateFR(stage.date_fin)}
+                                🗓️ Du {formatDateForDisplay({ date: stage.date_debut })} au{' '}
+                                {formatDateForDisplay({ date: stage.date_fin })}
                             </Text>
                             {stage.age_min && stage.age_max && (
                                 <Text style={styles.stageAge}>

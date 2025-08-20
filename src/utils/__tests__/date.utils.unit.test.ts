@@ -2,7 +2,8 @@ import {
     calculateAgeFromString,
     formatDateForDisplay,
     formatDateForInput,
-    parseDateFromInput,
+    normalizeHour,
+    parseDateFromYYYYMMDD,
 } from '@/utils/date.utils';
 
 describe('date utilities', () => {
@@ -17,6 +18,12 @@ describe('date utilities', () => {
             const date = new Date('2023-03-15');
             const formatted = formatDateForDisplay({ date, locale: 'en-US' });
             expect(formatted).toBe('03/15/2023');
+        });
+
+        it('should format the date correctly for display with a string date', () => {
+            const date = '2023-03-15';
+            const formatted = formatDateForDisplay({ date });
+            expect(formatted).toBe('15/03/2023');
         });
 
         it('should return an empty string for undefined date', () => {
@@ -38,16 +45,33 @@ describe('date utilities', () => {
         });
     });
 
-    describe('parseDateFromInput', () => {
+    describe('parseDateFromYYYYMMDD', () => {
         it('should parse the date correctly from input', () => {
             const dateString = '2023-03-15';
-            const parsed = parseDateFromInput(dateString);
+            const parsed = parseDateFromYYYYMMDD(dateString);
             expect(parsed).toEqual(new Date('2023-03-15'));
         });
 
         it('should return undefined for invalid date string', () => {
-            const parsed = parseDateFromInput('invalid-date');
+            const parsed = parseDateFromYYYYMMDD('invalid-date');
             expect(parsed).toBeUndefined();
+        });
+    });
+
+    describe('normalizeHour', () => {
+        it('should normalize hour strings to HH:MM format', () => {
+            expect(normalizeHour('9h')).toBe('09:00');
+            expect(normalizeHour('9:00')).toBe('09:00');
+            expect(normalizeHour('09:00')).toBe('09:00');
+            expect(normalizeHour('9h00')).toBe('09:00');
+            expect(normalizeHour('14h30')).toBe('14:30');
+            expect(normalizeHour('16H')).toBe('16:00');
+        });
+
+        it('should return an empty string for invalid hour strings', () => {
+            expect(normalizeHour(undefined)).toBe('');
+            expect(normalizeHour('')).toBe('');
+            expect(normalizeHour('invalid-hour')).toBe('');
         });
     });
 

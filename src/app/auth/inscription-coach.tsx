@@ -244,6 +244,7 @@ export default function InscriptionCoach() {
             console.log('🔔 Token notifications coach généré:', expoPushToken);
 
             // 4. Insertion dans la table utilisateurs
+            const dateNaissanceISO = formatDateToISO(dateNaissance);
             const { error: insertUserError } = await supabase.from('utilisateurs').insert({
                 id: userId,
                 email: email.trim().toLowerCase(),
@@ -253,6 +254,7 @@ export default function InscriptionCoach() {
                 role: 'coach',
                 expo_push_token: expoPushToken,
                 date_creation: new Date().toISOString(),
+                date_naissance: dateNaissanceISO,
             });
 
             if (insertUserError) {
@@ -264,7 +266,6 @@ export default function InscriptionCoach() {
             console.log('✅ Utilisateur coach inséré dans la base');
 
             // 5. Insertion dans la table staff avec informations complètes
-            const dateNaissanceISO = formatDateToISO(dateNaissance);
             const staffData = {
                 utilisateur_id: userId,
                 club_id: clubData.id,

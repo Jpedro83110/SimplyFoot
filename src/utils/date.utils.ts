@@ -1,13 +1,23 @@
-export const formatDateForDisplay = ({ date, locale }: { date?: Date; locale?: string }) => {
+export const formatDateForDisplay = ({
+    date,
+    locale,
+}: {
+    date?: Date | string;
+    locale?: string;
+}) => {
     if (!date) {
         return '';
     }
 
-    return date.toLocaleDateString(locale || 'fr-FR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-    });
+    const parsedDate = typeof date === 'string' ? parseDateFromYYYYMMDD(date) : date;
+
+    return (
+        parsedDate?.toLocaleDateString(locale || 'fr-FR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }) ?? ''
+    );
 };
 
 export const formatDateForInput = (date?: Date) => {
@@ -22,13 +32,34 @@ export const formatDateForInput = (date?: Date) => {
     return `${year}-${month}-${day}`;
 };
 
-export const parseDateFromInput = (dateString: string) => {
+export const parseDateFromYYYYMMDD = (dateString: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
         return undefined;
     }
 
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day);
+    // const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(dateString);
+};
+
+export const normalizeHour = (hourStr?: string) => {
+    if (
+        !hourStr ||
+        (!/^\d{1,2}([hH]\d{2})?$/.test(hourStr) &&
+            !/^\d{1,2}:\d{2}$/.test(hourStr) &&
+            !/^\d{1,2}[hH]$/.test(hourStr))
+    ) {
+        return '';
+    }
+
+    // Remove spaces and replace 'h' with ':'
+    const cleaned = hourStr.replace(/\s/g, '').replace(/[hH]/g, ':');
+    const [hours, minutes] = cleaned.split(':');
+
+    // Pad hours and minutes to ensure two digits
+    const paddedHours = String(hours).padStart(2, '0');
+    const paddedMinutes = String(minutes || '00').padStart(2, '0');
+
+    return `${paddedHours}:${paddedMinutes}`;
 };
 
 export const calculateAgeFromString = (birthdateStr: string) => {

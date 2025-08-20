@@ -231,6 +231,7 @@ export default function InscriptionJoueur() {
             } catch {}
 
             // 3. Crée Utilisateur
+            const dateNaissanceISO = formatDateToISO(dateNaissance);
             const { error: insertUserError } = await supabase.from('utilisateurs').insert({
                 id: userId,
                 email: email.trim().toLowerCase(),
@@ -240,6 +241,7 @@ export default function InscriptionJoueur() {
                 role: 'joueur',
                 expo_push_token: expoPushToken,
                 date_creation: new Date().toISOString(),
+                date_naissance: dateNaissanceISO,
             });
             if (insertUserError) {
                 Alert.alert('Erreur', 'Utilisateur créé mais insertion incomplète (utilisateurs).');
@@ -248,7 +250,6 @@ export default function InscriptionJoueur() {
             }
 
             // 4. Crée Joueur
-            const dateNaissanceISO = dateNaissance ? formatDateToISO(dateNaissance) : null;
             let joueurData = {
                 equipe_id: equipeData?.id,
                 nom: nom.trim(),
