@@ -18,6 +18,8 @@ import { decode } from 'base64-arraybuffer';
 import { supabase } from '@/lib/supabase';
 import useCacheData from '@/lib/cache';
 import { useSession } from '@/hooks/useSession';
+import { copyToClipboard } from '@/utils/copyToClipboard.utils';
+import Tooltip from 'react-native-walkthrough-tooltip';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
@@ -29,6 +31,7 @@ export default function PresidentDashboard() {
     const [userId, setUserId] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
+    const [tooltipVisible, setTooltipVisible] = React.useState(false);
 
     const { signOut } = useSession();
 
@@ -94,6 +97,7 @@ export default function PresidentDashboard() {
           id, 
           nom, 
           abonnement_actif, 
+          code_acces,
           logo_url, 
           facebook_url, 
           instagram_url, 
@@ -410,6 +414,7 @@ export default function PresidentDashboard() {
                                 {president ? `${president.prenom} ${president.nom}` : ''}
                             </Text>
                             <Text style={styles.title}>{club?.nom || 'Club'}</Text>
+
                             <View style={styles.badge}>
                                 <View
                                     style={[
@@ -434,6 +439,58 @@ export default function PresidentDashboard() {
                                     {uploading ? '⏳ Modification...' : '🖼 Modifier le logo'}
                                 </Text>
                             </TouchableOpacity>
+
+                            <View style={styles.clubCodeSection}>
+                                <Text style={styles.clubCodeTitle}>
+                                    <Ionicons name="key-outline" size={16} color={GREEN} /> Votre
+                                    code club :{' '}
+                                    <Tooltip
+                                        isVisible={tooltipVisible}
+                                        contentStyle={{ padding: 12, borderRadius: 8 }}
+                                        content={
+                                            <Text
+                                                style={{
+                                                    color: '#111',
+                                                    padding: 4,
+                                                    fontSize: 13,
+                                                    lineHeight: 18,
+                                                    fontFamily: 'Arial',
+                                                    textAlign: 'justify',
+                                                    marginBottom: 12,
+                                                }}
+                                            >
+                                                Partagez ce code avec vos joueurs et coachs pour
+                                                qu’ils puissent rejoindre le club.
+                                            </Text>
+                                        }
+                                        placement="bottom"
+                                        onClose={() => setTooltipVisible(false)}
+                                    >
+                                        <TouchableOpacity
+                                            onPress={() => setTooltipVisible(true)}
+                                            style={styles.infoButton}
+                                        >
+                                            <Ionicons
+                                                name="information-circle-outline"
+                                                size={18}
+                                                color={GREEN}
+                                            />
+                                        </TouchableOpacity>
+                                    </Tooltip>
+                                </Text>
+
+                                <View style={styles.clubCodeBox}>
+                                    <Text selectable style={styles.clubCode}>
+                                        {club?.code_acces || 'Indisponible'}
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.copyButton}
+                                        onPress={() => copyToClipboard(club?.code_acces)}
+                                    >
+                                        <Ionicons name="copy-outline" size={18} color="#000" />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
                         </View>
                     </View>
                 </View>
@@ -784,5 +841,41 @@ const styles = StyleSheet.create({
         color: GREEN,
         fontSize: 16,
         fontWeight: '700',
+    },
+    clubCodeSection: {
+        marginTop: 12,
+    },
+    clubCodeTitle: {
+        color: '#ccc',
+        fontSize: 14,
+    },
+    clubCodeBox: {
+        paddingTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginLeft: 12,
+    },
+    clubCode: {
+        color: GREEN,
+        fontSize: 16,
+        fontWeight: '700',
+        letterSpacing: 2,
+        fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    },
+    copyButton: {
+        backgroundColor: GREEN,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 6,
+        gap: 4,
+    },
+    clubCodeInfo: {
+        color: '#aaa',
+        fontSize: 12,
+        textAlign: 'center',
+        lineHeight: 16,
     },
 });
