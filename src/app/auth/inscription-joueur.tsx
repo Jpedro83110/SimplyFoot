@@ -13,14 +13,13 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '@/lib/notifications';
-import { formatDateToISO } from '@/lib/formatDate';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import Input from '@/components/atoms/Input';
 import Button from '@/components/atoms/Button';
 import { Database } from '@/types/database.types';
 import InputDate from '@/components/molecules/InputDate';
-import { calculateAge } from '@/utils/date.utils';
+import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
 
 // Utils
 function isValidEmail(email: string) {
@@ -231,7 +230,7 @@ export default function InscriptionJoueur() {
             } catch {}
 
             // 3. Crée Utilisateur
-            const dateNaissanceISO = formatDateToISO(dateNaissance);
+            const dateNaissanceISO = formatDateToYYYYMMDD(dateNaissance);
             const { error: insertUserError } = await supabase.from('utilisateurs').insert({
                 id: userId,
                 email: email.trim().toLowerCase(),

@@ -20,7 +20,7 @@ export const formatDateForDisplay = ({
     );
 };
 
-export const formatDateForInput = (date?: Date) => {
+export const formatDateToYYYYMMDD = (date?: Date) => {
     if (!date) {
         return date;
     }

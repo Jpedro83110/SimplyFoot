@@ -15,12 +15,11 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '../../lib/notifications';
-import { formatDateToISO } from '../../lib/formatDate';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '@/components/atoms/Button';
 import InputDate from '@/components/molecules/InputDate';
-import { calculateAge } from '@/utils/date.utils';
+import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
 
 // Validation email
 function isValidEmail(email: string) {
@@ -244,7 +243,7 @@ export default function InscriptionCoach() {
             console.log('🔔 Token notifications coach généré:', expoPushToken);
 
             // 4. Insertion dans la table utilisateurs
-            const dateNaissanceISO = formatDateToISO(dateNaissance);
+            const dateNaissanceISO = formatDateToYYYYMMDD(dateNaissance);
             const { error: insertUserError } = await supabase.from('utilisateurs').insert({
                 id: userId,
                 email: email.trim().toLowerCase(),

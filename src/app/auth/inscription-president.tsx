@@ -19,8 +19,7 @@ import ReturnButton from '@/components/atoms/ReturnButton';
 import * as Clipboard from 'expo-clipboard';
 import Button from '@/components/atoms/Button';
 import InputDate from '@/components/molecules/InputDate';
-import { calculateAge } from '@/utils/date.utils';
-import { formatDateToISO } from '@/lib/formatDate';
+import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
 
 // Validation email
 function isValidEmail(email: string) {
@@ -306,7 +305,7 @@ export default function InscriptionPresident() {
             // 5. Insertion dans la table utilisateurs
             console.log("👤 Tentative de création de l'utilisateur...");
 
-            const dateNaissanceISO = formatDateToISO(dateNaissance);
+            const dateNaissanceISO = formatDateToYYYYMMDD(dateNaissance);
             const userDataToInsert = {
                 id: userId,
                 email: email.trim().toLowerCase(),

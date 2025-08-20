@@ -1,7 +1,7 @@
 import {
     calculateAgeFromString,
     formatDateForDisplay,
-    formatDateForInput,
+    formatDateToYYYYMMDD,
     normalizeHour,
     parseDateFromYYYYMMDD,
 } from '@/utils/date.utils';
@@ -32,15 +32,15 @@ describe('date utilities', () => {
         });
     });
 
-    describe('formatDateForInput', () => {
+    describe('formatDateToYYYYMMDD', () => {
         it('should format the date correctly for input', () => {
             const date = new Date('2023-03-15');
-            const formatted = formatDateForInput(date);
+            const formatted = formatDateToYYYYMMDD(date);
             expect(formatted).toBe('2023-03-15');
         });
 
         it('should return an empty string for undefined date', () => {
-            const formatted = formatDateForInput(undefined);
+            const formatted = formatDateToYYYYMMDD(undefined);
             expect(formatted).toBeUndefined();
         });
     });

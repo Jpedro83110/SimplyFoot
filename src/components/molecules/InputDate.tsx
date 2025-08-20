@@ -5,7 +5,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import Input from '../atoms/Input';
 import {
     formatDateForDisplay,
-    formatDateForInput,
+    formatDateToYYYYMMDD,
     parseDateFromYYYYMMDD,
 } from '@/utils/date.utils';
 
@@ -49,11 +49,11 @@ const WebDateInput: FC<WebDateInputProps> = ({
     return (
         <input
             type="date"
-            value={formatDateForInput(value)}
+            value={formatDateToYYYYMMDD(value)}
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled}
-            min={formatDateForInput(minimumDate)}
-            max={formatDateForInput(maximumDate)}
+            min={formatDateToYYYYMMDD(minimumDate)}
+            max={formatDateToYYYYMMDD(maximumDate)}
             style={{
                 flex: 1,
                 backgroundColor: '#1e1e1e',
