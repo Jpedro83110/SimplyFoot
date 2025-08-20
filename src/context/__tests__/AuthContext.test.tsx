@@ -4,10 +4,10 @@ import { AuthContext, AuthProvider } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
-import * as JoueursHelper from '@/helpers/joueurs.helper';
-import * as UtilisateursHelper from '@/helpers/utilisateurs.helper';
-import * as StaffHelper from '@/helpers/staff.helper';
-import * as ClubAdminsHelper from '@/helpers/clubsAdmins.helper';
+import * as JoueursHelper from '@/helpers/joueurs.helpers';
+import * as UtilisateursHelper from '@/helpers/utilisateurs.helpers';
+import * as StaffHelper from '@/helpers/staff.helpers';
+import * as ClubAdminsHelper from '@/helpers/clubsAdmins.helpers';
 import { localStorageMock } from '../../../.jest/localStorageMock';
 
 // Mock SecureStore

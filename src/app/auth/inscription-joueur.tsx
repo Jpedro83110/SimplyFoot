@@ -20,7 +20,7 @@ import Input from '@/components/atoms/Input';
 import Button from '@/components/atoms/Button';
 import { Database } from '@/types/database.types';
 import InputDate from '@/components/molecules/InputDate';
-import { calculateAge } from '@/utils/date.util';
+import { calculateAge } from '@/utils/date.utils';
 
 // Utils
 function isValidEmail(email: string) {

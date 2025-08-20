@@ -20,7 +20,7 @@ import ReturnButton from '@/components/atoms/ReturnButton';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '@/components/atoms/Button';
 import InputDate from '@/components/molecules/InputDate';
-import { calculateAge } from '@/utils/date.util';
+import { calculateAge } from '@/utils/date.utils';
 
 // Validation email
 function isValidEmail(email: string) {

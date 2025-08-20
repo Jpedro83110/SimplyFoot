@@ -23,8 +23,8 @@ import { decode } from 'base64-arraybuffer';
 import { useCachedApi } from '@/hooks/useCachedApi';
 import { useSession } from '@/hooks/useSession';
 import { Database } from '@/types/database.types';
-import { getCoachEquipesWithJoueursCount } from '@/helpers/equipes.helper';
-import { calculateAgeFromString } from '@/utils/date.util';
+import { getCoachEquipesWithJoueursCount } from '@/helpers/equipes.helpers';
+import { calculateAgeFromString } from '@/utils/date.utils';
 import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
 
 const { width: screenWidth } = Dimensions.get('window');

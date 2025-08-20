@@ -19,7 +19,7 @@ import ReturnButton from '@/components/atoms/ReturnButton';
 import * as Clipboard from 'expo-clipboard';
 import Button from '@/components/atoms/Button';
 import InputDate from '@/components/molecules/InputDate';
-import { calculateAge } from '@/utils/date.util';
+import { calculateAge } from '@/utils/date.utils';
 
 // Validation email
 function isValidEmail(email: string) {

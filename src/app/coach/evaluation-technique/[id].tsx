@@ -14,7 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import Slider from '@react-native-community/slider';
 import useCacheData from '../../../lib/cache';
-import { getUtilisateurById, GetUtilisateurById } from '@/helpers/utilisateurs.helper';
+import { getUtilisateurById, GetUtilisateurById } from '@/helpers/utilisateurs.helpers';
 
 export default function EvaluationTechnique() {
     const { id } = useLocalSearchParams();

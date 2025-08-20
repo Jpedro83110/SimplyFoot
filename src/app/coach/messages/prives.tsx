@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
-import { getCoachMessagesPrives } from '@/helpers/messagesPrives.helper';
+import { getCoachMessagesPrives } from '@/helpers/messagesPrives.helpers';
 import { useCachedApi } from '@/hooks/useCachedApi';
 import { Database } from '@/types/database.types';
 

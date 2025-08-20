@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import Input from '../atoms/Input';
-import { formatDateForDisplay, formatDateForInput, parseDateFromInput } from '@/utils/date.util';
+import { formatDateForDisplay, formatDateForInput, parseDateFromInput } from '@/utils/date.utils';
 
 interface InputDateProps {
     value: Date | undefined;

@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { GetCoachEquipesWithJoueursCount } from '@/helpers/equipes.helper';
+import { GetCoachEquipesWithJoueursCount } from '@/helpers/equipes.helpers';
 
 interface TeamCardProps {
     equipe: GetCoachEquipesWithJoueursCount[number];

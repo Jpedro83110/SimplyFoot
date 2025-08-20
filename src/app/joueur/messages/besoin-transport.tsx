@@ -9,12 +9,12 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
-import { COLOR_GREEN_300 } from '@/utils/styleContants.util';
-import { getEquipeIdByUtilisateurId } from '@/helpers/joueurs.helper';
+import { COLOR_GREEN_300 } from '@/utils/styleContants.utils';
+import { getEquipeIdByUtilisateurId } from '@/helpers/joueurs.helpers';
 import {
     GetMessagesBesoinTransportAndUtilisateurByEquipeId,
     getMessagesBesoinTransportAndUtilisateurByEquipeId,
-} from '@/helpers/messagesBesoinTransport.helper';
+} from '@/helpers/messagesBesoinTransport.helpers';
 import useEffectOnce from 'react-use/lib/useEffectOnce';
 
 export default function BesoinTransportJoueur() {

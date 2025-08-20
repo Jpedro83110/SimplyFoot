@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
-import { GetEvenementByCoachId, getEvenementByCoachId } from '@/helpers/evenements.helper';
+import { GetEvenementByCoachId, getEvenementByCoachId } from '@/helpers/evenements.helpers';
 
 export default function ListeCompositions() {
     const [evenements, setEvenements] = useState<GetEvenementByCoachId>([]);

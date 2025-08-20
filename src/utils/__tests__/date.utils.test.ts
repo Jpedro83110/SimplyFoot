@@ -1,4 +1,4 @@
-import { calculateAgeFromString } from '@/utils/date.util';
+import { calculateAgeFromString } from '@/utils/date.utils';
 
 describe('date utilities', () => {
     describe('calculateAgeFromString', () => {
