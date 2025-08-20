@@ -459,7 +459,7 @@ export default function JoueurDashboard() {
         },
         {
             icon: <Ionicons name="nutrition" size={28} color={COLOR_GREEN_300} />,
-            label: 'Conseils',
+            label: 'Scan nutrition',
             go: () => router.push('/joueur/nutrition/scanner'),
         },
     ];
