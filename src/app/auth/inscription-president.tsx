@@ -19,7 +19,7 @@ import ReturnButton from '@/components/atoms/ReturnButton';
 import * as Clipboard from 'expo-clipboard';
 import Button from '@/components/atoms/Button';
 import InputDate from '@/components/molecules/InputDate';
-import { calculateAge } from '@/utils/date.util';
+import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
 
 // Validation email
 function isValidEmail(email: string) {
@@ -305,6 +305,7 @@ export default function InscriptionPresident() {
             // 5. Insertion dans la table utilisateurs
             console.log("👤 Tentative de création de l'utilisateur...");
 
+            const dateNaissanceISO = formatDateToYYYYMMDD(dateNaissance);
             const userDataToInsert = {
                 id: userId,
                 email: email.trim().toLowerCase(),
@@ -314,6 +315,7 @@ export default function InscriptionPresident() {
                 role: 'president',
                 expo_push_token: expoPushToken,
                 date_creation: new Date().toISOString(),
+                date_naissance: dateNaissanceISO,
             };
 
             console.log('📋 Données utilisateur à insérer:', userDataToInsert);

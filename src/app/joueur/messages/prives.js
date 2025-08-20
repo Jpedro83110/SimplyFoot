@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
-import { deleteMessagesPrivesOneWeekOld } from '@/helpers/messagesPrives.helper';
+import { deleteMessagesPrivesOneWeekOld } from '@/helpers/messagesPrives.helpers';
 
 const DARK = '#101415';
 

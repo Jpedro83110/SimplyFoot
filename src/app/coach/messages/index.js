@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { DARK_GRADIENT } from '@/utils/styleContants.util';
+import { DARK_GRADIENT } from '@/utils/styleContants.utils';
 
 const GREEN = '#00ff88';
 

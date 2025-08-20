@@ -3,7 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import Input from '../atoms/Input';
-import { formatDateForDisplay, formatDateForInput, parseDateFromInput } from '@/utils/date.util';
+import {
+    formatDateForDisplay,
+    formatDateToYYYYMMDD,
+    parseDateFromYYYYMMDD,
+} from '@/utils/date.utils';
 
 interface InputDateProps {
     value: Date | undefined;
@@ -45,11 +49,11 @@ const WebDateInput: FC<WebDateInputProps> = ({
     return (
         <input
             type="date"
-            value={value ? formatDateForInput(value) : ''}
+            value={formatDateToYYYYMMDD(value)}
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled}
-            min={minimumDate ? formatDateForInput(minimumDate) : undefined}
-            max={maximumDate ? formatDateForInput(maximumDate) : undefined}
+            min={formatDateToYYYYMMDD(minimumDate)}
+            max={formatDateToYYYYMMDD(maximumDate)}
             style={{
                 flex: 1,
                 backgroundColor: '#1e1e1e',
@@ -136,7 +140,8 @@ const InputDate: FC<InputDateProps> = ({
             onChange(undefined);
             return;
         }
-        const selectedDate = parseDateFromInput(dateString);
+
+        const selectedDate = parseDateFromYYYYMMDD(dateString);
         if (selectedDate) {
             handleDateValidationAndSet(selectedDate);
         }
@@ -173,7 +178,7 @@ const InputDate: FC<InputDateProps> = ({
             <Input
                 type="date"
                 icon={icon}
-                value={value ? formatDateForDisplay(value) : ''}
+                value={value ? formatDateForDisplay({ date: value }) : ''}
                 onChangeText={() => {}} // Ne fait rien, géré par le TouchableOpacity
                 placeholder={placeholder}
                 mandatory={mandatory}

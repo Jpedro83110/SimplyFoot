@@ -9,11 +9,11 @@ import {
 } from 'react';
 import { supabase } from '@/lib/supabase';
 import Toast from 'react-native-toast-message';
-import * as JoueursHelper from '@/helpers/joueurs.helper';
-import * as UtilisateursHelper from '@/helpers/utilisateurs.helper';
-import * as StaffHelper from '@/helpers/staff.helper';
+import * as JoueursHelper from '@/helpers/joueurs.helpers';
+import * as UtilisateursHelper from '@/helpers/utilisateurs.helpers';
+import * as StaffHelper from '@/helpers/staff.helpers';
 import { router } from 'expo-router';
-import * as ClubAdminsHelper from '@/helpers/clubsAdmins.helper';
+import * as ClubAdminsHelper from '@/helpers/clubsAdmins.helpers';
 import { Database } from '@/types/database.types';
 
 interface AuthContextProps {

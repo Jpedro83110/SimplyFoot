@@ -8,7 +8,7 @@ import Toast from 'react-native-toast-message';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { deleteMessagesPrivesOneWeekOld } from '@/helpers/messagesPrives.helper';
+import { deleteMessagesPrivesOneWeekOld } from '@/helpers/messagesPrives.helpers';
 import { AuthProvider } from '@/context/AuthContext';
 import SplashScreenController from './SplashScreenController';
 

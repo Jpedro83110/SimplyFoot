@@ -25,11 +25,11 @@ import {
     COLOR_BLACK_900,
     COLOR_BLACK_LIGHT_900,
     COLOR_GREEN_300,
-} from '@/utils/styleContants.util';
+} from '@/utils/styleContants.utils';
 import { Database } from '@/types/database.types';
 import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
 import { GetClubById, getClubById } from '@/helpers/clubs.helpers';
-import { GetJoueurEquipeById, getJoueurEquipeById } from '@/helpers/equipes.helper';
+import { GetJoueurEquipeById, getJoueurEquipeById } from '@/helpers/equipes.helpers';
 
 const LAST_MESSAGES_VIEWED = 'last-messages-viewed';
 const DEADLINE_LICENCE = new Date('2025-10-15T23:59:59');

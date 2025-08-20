@@ -13,14 +13,13 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '@/lib/notifications';
-import { formatDateToISO } from '@/lib/formatDate';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import Input from '@/components/atoms/Input';
 import Button from '@/components/atoms/Button';
 import { Database } from '@/types/database.types';
 import InputDate from '@/components/molecules/InputDate';
-import { calculateAge } from '@/utils/date.util';
+import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
 
 // Utils
 function isValidEmail(email: string) {
@@ -231,6 +230,7 @@ export default function InscriptionJoueur() {
             } catch {}
 
             // 3. Crée Utilisateur
+            const dateNaissanceISO = formatDateToYYYYMMDD(dateNaissance);
             const { error: insertUserError } = await supabase.from('utilisateurs').insert({
                 id: userId,
                 email: email.trim().toLowerCase(),
@@ -240,6 +240,7 @@ export default function InscriptionJoueur() {
                 role: 'joueur',
                 expo_push_token: expoPushToken,
                 date_creation: new Date().toISOString(),
+                date_naissance: dateNaissanceISO,
             });
             if (insertUserError) {
                 Alert.alert('Erreur', 'Utilisateur créé mais insertion incomplète (utilisateurs).');
@@ -248,7 +249,6 @@ export default function InscriptionJoueur() {
             }
 
             // 4. Crée Joueur
-            const dateNaissanceISO = dateNaissance ? formatDateToISO(dateNaissance) : null;
             let joueurData = {
                 equipe_id: equipeData?.id,
                 nom: nom.trim(),

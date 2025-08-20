@@ -17,9 +17,8 @@ import * as ExpoSharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import { PieChart } from 'react-native-chart-kit';
 import useCacheData from '../../lib/cache';
-import { formatDateFR } from '../../lib/formatDate';
-
-const DARK = '#101415';
+import { formatDateForDisplay } from '@/utils/date.utils';
+import { COLOR_BLACK_900 } from '@/utils/styleContants.utils';
 
 export default function GestionBudget() {
     const [filtreMois, setFiltreMois] = useState('');
@@ -124,8 +123,8 @@ export default function GestionBudget() {
         const header = 'Date,Type,Intitulé,Montant,Catégorie,Commentaire\n';
         const rows = (lignes || [])
             .map(
-                (l) =>
-                    `${formatDateFR(l.date)},${l.type},${l.intitule},${l.montant} € ,${l.categorie},${l.commentaire}`,
+                (ligne) =>
+                    `${formatDateForDisplay({ date: ligne.date })},${ligne.type},${ligne.intitule},${ligne.montant} € ,${ligne.categorie},${ligne.commentaire}`,
             )
             .join('\n');
         const csv = header + rows;
@@ -154,14 +153,14 @@ export default function GestionBudget() {
       <tr><th>Date</th><th>Type</th><th>Intitulé</th><th>Montant</th><th>Catégorie</th><th>Commentaire</th></tr>
       ${(lignes || [])
           .map(
-              (l) =>
+              (ligne) =>
                   `<tr>
-          <td>${formatDateFR(l.date)}</td>
-          <td>${l.type}</td>
-          <td>${l.intitule}</td>
-          <td style="color:${l.type === 'Recette' ? '#00b85b' : '#e30000'}; font-weight:bold">${l.montant} €</td>
-          <td>${l.categorie}</td>
-          <td>${l.commentaire}</td>
+          <td>${formatDateForDisplay({ date: ligne.date })}</td>
+          <td>${ligne.type}</td>
+          <td>${ligne.intitule}</td>
+          <td style="color:${ligne.type === 'Recette' ? '#00b85b' : '#e30000'}; font-weight:bold">${ligne.montant} €</td>
+          <td>${ligne.categorie}</td>
+          <td>${ligne.commentaire}</td>
         </tr>`,
           )
           .join('')}
@@ -208,7 +207,7 @@ export default function GestionBudget() {
 
     const renderItem = ({ item }) => (
         <View style={styles.ligne}>
-            <Text style={styles.texteDate}>{formatDateFR(item.date)}</Text>
+            <Text style={styles.texteDate}>{formatDateForDisplay({ date: item.date })}</Text>
             <Text style={styles.texte}>
                 <Text
                     style={{
@@ -418,7 +417,7 @@ export default function GestionBudget() {
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: DARK,
+        backgroundColor: COLOR_BLACK_900,
     },
     scroll: { padding: 20, alignSelf: 'center', maxWidth: 790, width: '92%' },
     titre: {

@@ -119,7 +119,7 @@ function countLinesWithStyles(filePath) {
 }
 
 /**
- * Recursively traverses a directory and finds all files
+ * Recursively traverses a directory and finds all non-test files
  */
 function findFiles(dir, extensions) {
     const files = [];
@@ -151,6 +151,146 @@ function findFiles(dir, extensions) {
 }
 
 /**
+ * New: Recursively traverses a directory and finds all test files
+ */
+function findTestFiles(dir, extensions) {
+    const files = [];
+
+    function traverse(currentDir) {
+        try {
+            const items = fs.readdirSync(currentDir);
+
+            for (const item of items) {
+                const itemPath = path.join(currentDir, item);
+                const stat = fs.statSync(itemPath);
+
+                if (stat.isDirectory()) {
+                    traverse(itemPath);
+                } else if (stat.isFile()) {
+                    const ext = path.extname(item);
+                    if (extensions.includes(ext) && isTestFile(itemPath)) {
+                        files.push(itemPath);
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn(`Error traversing directory ${currentDir}:`, error.message);
+        }
+    }
+
+    traverse(dir);
+    return files;
+}
+
+/**
+ * New: Infer test kind (unit, integration, e2e, other) from path/filename
+ */
+function inferTestKind(filePath) {
+    const p = filePath.replace(/\\/g, '/').toLowerCase();
+
+    const hasToken = (token) => {
+        // Match token at path/segment or extension boundaries to avoid false positives (e.g., 'print')
+        const re = new RegExp(`(^|[\\/._-])${token}(?=[\\/._-]|\\.|$)`, 'i');
+        return re.test(p);
+    };
+
+    if (hasToken('e2e')) {
+        return 'e2e';
+    }
+    if (hasToken('integration') || hasToken('integ') || hasToken('int')) {
+        return 'integration';
+    }
+    if (hasToken('unit') || hasToken('spec')) {
+        return 'unit';
+    }
+    return 'other';
+}
+
+/**
+ * New: Strip simple comments for regex-based counting (best-effort)
+ */
+function stripComments(content) {
+    // Remove block comments
+    let noBlocks = content.replace(/\/\*[\s\S]*?\*\//g, '');
+    // Remove line comments (naive)
+    let noLines = noBlocks.replace(/(^|\s)\/\/.*$/gm, '$1');
+    return noLines;
+}
+
+/**
+ * New: Count test file metrics (lines, suites, tests, expects, mocks, snapshots, only/skip)
+ */
+function countTestFileMetrics(filePath) {
+    try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const lines = content.split('\n');
+
+        let codeLines = 0;
+        let inMultiLineComment = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            const trimmedLine = lines[i].trim();
+
+            // Handle multi-line comments
+            if (trimmedLine.includes('/*') && !trimmedLine.includes('*/')) {
+                inMultiLineComment = true;
+                continue;
+            }
+            if (inMultiLineComment) {
+                if (trimmedLine.includes('*/')) {
+                    inMultiLineComment = false;
+                }
+                continue;
+            }
+
+            if (shouldExcludeLine(trimmedLine)) {
+                continue;
+            }
+
+            codeLines++;
+        }
+
+        const src = stripComments(content);
+
+        const countMatches = (re) => {
+            const m = src.match(re);
+            return m ? m.length : 0;
+        };
+
+        const suiteCount = countMatches(/\bdescribe\s*(?:\.(?:only|skip))?\s*\(/g);
+        const testCount = countMatches(/\b(?:it|test)\s*(?:\.(?:only|skip))?\s*\(/g);
+        const expectCount = countMatches(/\bexpect\s*\(/g);
+        const mockCount = countMatches(/\b(?:jest|vi)\.(?:fn|mock|spyOn)\b/g);
+        const snapshotCount = countMatches(/\.toMatch(?:InlineSnapshot|Snapshot)\s*\(/g);
+        const onlyCount = countMatches(/\.(?:only)\s*\(/g);
+        const skipCount = countMatches(/\.(?:skip)\s*\(/g);
+
+        return {
+            codeLines,
+            suiteCount,
+            testCount,
+            expectCount,
+            mockCount,
+            snapshotCount,
+            onlyCount,
+            skipCount,
+        };
+    } catch (error) {
+        console.warn(`Error reading test file ${filePath}:`, error.message);
+        return {
+            codeLines: 0,
+            suiteCount: 0,
+            testCount: 0,
+            expectCount: 0,
+            mockCount: 0,
+            snapshotCount: 0,
+            onlyCount: 0,
+            skipCount: 0,
+        };
+    }
+}
+
+/**
  * Analyzes files in source directories
  */
 function analyzeCodebase(options = {}) {
@@ -164,6 +304,26 @@ function analyzeCodebase(options = {}) {
     // New: array to store line count per file with details
     const fileLinesArray = [];
     const fileDetails = []; // New: to store details of each file
+
+    // New: tests aggregation
+    const testTotals = {
+        files: 0,
+        lines: 0,
+        suites: 0,
+        tests: 0,
+        expects: 0,
+        mocks: 0,
+        snapshots: 0,
+        only: 0,
+        skip: 0,
+    };
+    const testByKind = {
+        unit: { files: 0, lines: 0, suites: 0, tests: 0 },
+        integration: { files: 0, lines: 0, suites: 0, tests: 0 },
+        e2e: { files: 0, lines: 0, suites: 0, tests: 0 },
+        other: { files: 0, lines: 0, suites: 0, tests: 0 },
+    };
+    const testFileDetails = [];
 
     if (verbose) {
         console.log('🔍 Analyzing source files (excluding comments and console statements)...\n');
@@ -231,6 +391,42 @@ function analyzeCodebase(options = {}) {
             }
         }
 
+        // New: Analyze Test files (both JS/TS)
+        const testFilesInDir = findTestFiles(dirPath, [...JS_EXTENSIONS, ...TS_EXTENSIONS]);
+        for (const file of testFilesInDir) {
+            const metrics = countTestFileMetrics(file);
+            const kind = inferTestKind(file);
+
+            testTotals.files += 1;
+            testTotals.lines += metrics.codeLines;
+            testTotals.suites += metrics.suiteCount;
+            testTotals.tests += metrics.testCount;
+            testTotals.expects += metrics.expectCount;
+            testTotals.mocks += metrics.mockCount;
+            testTotals.snapshots += metrics.snapshotCount;
+            testTotals.only += metrics.onlyCount;
+            testTotals.skip += metrics.skipCount;
+
+            testByKind[kind].files += 1;
+            testByKind[kind].lines += metrics.codeLines;
+            testByKind[kind].suites += metrics.suiteCount;
+            testByKind[kind].tests += metrics.testCount;
+
+            testFileDetails.push({
+                path: path.relative(process.cwd(), file),
+                lines: metrics.codeLines,
+                suites: metrics.suiteCount,
+                tests: metrics.testCount,
+                kind,
+            });
+
+            if (verbose) {
+                console.log(
+                    `   🧪 ${kind.toUpperCase()}: ${path.relative(process.cwd(), file)} (${metrics.codeLines} lines, ${metrics.suiteCount} suites, ${metrics.testCount} tests)`,
+                );
+            }
+        }
+
         if (verbose) {
             console.log('');
         }
@@ -269,11 +465,14 @@ function analyzeCodebase(options = {}) {
 
     // Generate a visual progress bar
     const barLength = 50;
-    const jsBarLength = Math.round((jsLines / totalCodeLines) * barLength);
+    const jsBarLength = totalCodeLines > 0 ? Math.round((jsLines / totalCodeLines) * barLength) : 0;
     const tsBarLength = barLength - jsBarLength;
 
     // Create top 5 largest files
     const top5Files = fileDetails.sort((a, b) => b.lines - a.lines).slice(0, 5);
+
+    // New: Top 5 largest test files
+    const top5TestFiles = testFileDetails.sort((a, b) => b.lines - a.lines).slice(0, 5);
 
     // Display results
     console.log('📊 CODE LINE STATISTICS (excluding comments and console statements)');
@@ -302,6 +501,70 @@ function analyzeCodebase(options = {}) {
         console.log(`   ${rank}. ${typeIcon} ${file.path} (${file.lines} lines)`);
     });
 
+    // New: Print tests statistics
+    if (testTotals.files > 0) {
+        console.log('');
+        console.log('🧪 TESTS STATISTICS');
+        console.log('====================================================================');
+        console.log(`🧾 Test files: ${testTotals.files}`);
+        console.log(`🧮 Test lines (excl. comments/console): ${testTotals.lines}`);
+        console.log(`🧩 Suites (describe): ${testTotals.suites}`);
+        console.log(`✅ Tests (it/test): ${testTotals.tests}`);
+        if (testTotals.only > 0 || testTotals.skip > 0) {
+            console.log(`⚠️  only(): ${testTotals.only}   skip(): ${testTotals.skip}`);
+        }
+        console.log('');
+
+        const sumByKind = (key) =>
+            testByKind.unit[key] +
+            testByKind.integration[key] +
+            testByKind.e2e[key] +
+            testByKind.other[key];
+
+        const totalTestLines = Math.max(1, sumByKind('lines')); // avoid division by zero
+        const percent = (n) => ((n / totalTestLines) * 100).toFixed(2);
+
+        const maybePrintKind = (label, k) => {
+            if (testByKind[k].files > 0) {
+                console.log(
+                    `   ${label}: ${testByKind[k].files} files, ${testByKind[k].lines} lines (${percent(
+                        testByKind[k].lines,
+                    )}%), ${testByKind[k].suites} suites, ${testByKind[k].tests} tests`,
+                );
+            }
+        };
+
+        console.log('📈 BY KIND:');
+        maybePrintKind('Unit', 'unit');
+        maybePrintKind('Integration', 'integration');
+        maybePrintKind('E2E', 'e2e');
+        if (testByKind.other.files > 0) {
+            maybePrintKind('Other/Unclassified', 'other');
+        }
+
+        console.log('');
+        console.log('🏆 TOP 5 LARGEST TEST FILES:');
+        top5TestFiles.forEach((file, index) => {
+            const rank = index + 1;
+            const tag =
+                file.kind === 'unit'
+                    ? '🟢'
+                    : file.kind === 'integration'
+                      ? '🟡'
+                      : file.kind === 'e2e'
+                        ? '🟣'
+                        : '⚪';
+            console.log(
+                `   ${rank}. ${tag} ${file.path} (${file.lines} lines, ${file.suites} suites, ${file.tests} tests)`,
+            );
+        });
+    } else {
+        console.log('');
+        console.log('🧪 TESTS STATISTICS');
+        console.log('====================================================================');
+        console.log('No test files found based on patterns: __tests__/, *.test.*, *.spec.*');
+    }
+
     return {
         javascript: {
             files: jsFiles,
@@ -327,6 +590,12 @@ function analyzeCodebase(options = {}) {
         },
         // New: top 5 files
         top5Files,
+        // New: tests summary
+        tests: {
+            totals: testTotals,
+            byKind: testByKind,
+            top5Files: top5TestFiles,
+        },
     };
 }
 

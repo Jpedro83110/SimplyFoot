@@ -6,12 +6,11 @@ export default {
     version: packageJson.version,
     scheme: 'simplyfoot',
     orientation: 'portrait',
-    icon: './assets/logo-v2.png',
+    icon: './src/assets/logo-v2.png',
     userInterfaceStyle: 'automatic',
     splash: {
-        image: './assets/logo-v2.png',
+        image: './src/assets/logo-v2.png',
         resizeMode: 'contain',
-        backgroundColor: '#121212',
     },
     updates: {
         enabled: true,
@@ -25,13 +24,12 @@ export default {
     android: {
         package: 'com.simplyfoot.app',
         adaptiveIcon: {
-            foregroundImage: './assets/logo-v2.png',
-            backgroundColor: '#121212',
+            foregroundImage: './src/assets/logo-v2.png',
         },
         permissions: ['NOTIFICATIONS'],
     },
     web: {
-        favicon: './assets/logo-v2.png',
+        favicon: './src/assets/logo-v2.png',
         bundler: 'metro',
     },
     plugins: [

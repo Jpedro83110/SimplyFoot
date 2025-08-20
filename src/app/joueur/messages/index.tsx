@@ -5,8 +5,8 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '@/lib/supabase';
-import { DARK_GRADIENT, COLOR_GREEN_300 } from '@/utils/styleContants.util';
-import { getAccepteTransportByUtilisateurId } from '@/helpers/joueurs.helper';
+import { DARK_GRADIENT, COLOR_GREEN_300 } from '@/utils/styleContants.utils';
+import { getAccepteTransportByUtilisateurId } from '@/helpers/joueurs.helpers';
 
 export default function MessagesIndex() {
     const router = useRouter();

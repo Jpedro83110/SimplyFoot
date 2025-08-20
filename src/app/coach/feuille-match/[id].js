@@ -14,8 +14,8 @@ import { supabase } from '../../../lib/supabase';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import useCacheData from '../../../lib/cache';
+import { formatDateForDisplay } from '@/utils/date.utils';
 // Ajout import formatDate
-import { formatDateFR } from '../../../lib/formatDate';
 
 export default function FeuilleMatch() {
     const { id } = useLocalSearchParams();
@@ -179,16 +179,16 @@ export default function FeuilleMatch() {
     const MAX_J = 12;
     const isMobile = width < 700;
 
-    // 🔧 CORRECTION : Protection pour formatDateFR
+    // 🔧 CORRECTION : Protection pour formatDateForDisplay
     const safeFormatDate = (dateStr) => {
         if (!dateStr) {
             return '';
         }
         try {
-            const formatted = formatDateFR(dateStr);
+            const formatted = formatDateForDisplay({ date: dateStr });
             return formatted || '';
         } catch (e) {
-            console.error('Erreur formatDateFR:', e);
+            console.error('Erreur formatDateForDisplay:', e);
             return dateStr;
         }
     };
