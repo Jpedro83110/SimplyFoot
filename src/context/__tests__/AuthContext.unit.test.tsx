@@ -44,10 +44,10 @@ jest.mock('react-native-toast-message', () => ({
     show: jest.fn(),
 }));
 
-jest.mock('@/helpers/joueurs.helper');
-jest.mock('@/helpers/utilisateurs.helper');
-jest.mock('@/helpers/staff.helper');
-jest.mock('@/helpers/clubsAdmins.helper');
+jest.mock('@/helpers/joueurs.helpers');
+jest.mock('@/helpers/utilisateurs.helpers');
+jest.mock('@/helpers/staff.helpers');
+jest.mock('@/helpers/clubsAdmins.helpers');
 
 // Helper component to access context values in tests
 const TestConsumer = ({ onContextValue }: { onContextValue: jest.Mock }) => {
