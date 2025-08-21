@@ -219,7 +219,6 @@ export default function Evenements() {
                         style={styles.input}
                         value={heureStr}
                         onChangeText={setHeureStr}
-                        keyboardType="numeric"
                     />
 
                     <TextInput
