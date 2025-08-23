@@ -12,7 +12,7 @@ import {
     Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { signUp, supabase } from '../../lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '../../lib/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
@@ -20,6 +20,7 @@ import * as Clipboard from 'expo-clipboard';
 import Button from '@/components/atoms/Button';
 import InputDate from '@/components/molecules/InputDate';
 import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
+import { useSession } from '@/hooks/useSession';
 
 // Validation email
 function isValidEmail(email: string) {
@@ -61,6 +62,8 @@ export default function InscriptionPresident() {
     const [notificationsInitializing, setNotificationsInitializing] = useState(false);
     const [clubCode, setClubCode] = useState('');
     const [clubCreated, setClubCreated] = useState(false);
+
+    const { signIn } = useSession();
 
     // 🎂 Calcul automatique de l'âge
     useEffect(() => {
@@ -113,7 +116,7 @@ export default function InscriptionPresident() {
         if (!isValidEmail(email.trim())) {
             return false;
         }
-        if (!password.trim()) {
+        if (!password) {
             return false;
         }
         if (password.length < 6) {
@@ -218,42 +221,13 @@ export default function InscriptionPresident() {
 
             // 1. Création du compte Auth
             console.log('📧 Tentative de création du compte Auth...');
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                email: email.trim().toLowerCase(),
-                password: password.trim(),
+            const signUpData = await signUp({
+                email: email,
+                password: password,
             });
-
-            if (signUpError || !signUpData?.user) {
-                console.error('❌ Erreur Auth SignUp:', signUpError);
-                Alert.alert(
-                    'Erreur',
-                    `Inscription échouée : ${signUpError?.message || 'Erreur inconnue.'}`,
-                );
-                return;
-            }
 
             const userId = signUpData.user.id;
             console.log('✅ Compte Auth créé, userId:', userId);
-
-            // Après signUp, vérifier la session
-            console.log('🔐 Vérification de la session...');
-            const { data: sessionData } = await supabase.auth.getSession();
-            if (!sessionData.session) {
-                console.log('⚠️ Pas de session, tentative de login...');
-                const { error: loginError } = await supabase.auth.signInWithPassword({
-                    email: email.trim().toLowerCase(),
-                    password: password.trim(),
-                }); // FIXME: on ne fait rien du résultat ?
-                if (loginError) {
-                    console.error('❌ Erreur Login:', loginError);
-                    Alert.alert('Erreur', "Problème d'authentification après inscription.");
-                    setLoading(false);
-                    return;
-                }
-                console.log('✅ Login réussi');
-            } else {
-                console.log('✅ Session active');
-            }
 
             // 2. Générer le token de notification
             console.log('🔔 Configuration des notifications...');
@@ -383,6 +357,8 @@ export default function InscriptionPresident() {
                     },
                 ],
             );
+
+            await signIn({ email, password });
         } catch (error) {
             console.error('💥 Erreur générale:', error);
             Alert.alert(

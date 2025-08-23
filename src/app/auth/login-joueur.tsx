@@ -71,7 +71,7 @@ export default function LoginJoueur() {
         setLoading(true);
 
         try {
-            await signIn(email, password);
+            await signIn({ email, password });
         } catch (error) {
             console.log('Erreur générale', error);
         } finally {

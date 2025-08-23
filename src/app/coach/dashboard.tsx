@@ -61,14 +61,17 @@ export default function CoachDashboard() {
     const [equipes, loadingEquipes, fetchCoachEquipes] = useCachedApi(
         'fetch_coach_equipes',
         useCallback(async () => {
-            if (!utilisateur?.id) {
+            if (!utilisateur?.id || !staff?.club_id) {
                 return undefined;
             }
 
-            const data = await getCoachEquipesWithJoueursCount({ coachId: utilisateur.id });
+            const data = await getCoachEquipesWithJoueursCount({
+                coachId: utilisateur.id,
+                clubId: staff.club_id,
+            });
 
             return data;
-        }, [utilisateur?.id]),
+        }, [staff?.club_id, utilisateur?.id]),
         1,
     );
 

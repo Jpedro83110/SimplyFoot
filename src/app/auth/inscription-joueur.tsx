@@ -11,7 +11,7 @@ import {
     Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
+import { signUp, supabase } from '@/lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '@/lib/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
@@ -20,6 +20,7 @@ import Button from '@/components/atoms/Button';
 import { Database } from '@/types/database.types';
 import InputDate from '@/components/molecules/InputDate';
 import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
+import { useSession } from '@/hooks/useSession';
 
 // Utils
 function isValidEmail(email: string) {
@@ -66,6 +67,8 @@ export default function InscriptionJoueur() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isMinor, setIsMinor] = useState(false);
     const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
+
+    const { signIn } = useSession();
 
     // Fetch équipe + coach dès que codeEquipe rempli
     useEffect(() => {
@@ -212,15 +215,11 @@ export default function InscriptionJoueur() {
 
         try {
             // 1. Crée Auth
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                email: email.trim().toLowerCase(),
-                password: password.trim(),
+            const signUpData = await signUp({
+                email: email,
+                password: password,
             });
-            if (signUpError || !signUpData?.user) {
-                Alert.alert('Erreur', signUpError?.message || 'Erreur création Auth');
-                setLoading(false);
-                return;
-            }
+
             const userId = signUpData.user.id;
 
             // 2. Notifications
@@ -307,6 +306,8 @@ export default function InscriptionJoueur() {
                     },
                 ],
             );
+
+            await signIn({ email, password });
         } catch (error) {
             console.error('Error during player registration:', error);
             Alert.alert('Erreur', "Une erreur inattendue s'est produite. Veuillez réessayer.");

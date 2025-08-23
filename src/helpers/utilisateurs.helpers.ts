@@ -21,6 +21,23 @@ export const getUtilisateurById = async (args: { utilisateurId: string }) => {
     return data;
 };
 
+export type GetUtilisateursByClubId = Awaited<ReturnType<typeof getUtilisateursByClubId>>;
+
+export const getUtilisateursByClubId = async (args: { clubId: string }) => {
+    const { clubId } = args;
+
+    const { data, error } = await supabase
+        .from('utilisateurs')
+        .select('id, nom, prenom, date_naissance, role')
+        .eq('club_id', clubId);
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 export const updateUtilisateur = async (args: {
     utilisateurId: string;
     dataToUpdate: Database['public']['Tables']['utilisateurs']['Update'];

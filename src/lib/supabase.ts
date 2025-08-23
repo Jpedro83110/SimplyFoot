@@ -15,3 +15,22 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
         storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     },
 });
+
+export const signUp = async ({ email, password }: { email: string; password: string }) => {
+    const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+    });
+
+    if (error) {
+        throw error;
+    }
+
+    const { user } = data;
+
+    if (!user) {
+        throw new Error('Failed to create user.');
+    }
+
+    return { user };
+};
