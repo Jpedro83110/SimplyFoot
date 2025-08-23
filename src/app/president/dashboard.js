@@ -25,37 +25,10 @@ const DARK_LIGHT = '#161b20';
 
 export default function PresidentDashboard() {
     const router = useRouter();
-    const [loadingAuth, setLoadingAuth] = useState(true);
-    const [userId, setUserId] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
 
-    const { signOut } = useSession();
-
-    // Vérification de l'authentification
-    useEffect(() => {
-        const checkAuth = async () => {
-            try {
-                const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-
-                if (sessionError || !sessionData.session) {
-                    Alert.alert('Erreur de session', 'Session expirée, veuillez vous reconnecter.');
-                    router.replace('/auth/login-club');
-                    return;
-                }
-
-                setUserId(sessionData.session.user.id);
-            } catch (err) {
-                console.error('Erreur auth:', err);
-                Alert.alert('Erreur', 'Problème de connexion');
-                router.replace('/auth/login-club');
-            } finally {
-                setLoadingAuth(false);
-            }
-        };
-
-        checkAuth();
-    }, [router]);
+    const { signOut, utilisateur } = useSession();
 
     // Fonction pour récupérer les données du président
     const fetchPresident = async (userId) => {
@@ -114,14 +87,14 @@ export default function PresidentDashboard() {
 
     // Utilisation du cache pour les données
     const [president, , loadingPresident] = useCacheData(
-        userId ? `president_${userId}` : null,
-        () => fetchPresident(userId),
+        utilisateur?.id ? `president_${utilisateur?.id}` : null,
+        () => fetchPresident(utilisateur?.id),
         12 * 3600,
     );
 
     const [club, setClubState, loadingClub] = useCacheData(
-        userId ? `club_president_${userId}` : null,
-        () => fetchClub(userId),
+        utilisateur?.id ? `club_president_${utilisateur?.id}` : null,
+        () => fetchClub(utilisateur?.id),
         6 * 3600,
     );
 
@@ -130,14 +103,6 @@ export default function PresidentDashboard() {
         try {
             setUploading(true);
             setError(null);
-
-            // Vérifier la session
-            const { data: sessionData } = await supabase.auth.getSession();
-            if (!sessionData.session) {
-                Alert.alert('Erreur', 'Session expirée, veuillez vous reconnecter.');
-                router.replace('/auth/login-club');
-                return;
-            }
 
             // Demander les permissions pour mobile
             if (Platform.OS !== 'web') {
@@ -365,7 +330,7 @@ export default function PresidentDashboard() {
         }
     }, [president, error, router]);
 
-    const loading = loadingAuth || loadingPresident || loadingClub;
+    const loading = loadingPresident || loadingClub;
 
     if (loading) {
         return (

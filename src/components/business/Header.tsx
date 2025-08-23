@@ -1,38 +1,25 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert } from 'react-native';
+import React, { FC } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabase';
+import { useSession } from '@/hooks/useSession';
 
-export default function Header({ title, showBack = true }) {
+interface HeaderProps {
+    title: string;
+    showBack?: boolean;
+}
+
+export const Header: FC<HeaderProps> = ({ title, showBack = true }) => {
     const router = useRouter();
     const segments = useSegments();
 
+    const { utilisateur } = useSession();
+
     // Pour savoir si on peut revenir en arrière
-    const canGoBack = segments.length > 2; // segments: ['', 'coach', 'convocation'] etc.
+    const canGoBack = segments.length > 0;
 
     const goToAccueil = async () => {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const userId = sessionData?.session?.user?.id;
-
-        if (!userId) {
-            router.replace('/auth/login-club');
-            return;
-        }
-
-        const { data: utilisateur, error } = await supabase
-            .from('utilisateurs')
-            .select('role')
-            .eq('id', userId)
-            .single();
-
-        if (error || !utilisateur?.role) {
-            Alert.alert('Erreur', 'Rôle utilisateur introuvable.');
-            router.replace('/auth/login-club');
-            return;
-        }
-
-        const role = utilisateur.role;
+        const role = utilisateur?.role;
 
         if (role === 'president') {
             router.replace('/president/dashboard');
@@ -72,7 +59,9 @@ export default function Header({ title, showBack = true }) {
             <View style={styles.bottomGlow} />
         </View>
     );
-}
+};
+
+export default Header;
 
 const styles = StyleSheet.create({
     container: {
