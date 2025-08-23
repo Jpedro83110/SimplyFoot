@@ -34,3 +34,13 @@ export const signUp = async ({ email, password }: { email: string; password: str
 
     return { user };
 };
+
+export const resetPassword = async (email: string) => {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};

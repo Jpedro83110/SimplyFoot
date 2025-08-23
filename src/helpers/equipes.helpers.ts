@@ -5,7 +5,7 @@ export type GetCoachEquipes = Awaited<ReturnType<typeof getCoachEquipes>>;
 export const getCoachEquipes = async ({ coachId, clubId }: { coachId: string; clubId: string }) => {
     const { data, error } = await supabase
         .from('equipes')
-        .select('id')
+        .select('id, nom, categorie')
         .eq('coach_id', coachId)
         .eq('club_id', clubId);
 

@@ -12,7 +12,7 @@ import {
     Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
+import { resetPassword } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import Button from '@/components/atoms/Button';
@@ -36,13 +36,10 @@ export default function LoginClub() {
             alert('Veuillez entrer votre email pour recevoir un lien de réinitialisation.'); //FIXME: Toast notification
             return;
         }
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
-        if (error) {
-            Alert.alert('Erreur', error.message);
-        } else {
-            Alert.alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
-            alert('Vérifiez vos emails, Un lien de réinitialisation a été envoyé.'); //FIXME: Toast notification
-        }
+
+        await resetPassword(email);
+        Alert.alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
+        alert('Vérifiez vos emails, Un lien de réinitialisation a été envoyé.'); //FIXME: Toast notification
     };
 
     const handleLogin = async () => {

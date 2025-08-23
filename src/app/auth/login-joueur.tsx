@@ -13,7 +13,7 @@ import {
     Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
+import { resetPassword } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ReturnButton from '@/components/atoms/ReturnButton';
@@ -52,16 +52,10 @@ export default function LoginJoueur() {
             );
             return;
         }
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-            redirectTo: '/auth/reset-password', // FIXME
-        });
-        if (error) {
-            Alert.alert('Erreur', error.message);
-            console.log('Erreur', error.message);
-        } else {
-            Alert.alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
-            console.log('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
-        }
+
+        await resetPassword(email);
+        Alert.alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
+        console.log('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
     };
 
     const handleLogin = async () => {
