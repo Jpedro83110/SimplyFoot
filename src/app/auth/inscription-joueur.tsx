@@ -21,6 +21,7 @@ import { Database } from '@/types/database.types';
 import InputDate from '@/components/molecules/InputDate';
 import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
 import { useSession } from '@/hooks/useSession';
+import { insertUtilisateur } from '@/helpers/utilisateurs.helpers';
 
 // Utils
 function isValidEmail(email: string) {
@@ -230,22 +231,19 @@ export default function InscriptionJoueur() {
 
             // 3. Crée Utilisateur
             const dateNaissanceISO = formatDateToYYYYMMDD(dateNaissance);
-            const { error: insertUserError } = await supabase.from('utilisateurs').insert({
-                id: userId,
-                email: email.trim().toLowerCase(),
-                nom: nom.trim(),
-                prenom: prenom.trim(),
-                club_id: equipeData?.club_id,
-                role: 'joueur',
-                expo_push_token: expoPushToken,
-                date_creation: new Date().toISOString(),
-                date_naissance: dateNaissanceISO,
+            await insertUtilisateur({
+                dataToInsert: {
+                    id: userId,
+                    email: email.trim().toLowerCase(),
+                    nom: nom.trim(),
+                    prenom: prenom.trim(),
+                    club_id: equipeData?.club_id,
+                    role: 'joueur',
+                    expo_push_token: expoPushToken,
+                    date_creation: new Date().toISOString(),
+                    date_naissance: dateNaissanceISO,
+                },
             });
-            if (insertUserError) {
-                Alert.alert('Erreur', 'Utilisateur créé mais insertion incomplète (utilisateurs).');
-                setLoading(false);
-                return;
-            }
 
             // 4. Crée Joueur
             let joueurData = {

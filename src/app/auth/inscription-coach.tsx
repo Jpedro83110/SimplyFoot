@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -13,7 +13,7 @@ import {
     Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { signUp, supabase } from '../../lib/supabase';
+import { signUp, supabase } from '@/lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '../../lib/notifications';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +21,7 @@ import Button from '@/components/atoms/Button';
 import InputDate from '@/components/molecules/InputDate';
 import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
 import { useSession } from '@/hooks/useSession';
+import { insertUtilisateur } from '@/helpers/utilisateurs.helpers';
 
 // Validation email
 function isValidEmail(email: string) {
@@ -238,23 +239,19 @@ export default function InscriptionCoach() {
 
             // 4. Insertion dans la table utilisateurs
             const dateNaissanceISO = formatDateToYYYYMMDD(dateNaissance);
-            const { error: insertUserError } = await supabase.from('utilisateurs').insert({
-                id: userId,
-                email: email.trim().toLowerCase(),
-                nom: nom.trim(),
-                prenom: prenom.trim(),
-                club_id: clubData.id,
-                role: 'coach',
-                expo_push_token: expoPushToken,
-                date_creation: new Date().toISOString(),
-                date_naissance: dateNaissanceISO,
+            await insertUtilisateur({
+                dataToInsert: {
+                    id: userId,
+                    email: email.trim().toLowerCase(),
+                    nom: nom.trim(),
+                    prenom: prenom.trim(),
+                    club_id: clubData.id,
+                    role: 'coach',
+                    expo_push_token: expoPushToken,
+                    date_creation: new Date().toISOString(),
+                    date_naissance: dateNaissanceISO,
+                },
             });
-
-            if (insertUserError) {
-                console.error('❌ Erreur insertion utilisateur coach:', insertUserError);
-                Alert.alert('Erreur', 'Utilisateur créé mais insertion incomplète (utilisateurs).');
-                return;
-            }
 
             console.log('✅ Utilisateur coach inséré dans la base');
 

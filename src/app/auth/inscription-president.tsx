@@ -21,6 +21,7 @@ import Button from '@/components/atoms/Button';
 import InputDate from '@/components/molecules/InputDate';
 import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
 import { useSession } from '@/hooks/useSession';
+import { insertUtilisateur } from '@/helpers/utilisateurs.helpers';
 
 // Validation email
 function isValidEmail(email: string) {
@@ -280,7 +281,7 @@ export default function InscriptionPresident() {
             console.log("👤 Tentative de création de l'utilisateur...");
 
             const dateNaissanceISO = formatDateToYYYYMMDD(dateNaissance);
-            const userDataToInsert = {
+            const dataToInsert = {
                 id: userId,
                 email: email.trim().toLowerCase(),
                 nom: nom.trim(),
@@ -292,20 +293,9 @@ export default function InscriptionPresident() {
                 date_naissance: dateNaissanceISO,
             };
 
-            console.log('📋 Données utilisateur à insérer:', userDataToInsert);
+            console.log('📋 Données utilisateur à insérer:', dataToInsert);
 
-            const { error: insertUserError } = await supabase
-                .from('utilisateurs')
-                .insert(userDataToInsert);
-
-            if (insertUserError) {
-                console.error('❌ Erreur création utilisateur:', insertUserError);
-                Alert.alert(
-                    'Erreur',
-                    `Club créé mais profil utilisateur incomplet: ${insertUserError.message}`,
-                );
-                return;
-            }
+            await insertUtilisateur({ dataToInsert });
 
             console.log('✅ Utilisateur créé avec succès');
 

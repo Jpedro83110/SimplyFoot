@@ -38,12 +38,25 @@ export const getUtilisateursByClubId = async (args: { clubId: string }) => {
     return data;
 };
 
-export const updateUtilisateur = async (args: {
+export const insertUtilisateur = async ({
+    dataToInsert,
+}: {
+    dataToInsert: Database['public']['Tables']['utilisateurs']['Insert'];
+}) => {
+    const { error } = await supabase.from('utilisateurs').insert(dataToInsert);
+
+    if (error) {
+        throw error;
+    }
+};
+
+export const updateUtilisateur = async ({
+    utilisateurId,
+    dataToUpdate,
+}: {
     utilisateurId: string;
     dataToUpdate: Database['public']['Tables']['utilisateurs']['Update'];
 }) => {
-    const { utilisateurId, dataToUpdate } = args;
-
     const { error } = await supabase
         .from('utilisateurs')
         .update(dataToUpdate)
