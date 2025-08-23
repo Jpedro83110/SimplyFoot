@@ -94,6 +94,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
                     router.replace('/president/dashboard');
                     break;
                 case 'coach':
+                    console.log('ICI');
                     router.replace('/coach/dashboard');
                     break;
                 case 'joueur':
