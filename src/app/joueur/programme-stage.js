@@ -13,7 +13,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { supabase } from '../../lib/supabase';
-import { formatDateForDisplay, normalizeHour } from '@/utils/date.utils';
+import { days, formatDateForDisplay, normalizeHour } from '@/utils/date.utils';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
@@ -29,8 +29,6 @@ function downloadCSVWeb(filename, csv) {
     link.click();
     document.body.removeChild(link);
 }
-
-const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
 
 export default function ProgrammeStage() {
     const { width } = useWindowDimensions();
@@ -72,9 +70,9 @@ export default function ProgrammeStage() {
     const imprimerStage = async (stage) => {
         try {
             const programme = {};
-            jours.forEach((jour) => {
-                programme[jour] = stage[`programme_${jour}`]
-                    ? JSON.parse(stage[`programme_${jour}`])
+            days.forEach((day) => {
+                programme[day] = stage[`programme_${day}`]
+                    ? JSON.parse(stage[`programme_${day}`])
                     : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' };
             });
             const html = `
@@ -93,13 +91,13 @@ export default function ProgrammeStage() {
         <table>
           <thead><tr><th>Jour</th><th>Lieu</th><th>Horaires</th><th>Matin</th><th>Après-midi</th></tr></thead>
           <tbody>
-            ${jours
-                .map((jour) => {
-                    const prog = programme[jour];
+            ${days
+                .map((day) => {
+                    const prog = programme[day];
                     let heureDebut = prog.heureDebut || stage.heure_debut || '09:00';
                     let heureFin = prog.heureFin || stage.heure_fin || '17:00';
                     return `<tr>
-                <td>${jour.charAt(0).toUpperCase() + jour.slice(1)}</td>
+                <td>${day.charAt(0).toUpperCase() + day.slice(1)}</td>
                 <td>${prog?.lieu || ''}</td>
                 <td>${normalizeHour(heureDebut)} - ${normalizeHour(heureFin)}</td>
                 <td>${prog?.matin || ''}</td>
@@ -123,13 +121,11 @@ export default function ProgrammeStage() {
     const exporterStageCSV = async (stage) => {
         try {
             let csv = `Titre;Date début;Date fin;Âge min;Âge max;Jour;Lieu;Horaires;Matin;Après-midi\n`;
-            jours.forEach((jour) => {
-                const prog = stage[`programme_${jour}`]
-                    ? JSON.parse(stage[`programme_${jour}`])
-                    : {};
+            days.forEach((day) => {
+                const prog = stage[`programme_${day}`] ? JSON.parse(stage[`programme_${day}`]) : {};
                 let heureDebut = prog.heureDebut || stage.heure_debut || '09:00';
                 let heureFin = prog.heureFin || stage.heure_fin || '17:00';
-                csv += `${stage.titre};${stage.date_debut};${stage.date_fin};${stage.age_min || ''};${stage.age_max || ''};${jour};${prog.lieu || ''};${normalizeHour(heureDebut)} - ${normalizeHour(heureFin)};${prog.matin || ''};${prog.apresMidi || ''}\n`;
+                csv += `${stage.titre};${stage.date_debut};${stage.date_fin};${stage.age_min || ''};${stage.age_max || ''};${day};${prog.lieu || ''};${normalizeHour(heureDebut)} - ${normalizeHour(heureFin)};${prog.matin || ''};${prog.apresMidi || ''}\n`;
             });
             if (Platform.OS === 'web') {
                 downloadCSVWeb(`stage-${stage.titre}.csv`, csv);
@@ -204,7 +200,7 @@ export default function ProgrammeStage() {
                                     { width: '100%', maxWidth: 600, alignSelf: 'center' },
                                 ]}
                             >
-                                {jours.map((day) => {
+                                {days.map((day) => {
                                     const prog = stage[`programme_${day}`]
                                         ? JSON.parse(stage[`programme_${day}`])
                                         : {
