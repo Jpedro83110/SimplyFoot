@@ -1,8 +1,7 @@
-import { FC, useEffect, useState } from 'react';
-import { View, StyleSheet, StatusBar, Text, Platform } from 'react-native';
+import { FC, useCallback, useEffect } from 'react';
+import { View, StyleSheet, StatusBar, Platform } from 'react-native';
 import { Slot } from 'expo-router';
-import WebSocketManager from '../components/business/WebSocketManager';
-import { supabase } from '../lib/supabase';
+import WebSocketManager from '@/components/business/WebSocketManager';
 import Toast from 'react-native-toast-message';
 
 import * as Notifications from 'expo-notifications';
@@ -11,6 +10,7 @@ import Constants from 'expo-constants';
 import { deleteMessagesPrivesOneWeekOld } from '@/helpers/messagesPrives.helpers';
 import { AuthProvider } from '@/context/AuthContext';
 import SplashScreenController from './SplashScreenController';
+import { useSession } from '@/hooks/useSession';
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -23,101 +23,51 @@ Notifications.setNotificationHandler({
 });
 
 const PrivateGlobalLayout: FC = () => {
-    const [role, setRole] = useState<string | null>(null);
-    const [, setLoading] = useState(true); // FIXME
+    const { updateUserData } = useSession();
+
+    const setupPushToken = useCallback(async () => {
+        if (!Device.isDevice || Platform.OS === 'web') {
+            return;
+        }
+
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+
+        if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+        }
+
+        if (finalStatus !== 'granted') {
+            return;
+        }
+
+        // Pour éviter une erreur si expoConfig est undefined en build prod
+        const projectId =
+            Constants?.expoConfig?.extra?.eas?.projectId ||
+            (Constants?.manifest as any)?.extra?.eas?.projectId ||
+            'TON_PROJECT_ID_MANUEL'; // fallback
+        // FIXME : Constants?.manifest?.extra?.eas?.projectId -> extra does not exist
+
+        const tokenData = await Notifications.getExpoPushTokenAsync({
+            projectId,
+        });
+
+        const expoToken = tokenData.data;
+
+        updateUserData({ utilisateurData: { expo_push_token: expoToken } });
+    }, [updateUserData]);
 
     useEffect(() => {
-        const fetchRole = async () => {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            if (!session) {
-                return setLoading(false);
-            }
-
-            const { data: user, error } = await supabase
-                .from('utilisateurs')
-                .select('role')
-                .eq('id', session.user.id)
-                .single();
-
-            if (!error && user?.role) {
-                setRole(user.role);
-            }
-
-            setLoading(false);
-        };
-
-        const purgeOldMessages = async () => {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            if (!session) {
-                return;
-            }
-
-            try {
-                await deleteMessagesPrivesOneWeekOld();
-            } catch (error) {
-                // FIXME: seems useless, never called on 4XX errors
-                // FIXME: implements messages_prives real ttl
-                console.warn('Erreur purge automatique messages :', (error as Error).message);
-            }
-        };
-
-        const setupPushToken = async () => {
-            if (!Device.isDevice || Platform.OS === 'web') {
-                return;
-            }
-            const { status: existingStatus } = await Notifications.getPermissionsAsync();
-            let finalStatus = existingStatus;
-
-            if (existingStatus !== 'granted') {
-                const { status } = await Notifications.requestPermissionsAsync();
-                finalStatus = status;
-            }
-
-            if (finalStatus !== 'granted') {
-                return;
-            }
-
-            // Pour éviter une erreur si expoConfig est undefined en build prod
-            const projectId =
-                Constants?.expoConfig?.extra?.eas?.projectId ||
-                (Constants?.manifest as any)?.extra?.eas?.projectId ||
-                'TON_PROJECT_ID_MANUEL'; // fallback
-            // FIXME : Constants?.manifest?.extra?.eas?.projectId -> extra does not exist
-
-            const tokenData = await Notifications.getExpoPushTokenAsync({
-                projectId,
-            });
-
-            const expoToken = tokenData.data;
-
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            const userId = session?.user?.id;
-
-            if (userId && expoToken) {
-                await supabase
-                    .from('utilisateurs')
-                    .update({ expo_push_token: expoToken })
-                    .eq('id', userId);
-            }
-        };
-
-        fetchRole();
-        purgeOldMessages();
+        deleteMessagesPrivesOneWeekOld();
         setupPushToken();
-    }, []);
+    }, [setupPushToken]);
 
     return (
         <>
             <StatusBar barStyle="light-content" />
             <WebSocketManager />
             <View style={styles.container}>
-                {role === 'admin' && <Text style={styles.badge}>👑 MODE ADMIN</Text>}
                 <Slot />
             </View>
         </>

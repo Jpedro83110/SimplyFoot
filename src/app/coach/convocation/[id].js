@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
+import { formatDateForDisplay } from '@/utils/date.utils';
 
 export default function ConvocationDetail() {
     const { id } = useLocalSearchParams();
@@ -264,7 +265,8 @@ export default function ConvocationDetail() {
                 <Text style={styles.title}>Convocation : {event?.titre || ''}</Text>
                 {event && (
                     <Text style={styles.info}>
-                        📅 {event.date} {event.heure ? 'à ' + event.heure : ''} - 📍 {event.lieu}
+                        📅 {formatDateForDisplay({ date: event.date })}{' '}
+                        {event.heure ? 'à ' + event.heure : ''} - 📍 {event.lieu}
                     </Text>
                 )}
 

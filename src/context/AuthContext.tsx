@@ -17,7 +17,7 @@ import * as ClubAdminsHelper from '@/helpers/clubsAdmins.helpers';
 import { Database } from '@/types/database.types';
 
 interface AuthContextProps {
-    signIn: (email: string, password: string) => Promise<void>;
+    signIn: ({ email, password }: { email: string; password: string }) => Promise<void>;
     signOut: () => Promise<void>;
     isLoggedIn: boolean;
     isLoggedOut: boolean;
@@ -94,7 +94,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
                     router.replace('/president/dashboard');
                     break;
                 case 'coach':
-                    console.log('ICI');
                     router.replace('/coach/dashboard');
                     break;
                 case 'joueur':
@@ -127,10 +126,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }, [setSession]);
 
     const signIn = useCallback(
-        async (email: string, password: string) => {
+        async ({ email, password }: { email: string; password: string }) => {
             const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword(
                 {
-                    email,
+                    email: email.trim().toLowerCase(),
                     password,
                 },
             );

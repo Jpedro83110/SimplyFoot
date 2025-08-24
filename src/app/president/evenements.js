@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { supabase } from '../../lib/supabase';
+import { useSession } from '@/hooks/useSession';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
@@ -27,6 +28,8 @@ export default function Evenements() {
     const [dateStr, setDateStr] = useState('');
     const [heureStr, setHeureStr] = useState('');
     const [clubId, setClubId] = useState(null);
+
+    const { utilisateur } = useSession();
 
     const fetchClubId = async (userId) => {
         // 1. Tente par created_by
@@ -134,6 +137,7 @@ export default function Evenements() {
             lieu,
             description,
             club_id: clubId,
+            created_by: utilisateur.id,
         });
 
         if (error) {

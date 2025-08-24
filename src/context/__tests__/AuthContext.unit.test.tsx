@@ -98,7 +98,7 @@ describe('AuthContext', () => {
 
             // Call signIn
             await act(async () => {
-                await initialContext.signIn('player@example.com', 'password');
+                await initialContext.signIn({ email: 'player@example.com', password: 'password' });
             });
 
             // Assert
@@ -170,7 +170,7 @@ describe('AuthContext', () => {
 
             // Call signIn
             await act(async () => {
-                await initialContext.signIn('coach@example.com', 'password');
+                await initialContext.signIn({ email: 'coach@example.com', password: 'password' });
             });
 
             // Assert
@@ -237,7 +237,10 @@ describe('AuthContext', () => {
 
             // Call signIn
             await act(async () => {
-                await initialContext.signIn('president@example.com', 'password');
+                await initialContext.signIn({
+                    email: 'president@example.com',
+                    password: 'password',
+                });
             });
 
             // Assert
@@ -299,7 +302,7 @@ describe('AuthContext', () => {
 
             // Call signIn and expect it to throw
             await expect(
-                initialContext.signIn('test@example.com', 'wrongpassword'),
+                initialContext.signIn({ email: 'test@example.com', password: 'wrongpassword' }),
             ).rejects.toEqual({
                 code: 'invalid_credentials',
                 message: 'Invalid credentials',
@@ -334,7 +337,9 @@ describe('AuthContext', () => {
             const initialContext = onContextValue.mock.calls[0][0];
 
             // Call signIn and expect it to throw
-            await expect(initialContext.signIn('test@example.com', 'password')).rejects.toEqual({
+            await expect(
+                initialContext.signIn({ email: 'test@example.com', password: 'password' }),
+            ).rejects.toEqual({
                 code: 'server_error',
                 message: 'Server error occurred',
             });
@@ -380,7 +385,7 @@ describe('AuthContext', () => {
 
             // Call signIn
             await act(async () => {
-                await initialContext.signIn('unknown@example.com', 'password');
+                await initialContext.signIn({ email: 'unknown@example.com', password: 'password' });
             });
 
             // Should log warning about unknown role

@@ -1,8 +1,12 @@
+import { Day } from '@/types/date.types';
+
+export const days: Day[] = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
+
 export const formatDateForDisplay = ({
     date,
     locale,
 }: {
-    date?: Date | string;
+    date?: Date | string | null;
     locale?: string;
 }) => {
     if (!date) {

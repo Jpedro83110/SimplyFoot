@@ -1,7 +1,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
-    // Allows to automatically instanciate createClient with right options
+    // Allows to automatically instantiate createClient with right options
     // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
     __InternalSupabase: {
         PostgrestVersion: '12.2.3 (519615d)';
@@ -93,9 +93,11 @@ export type Database = {
                     abonnement_actif: boolean | null;
                     adresse: string | null;
                     boutique_url: string | null;
+                    clubtv_enabled: boolean;
                     code_acces: string | null;
                     code_postal: string | null;
                     created_by: string | null;
+                    dailymotion_url: string | null;
                     date_creation: string | null;
                     description: string | null;
                     email: string | null;
@@ -108,14 +110,17 @@ export type Database = {
                     site_web: string | null;
                     telephone: string | null;
                     ville: string | null;
+                    youtube_url: string | null;
                 };
                 Insert: {
                     abonnement_actif?: boolean | null;
                     adresse?: string | null;
                     boutique_url?: string | null;
+                    clubtv_enabled?: boolean;
                     code_acces?: string | null;
                     code_postal?: string | null;
                     created_by?: string | null;
+                    dailymotion_url?: string | null;
                     date_creation?: string | null;
                     description?: string | null;
                     email?: string | null;
@@ -128,14 +133,17 @@ export type Database = {
                     site_web?: string | null;
                     telephone?: string | null;
                     ville?: string | null;
+                    youtube_url?: string | null;
                 };
                 Update: {
                     abonnement_actif?: boolean | null;
                     adresse?: string | null;
                     boutique_url?: string | null;
+                    clubtv_enabled?: boolean;
                     code_acces?: string | null;
                     code_postal?: string | null;
                     created_by?: string | null;
+                    dailymotion_url?: string | null;
                     date_creation?: string | null;
                     description?: string | null;
                     email?: string | null;
@@ -148,6 +156,7 @@ export type Database = {
                     site_web?: string | null;
                     telephone?: string | null;
                     ville?: string | null;
+                    youtube_url?: string | null;
                 };
                 Relationships: [];
             };
@@ -470,7 +479,7 @@ export type Database = {
                 Row: {
                     adversaires: string | null;
                     club_id: string | null;
-                    coach_id: string | null;
+                    created_by: string | null;
                     date: string | null;
                     date_creation: string | null;
                     description: string | null;
@@ -488,7 +497,7 @@ export type Database = {
                 Insert: {
                     adversaires?: string | null;
                     club_id?: string | null;
-                    coach_id?: string | null;
+                    created_by?: string | null;
                     date?: string | null;
                     date_creation?: string | null;
                     description?: string | null;
@@ -506,7 +515,7 @@ export type Database = {
                 Update: {
                     adversaires?: string | null;
                     club_id?: string | null;
-                    coach_id?: string | null;
+                    created_by?: string | null;
                     date?: string | null;
                     date_creation?: string | null;
                     description?: string | null;
@@ -523,8 +532,8 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'evenements_coach_id_fkey';
-                        columns: ['coach_id'];
+                        foreignKeyName: 'evenements_created_by_fkey';
+                        columns: ['created_by'];
                         isOneToOne: false;
                         referencedRelation: 'utilisateurs';
                         referencedColumns: ['id'];
@@ -1221,6 +1230,80 @@ export type Database = {
                         columns: ['club_id'];
                         isOneToOne: false;
                         referencedRelation: 'clubs';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            stories: {
+                Row: {
+                    created_at: string;
+                    duration: number;
+                    expires_at: string;
+                    id: string;
+                    media_url: string;
+                    utilisateur_id: string;
+                    views_count: number;
+                };
+                Insert: {
+                    created_at?: string;
+                    duration?: number;
+                    expires_at: string;
+                    id?: string;
+                    media_url: string;
+                    utilisateur_id: string;
+                    views_count?: number;
+                };
+                Update: {
+                    created_at?: string;
+                    duration?: number;
+                    expires_at?: string;
+                    id?: string;
+                    media_url?: string;
+                    utilisateur_id?: string;
+                    views_count?: number;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'stories_utilisateur_id_fkey';
+                        columns: ['utilisateur_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'utilisateurs';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            story_views: {
+                Row: {
+                    id: string;
+                    story_id: string;
+                    viewed_at: string;
+                    viewer_id: string;
+                };
+                Insert: {
+                    id?: string;
+                    story_id: string;
+                    viewed_at?: string;
+                    viewer_id: string;
+                };
+                Update: {
+                    id?: string;
+                    story_id?: string;
+                    viewed_at?: string;
+                    viewer_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'story_views_story_id_fkey';
+                        columns: ['story_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'stories';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'story_views_viewer_id_fkey';
+                        columns: ['viewer_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'utilisateurs';
                         referencedColumns: ['id'];
                     },
                 ];

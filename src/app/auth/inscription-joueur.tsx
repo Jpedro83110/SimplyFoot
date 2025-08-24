@@ -11,7 +11,7 @@ import {
     Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
+import { signUp, supabase } from '@/lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '@/lib/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import ReturnButton from '@/components/atoms/ReturnButton';
@@ -20,6 +20,8 @@ import Button from '@/components/atoms/Button';
 import { Database } from '@/types/database.types';
 import InputDate from '@/components/molecules/InputDate';
 import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
+import { useSession } from '@/hooks/useSession';
+import { insertUtilisateur } from '@/helpers/utilisateurs.helpers';
 
 // Utils
 function isValidEmail(email: string) {
@@ -66,6 +68,8 @@ export default function InscriptionJoueur() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isMinor, setIsMinor] = useState(false);
     const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
+
+    const { signIn } = useSession();
 
     // Fetch équipe + coach dès que codeEquipe rempli
     useEffect(() => {
@@ -212,15 +216,11 @@ export default function InscriptionJoueur() {
 
         try {
             // 1. Crée Auth
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                email: email.trim().toLowerCase(),
-                password: password.trim(),
+            const signUpData = await signUp({
+                email: email,
+                password: password,
             });
-            if (signUpError || !signUpData?.user) {
-                Alert.alert('Erreur', signUpError?.message || 'Erreur création Auth');
-                setLoading(false);
-                return;
-            }
+
             const userId = signUpData.user.id;
 
             // 2. Notifications
@@ -231,22 +231,19 @@ export default function InscriptionJoueur() {
 
             // 3. Crée Utilisateur
             const dateNaissanceISO = formatDateToYYYYMMDD(dateNaissance);
-            const { error: insertUserError } = await supabase.from('utilisateurs').insert({
-                id: userId,
-                email: email.trim().toLowerCase(),
-                nom: nom.trim(),
-                prenom: prenom.trim(),
-                club_id: equipeData?.club_id,
-                role: 'joueur',
-                expo_push_token: expoPushToken,
-                date_creation: new Date().toISOString(),
-                date_naissance: dateNaissanceISO,
+            await insertUtilisateur({
+                dataToInsert: {
+                    id: userId,
+                    email: email.trim().toLowerCase(),
+                    nom: nom.trim(),
+                    prenom: prenom.trim(),
+                    club_id: equipeData?.club_id,
+                    role: 'joueur',
+                    expo_push_token: expoPushToken,
+                    date_creation: new Date().toISOString(),
+                    date_naissance: dateNaissanceISO,
+                },
             });
-            if (insertUserError) {
-                Alert.alert('Erreur', 'Utilisateur créé mais insertion incomplète (utilisateurs).');
-                setLoading(false);
-                return;
-            }
 
             // 4. Crée Joueur
             let joueurData = {
@@ -307,6 +304,8 @@ export default function InscriptionJoueur() {
                     },
                 ],
             );
+
+            await signIn({ email, password });
         } catch (error) {
             console.error('Error during player registration:', error);
             Alert.alert('Erreur', "Une erreur inattendue s'est produite. Veuillez réessayer.");

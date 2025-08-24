@@ -1,4 +1,3 @@
-import React from 'react';
 import {
     View,
     Text,
@@ -9,38 +8,37 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '../../lib/supabase';
-import useCacheData from '../../lib/cache';
+import { useSession } from '@/hooks/useSession';
+import { useCallback, useEffect, useState } from 'react';
+import {
+    getLastClubStage,
+    GetLastClubStage,
+    getProgrammeFromStage,
+} from '@/helpers/stages.helpers';
+import { days } from '@/utils/date.utils';
 
 export default function LectureStage() {
-    // Hook cache : clé unique "dernier_stage" (pas besoin d'un cache par user vu la structure)
-    const [stage, refresh, loading] = useCacheData(
-        'dernier_stage',
-        async () => {
-            const { data: session } = await supabase.auth.getSession();
-            const userId = session?.session?.user?.id;
-            if (!userId) {
-                return null;
-            }
-            const { data: user } = await supabase
-                .from('utilisateurs')
-                .select('club_id')
-                .eq('id', userId)
-                .single();
-            if (!user?.club_id) {
-                return null;
-            }
-            const { data, error } = await supabase
-                .from('stages')
-                .select('*')
-                .eq('club_id', user.club_id)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
-            return !error ? data : null;
-        },
-        1800, // TTL : 30 min
-    );
+    const [loading, setLoading] = useState<boolean>(false);
+    const [stage, setStage] = useState<GetLastClubStage | null>(null);
+
+    const { utilisateur } = useSession();
+
+    const fetchStage = useCallback(async () => {
+        if (!utilisateur?.club_id || loading) {
+            return;
+        }
+
+        setLoading(true);
+
+        const fetchedStage = await getLastClubStage({ clubId: utilisateur.club_id });
+        setStage(fetchedStage);
+
+        setLoading(false);
+    }, [loading, utilisateur?.club_id]);
+
+    useEffect(() => {
+        fetchStage();
+    }, [fetchStage]);
 
     if (loading) {
         return <ActivityIndicator style={{ marginTop: 50 }} color="#00ff88" />;
@@ -50,7 +48,7 @@ export default function LectureStage() {
         return (
             <View style={{ marginTop: 50 }}>
                 <Text style={{ color: '#fff', textAlign: 'center' }}>Aucun stage enregistré.</Text>
-                <TouchableOpacity onPress={refresh} style={{ marginTop: 20 }}>
+                <TouchableOpacity onPress={fetchStage} style={{ marginTop: 20 }}>
                     <Text style={{ color: '#00ff88', textAlign: 'center' }}>🔄 Rafraîchir</Text>
                 </TouchableOpacity>
             </View>
@@ -65,7 +63,7 @@ export default function LectureStage() {
                 <Text style={styles.detail}>
                     🗓️ Du {stage.date_debut} au {stage.date_fin}
                 </Text>
-                <TouchableOpacity onPress={refresh} style={{ marginVertical: 8 }}>
+                <TouchableOpacity onPress={fetchStage} style={{ marginVertical: 8 }}>
                     <Text style={{ color: '#00ff88', textAlign: 'center' }}>
                         🔄 Rafraîchir le stage
                     </Text>
@@ -75,27 +73,19 @@ export default function LectureStage() {
                     resizeMode="cover"
                     style={styles.background}
                 >
-                    {['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'].map((day) => {
+                    {days.map((day) => {
                         // Essaie de parser le JSON du programme du jour pour l'affichage
                         let progTxt = '';
-                        try {
-                            const p = stage[`programme_${day}`]
-                                ? JSON.parse(stage[`programme_${day}`])
-                                : null;
-                            if (p) {
-                                progTxt = [
-                                    p.lieu ? `Lieu : ${p.lieu}` : null,
-                                    p.matin ? `Matin : ${p.matin}` : null,
-                                    p.apresMidi ? `Après-midi : ${p.apresMidi}` : null,
-                                ]
-                                    .filter(Boolean)
-                                    .join('\n');
-                            } else {
-                                progTxt = '';
-                            }
-                        } catch {
-                            progTxt = stage[`programme_${day}`] || '';
-                        }
+                        const programme = getProgrammeFromStage(stage)[day];
+
+                        progTxt = [
+                            programme.lieu ? `Lieu : ${programme.lieu}` : null,
+                            programme.matin ? `Matin : ${programme.matin}` : null,
+                            programme.apresMidi ? `Après-midi : ${programme.apresMidi}` : null,
+                        ]
+                            .filter(Boolean)
+                            .join('\n');
+
                         return (
                             <View key={day} style={styles.dayBlock}>
                                 <Text style={styles.dayTitle}>
@@ -148,5 +138,5 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 14,
         whiteSpace: 'pre-line',
-    },
+    } as any, // FIXME: because of whiteSpace is unknown
 });

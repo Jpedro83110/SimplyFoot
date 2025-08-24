@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View,
     Text,
@@ -12,11 +12,18 @@ import {
     Keyboard,
     ActivityIndicator,
 } from 'react-native';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import InputDate from '@/components/molecules/InputDate';
 import { formatDateToYYYYMMDD } from '@/utils/date.utils';
+import { GetCoachEquipes, getCoachEquipes } from '@/helpers/equipes.helpers';
+import { useSession } from '@/hooks/useSession';
+import { LocationIQ } from '@/types/locationiq.types';
+import { getJoueursByEquipeId, GetJoueursByEquipeId } from '@/helpers/joueurs.helpers';
+import { Database } from '@/types/database.types';
+import Button from '@/components/atoms/Button';
 
+// FIXME: a mettre dans un .env
 const LOCATIONIQ_KEY = 'pk.1bc03891ccd317c6ca47a6d1b87bdbe1';
 const OPENWEATHER_KEY = '1c27efe2712135cb33936abb88a3d28a';
 
@@ -34,38 +41,42 @@ export default function CreateEvent() {
     const [date, setDate] = useState(new Date());
     const [heure, setHeure] = useState('');
     const [lieu, setLieu] = useState('');
-    const [lieuxResultats, setLieuxResultats] = useState([]);
-    const [coords, setCoords] = useState(null);
+    const [lieuxResultats, setLieuxResultats] = useState<LocationIQ[]>([]);
+    const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
     const [complement, setComplement] = useState('');
     const [meteo, setMeteo] = useState('');
     const [equipe, setEquipe] = useState('');
-    const [equipes, setEquipes] = useState([]);
+    const [equipes, setEquipes] = useState<GetCoachEquipes>([]);
     const [adversaires, setAdversaires] = useState('');
-    const [coachId, setCoachId] = useState(null);
 
-    const [joueursEquipe, setJoueursEquipe] = useState([]);
-    const [selectedJoueurs, setSelectedJoueurs] = useState([]);
+    const [joueursEquipe, setJoueursEquipe] = useState<GetJoueursByEquipeId>([]);
+    const [selectedJoueurs, setSelectedJoueurs] = useState<string[]>([]);
     const [loadingJoueurs, setLoadingJoueurs] = useState(false);
 
     const [fetchingLieu, setFetchingLieu] = useState(false);
-    const scrollViewRef = useRef();
+    const { utilisateur } = useSession();
+
     const router = useRouter();
 
     // --- Equipes du coach ---
     useEffect(() => {
         const fetchEquipes = async () => {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const userId = sessionData?.session?.user?.id;
-            setCoachId(userId);
-            const { data: eq } = await supabase.from('equipes').select('*').eq('coach_id', userId);
-            setEquipes(eq || []);
+            if (!utilisateur?.club_id) {
+                return;
+            }
+
+            const fetchedEquipes = await getCoachEquipes({
+                coachId: utilisateur.id,
+                clubId: utilisateur.club_id,
+            });
+            setEquipes(fetchedEquipes);
         };
         fetchEquipes();
-    }, []);
+    }, [utilisateur?.club_id, utilisateur?.id]);
 
     // --- Suggestions de lieux ---
-    let timerLieu = useRef();
-    const chercherLieu = (text) => {
+    let timerLieu = useRef<NodeJS.Timeout | undefined>(undefined);
+    const chercherLieu = (text: string) => {
         setLieu(text);
         setCoords(null);
         setMeteo('');
@@ -81,8 +92,8 @@ export default function CreateEvent() {
             try {
                 const url = `https://api.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(text)}&limit=5&format=json`;
                 const res = await fetch(url);
-                const data = await res.json();
-                setLieuxResultats(Array.isArray(data) ? data : []);
+                const data: LocationIQ | LocationIQ[] = await res.json();
+                setLieuxResultats(Array.isArray(data) ? data : [data]);
             } catch {
                 setLieuxResultats([]);
             } finally {
@@ -114,78 +125,38 @@ export default function CreateEvent() {
         fetchMeteo();
     }, [date, coords]);
 
-    const choisirLieu = async (item) => {
+    const choisirLieu = async (item: LocationIQ) => {
         setLieu(item.display_name);
-        setCoords({ lat: item.lat, lon: item.lon });
+        setCoords({ lat: Number(item.lat), lon: Number(item.lon) });
         setLieuxResultats([]);
         Keyboard.dismiss();
     };
 
-    // --- Récupérer les joueurs de l'équipe sélectionnée ---
-    useEffect(() => {
-        const fetchJoueursEquipe = async () => {
-            setLoadingJoueurs(true);
+    const fetchJoueursEquipe = useCallback(
+        async (equipeId: string) => {
             setSelectedJoueurs([]);
             setJoueursEquipe([]);
-            if (!equipe) {
-                setLoadingJoueurs(false);
+
+            if (loadingJoueurs) {
                 return;
             }
 
+            setLoadingJoueurs(true);
+
             try {
-                // 1. Récupère les joueurs de la table "joueurs" liés à l'équipe
-                const { data: joueurs, error: errorJoueurs } = await supabase
-                    .from('joueurs')
-                    .select('id, equipe_id')
-                    .eq('equipe_id', equipe);
+                const fetchedJoueursEquipe = await getJoueursByEquipeId({ equipeId });
 
-                if (errorJoueurs) {
-                    console.error('Erreur récupération joueurs:', errorJoueurs);
-                    setJoueursEquipe([]);
-                    setLoadingJoueurs(false);
-                    return;
-                }
-
-                const joueurIds = joueurs.map((j) => j.id);
-                console.log("🎯 IDs joueurs de l'équipe:", joueurIds);
-
-                // 2. Récupère les utilisateurs correspondants
-                const { data: users, error: errorUsers } = await supabase
-                    .from('utilisateurs')
-                    .select('id, nom, prenom, joueur_id')
-                    .eq('role', 'joueur')
-                    .in('joueur_id', joueurIds); // Filtrer directement par joueur_id
-
-                if (errorUsers) {
-                    console.error('Erreur récupération utilisateurs:', errorUsers);
-                    setJoueursEquipe([]);
-                    setLoadingJoueurs(false);
-                    return;
-                }
-
-                console.log('👥 Utilisateurs joueurs trouvés:', users);
-
-                // 3. Mapping final - on garde les IDs utilisateurs
-                const finalJoueurs = users.map((u) => ({
-                    id: u.id, // ID utilisateur (pour affichage)
-                    nom: u.nom,
-                    prenom: u.prenom,
-                    joueur_id: u.joueur_id, // ID dans table joueurs
-                    user_id: u.id, // ID utilisateur (pour participation)
-                }));
-
-                setJoueursEquipe(finalJoueurs);
-                // Utiliser les IDs UTILISATEURS pour les participations
-                setSelectedJoueurs(finalJoueurs.map((u) => u.user_id));
+                setJoueursEquipe(fetchedJoueursEquipe);
+                setSelectedJoueurs(fetchedJoueursEquipe.map((joueur) => joueur.utilisateurs[0].id));
             } catch (error) {
                 console.error('Erreur générale fetchJoueursEquipe:', error);
                 setJoueursEquipe([]);
             } finally {
                 setLoadingJoueurs(false);
             }
-        };
-        fetchJoueursEquipe();
-    }, [equipe]);
+        },
+        [loadingJoueurs],
+    );
 
     // --- Création évènement ---
     const handleCreate = async () => {
@@ -193,6 +164,7 @@ export default function CreateEvent() {
             Alert.alert('Erreur', 'Merci de remplir tous les champs.');
             return;
         }
+
         if (!coords?.lat || !coords?.lon) {
             Alert.alert(
                 'Erreur',
@@ -200,6 +172,7 @@ export default function CreateEvent() {
             );
             return;
         }
+
         if (!meteo || meteo === 'Indisponible') {
             Alert.alert(
                 'Attention',
@@ -209,7 +182,7 @@ export default function CreateEvent() {
 
         try {
             // 1. Création de l'évènement
-            const insertPayload = {
+            const insertPayload: Database['public']['Tables']['evenements']['Insert'] = {
                 type,
                 titre,
                 date: formatDateToYYYYMMDD(date) ?? '',
@@ -221,7 +194,7 @@ export default function CreateEvent() {
                 meteo,
                 latitude: coords.lat,
                 longitude: coords.lon,
-                created_by: coachId,
+                created_by: utilisateur?.id ?? '',
             };
 
             console.log('🎯 Création événement avec payload:', insertPayload);
@@ -308,12 +281,15 @@ export default function CreateEvent() {
             setSelectedJoueurs([]);
         } catch (error) {
             console.error('💥 Erreur générale:', error);
-            Alert.alert('Erreur', `Une erreur inattendue s'est produite: ${error.message}`);
+            Alert.alert(
+                'Erreur',
+                `Une erreur inattendue s'est produite: ${(error as Error).message}`,
+            );
         }
     };
 
     // Sélectionne/déselectionne un joueur (avec ID UTILISATEUR maintenant)
-    const toggleJoueur = (userId) => {
+    const toggleJoueur = (userId: string) => {
         setSelectedJoueurs((prev) =>
             prev.includes(userId) ? prev.filter((uid) => uid !== userId) : [...prev, userId],
         );
@@ -324,7 +300,7 @@ export default function CreateEvent() {
         if (selectedJoueurs.length === joueursEquipe.length) {
             setSelectedJoueurs([]);
         } else {
-            setSelectedJoueurs(joueursEquipe.map((j) => j.user_id)); // user_id au lieu de joueur_id
+            setSelectedJoueurs(joueursEquipe.map((joueur) => joueur.utilisateurs[0].id)); // user_id au lieu de joueur_id
         }
     };
 
@@ -336,9 +312,8 @@ export default function CreateEvent() {
             keyboardVerticalOffset={80}
         >
             <ScrollView
-                ref={scrollViewRef}
                 style={{ flex: 1, backgroundColor: '#121212' }}
-                contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
+                contentContainerStyle={{ padding: 24, paddingBottom: 24 }}
                 keyboardShouldPersistTaps="handled"
             >
                 <Text style={styles.title}>🗓️ Créer un Événement</Text>
@@ -375,7 +350,10 @@ export default function CreateEvent() {
                         <TouchableOpacity
                             key={eq.id}
                             style={[styles.choiceButton, equipe === eq.id && styles.choiceSelected]}
-                            onPress={() => setEquipe(eq.id)}
+                            onPress={async () => {
+                                setEquipe(eq.id);
+                                await fetchJoueursEquipe(eq.id);
+                            }}
                         >
                             <Text
                                 style={
@@ -487,21 +465,21 @@ export default function CreateEvent() {
                             </TouchableOpacity>
                         )}
                         <View>
-                            {joueursEquipe.map((j) => (
+                            {joueursEquipe.map((joueur) => (
                                 <TouchableOpacity
-                                    key={j.user_id} // Clé unique avec user_id
+                                    key={joueur.utilisateurs[0].id} // Clé unique avec user_id
                                     style={styles.joueurItem}
-                                    onPress={() => toggleJoueur(j.user_id)} // Utiliser user_id
+                                    onPress={() => toggleJoueur(joueur.utilisateurs[0].id)} // Utiliser user_id
                                 >
                                     <View
                                         style={[
                                             styles.checkbox,
-                                            selectedJoueurs.includes(j.user_id) &&
+                                            selectedJoueurs.includes(joueur.utilisateurs[0].id) &&
                                                 styles.checkboxChecked, // Vérifier user_id
                                         ]}
                                     />
                                     <Text style={styles.joueurText}>
-                                        {j.nom} {j.prenom}
+                                        {joueur.utilisateurs[0].nom} {joueur.utilisateurs[0].prenom}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -514,9 +492,13 @@ export default function CreateEvent() {
                     </>
                 )}
             </ScrollView>
-            <TouchableOpacity style={styles.buttonSticky} onPress={handleCreate}>
-                <Text style={styles.buttonText}>Créer</Text>
-            </TouchableOpacity>
+            <Button
+                text="Créer"
+                onPress={handleCreate}
+                loading={loadingJoueurs}
+                disabled={!titre || !date || !heure || !lieu || !equipe || loadingJoueurs}
+                color="primary"
+            />
         </KeyboardAvoidingView>
     );
 }

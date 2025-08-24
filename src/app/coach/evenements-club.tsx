@@ -1,82 +1,36 @@
-import React, { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '../../lib/supabase';
 import { useSession } from '@/hooks/useSession';
+import { GetEvenementsByClubId, getEvenementsByClubId } from '@/helpers/evenements.helpers';
 
 export default function EvenementsClub() {
-    const [events, setEvents] = useState([]);
+    const [events, setEvents] = useState<GetEvenementsByClubId>([]);
     const [loading, setLoading] = useState(true);
 
     const { utilisateur } = useSession();
 
-    // Pour stocker les noms de créateur si tu veux les afficher
-    const [usersById, setUsersById] = useState({});
-
     // Fetch club events (liés au club_id du coach connecté)
-    const fetchClubEvents = async () => {
-        setLoading(true);
-        const { data: sessionData } = await supabase.auth.getSession();
-        const userId = sessionData?.session?.user?.id;
-
-        // Récupérer le club_id du coach
-        const { data: userData } = await supabase
-            .from('utilisateurs')
-            .select('club_id')
-            .eq('id', userId)
-            .single();
-
-        if (!userData) {
-            setEvents([]);
-            setLoading(false);
+    const fetchClubEvents = useCallback(async () => {
+        if (!utilisateur?.club_id) {
             return;
         }
+
+        setLoading(true);
 
         // Tous les événements du club (créés par président)
+        const dataEvts = await getEvenementsByClubId({ clubId: utilisateur.club_id });
 
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-        const filterDate = yesterday.toISOString().split('T')[0];
-
-        const { data: dataEvts, error } = await supabase
-            .from('evenements')
-            .select('*')
-            .eq('created_by', utilisateur.id)
-            .gte('date', filterDate)
-            .order('date', { ascending: true });
-
-        if (error) {
-            setEvents([]);
-            setLoading(false);
-            return;
-        }
-        setEvents(dataEvts || []);
-
-        // Optionnel : fetch les créateurs de chaque événement si tu veux afficher leur nom
-        const userIds = Array.from(
-            new Set((dataEvts || []).map((e) => e.created_by).filter(Boolean)),
-        );
-        if (userIds.length > 0) {
-            const { data: users } = await supabase
-                .from('utilisateurs')
-                .select('id, prenom, nom')
-                .in('id', userIds);
-            const usersObj = {};
-            (users || []).forEach((u) => {
-                usersObj[u.id] = `${u.prenom || ''} ${u.nom || ''}`.trim();
-            });
-            setUsersById(usersObj);
-        }
+        setEvents(dataEvts);
 
         setLoading(false);
-    };
+    }, [utilisateur?.club_id]);
 
     useEffect(() => {
         fetchClubEvents();
-    }, []);
+    }, [fetchClubEvents]);
 
-    const getEmoji = (type) => {
+    const getEmoji = (type: string | null) => {
         switch (type) {
             case 'repas':
                 return '🍽️';
@@ -118,9 +72,10 @@ export default function EvenementsClub() {
                             {event.description && (
                                 <Text style={styles.detailText}>📝 {event.description}</Text>
                             )}
-                            {event.created_by && usersById[event.created_by] && (
+                            {event.utilisateurs && (
                                 <Text style={styles.author}>
-                                    👤 Ajouté par {usersById[event.created_by]}
+                                    👤 Ajouté par {event.utilisateurs.prenom}{' '}
+                                    {event.utilisateurs.nom}
                                 </Text>
                             )}
                         </View>

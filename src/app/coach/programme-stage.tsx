@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -12,14 +12,19 @@ import {
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
-import { supabase } from '../../lib/supabase';
-import { formatDateForDisplay, normalizeHour } from '@/utils/date.utils';
+import { days, formatDateForDisplay, normalizeHour } from '@/utils/date.utils';
+import { useSession } from '@/hooks/useSession';
+import {
+    getProgrammeFromStage,
+    getStagesByClubId,
+    GetStagesByClubId,
+} from '@/helpers/stages.helpers';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
 const DARK_LIGHT = '#161b20';
 
-function downloadCSVWeb(filename, csv) {
+function downloadCSVWeb(filename: string, csv: string) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -30,53 +35,35 @@ function downloadCSVWeb(filename, csv) {
     document.body.removeChild(link);
 }
 
-const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
-
 export default function ProgrammeStage() {
     const { width } = useWindowDimensions();
-    const [stages, setStages] = useState([]);
-    const [openedStageId, setOpenedStageId] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [stages, setStages] = useState<GetStagesByClubId>([]);
+    const [openedStageId, setOpenedStageId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
     const [confirmation, setConfirmation] = useState('');
+
+    const { utilisateur } = useSession();
 
     useEffect(() => {
         const fetchStages = async () => {
-            const { data: session } = await supabase.auth.getSession();
-            const userId = session?.session?.user?.id;
-            if (!userId) {
+            if (!utilisateur?.club_id || loading) {
                 return;
             }
 
-            const { data: user } = await supabase
-                .from('utilisateurs')
-                .select('club_id')
-                .eq('id', userId)
-                .single();
+            setLoading(true);
 
-            if (!user) {
-                return;
-            }
+            const stagesList = await getStagesByClubId({ clubId: utilisateur.club_id });
 
-            const { data: stagesList } = await supabase
-                .from('stages')
-                .select('*')
-                .eq('club_id', user.club_id)
-                .order('date_debut', { ascending: false });
-
-            setStages(stagesList || []);
+            setStages(stagesList);
             setLoading(false);
         };
-        fetchStages();
-    }, []);
 
-    const imprimerStage = async (stage) => {
+        fetchStages();
+    }, [loading, utilisateur?.club_id]);
+
+    const imprimerStage = async (stage: GetStagesByClubId[number]) => {
         try {
-            const programme = {};
-            jours.forEach((jour) => {
-                programme[jour] = stage[`programme_${jour}`]
-                    ? JSON.parse(stage[`programme_${jour}`])
-                    : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' };
-            });
+            const programmes = getProgrammeFromStage(stage);
             const html = `
         <html><head>
         <style>
@@ -93,13 +80,13 @@ export default function ProgrammeStage() {
         <table>
           <thead><tr><th>Jour</th><th>Lieu</th><th>Horaires</th><th>Matin</th><th>Après-midi</th></tr></thead>
           <tbody>
-            ${jours
-                .map((jour) => {
-                    const prog = programme[jour];
-                    let heureDebut = prog.heureDebut || stage.heure_debut || '09:00';
-                    let heureFin = prog.heureFin || stage.heure_fin || '17:00';
+            ${days
+                .map((day) => {
+                    const prog = programmes[day];
+                    let heureDebut = prog.heureDebut;
+                    let heureFin = prog.heureFin;
                     return `<tr>
-                <td>${jour.charAt(0).toUpperCase() + jour.slice(1)}</td>
+                <td>${day.charAt(0).toUpperCase() + day.slice(1)}</td>
                 <td>${prog?.lieu || ''}</td>
                 <td>${normalizeHour(heureDebut)} - ${normalizeHour(heureFin)}</td>
                 <td>${prog?.matin || ''}</td>
@@ -120,16 +107,16 @@ export default function ProgrammeStage() {
         }
     };
 
-    const exporterStageCSV = async (stage) => {
+    const exporterStageCSV = async (stage: GetStagesByClubId[number]) => {
         try {
             let csv = `Titre;Date début;Date fin;Âge min;Âge max;Jour;Lieu;Horaires;Matin;Après-midi\n`;
-            jours.forEach((jour) => {
-                const prog = stage[`programme_${jour}`]
-                    ? JSON.parse(stage[`programme_${jour}`])
-                    : {};
-                let heureDebut = prog.heureDebut || stage.heure_debut || '09:00';
-                let heureFin = prog.heureFin || stage.heure_fin || '17:00';
-                csv += `${stage.titre};${stage.date_debut};${stage.date_fin};${stage.age_min || ''};${stage.age_max || ''};${jour};${prog.lieu || ''};${normalizeHour(heureDebut)} - ${normalizeHour(heureFin)};${prog.matin || ''};${prog.apresMidi || ''}\n`;
+            const programmes = getProgrammeFromStage(stage);
+
+            days.forEach((day) => {
+                const prog = programmes[day];
+                let heureDebut = prog.heureDebut;
+                let heureFin = prog.heureFin;
+                csv += `${stage.titre};${stage.date_debut};${stage.date_fin};${stage.age_min || ''};${stage.age_max || ''};${day};${prog.lieu || ''};${normalizeHour(heureDebut)} - ${normalizeHour(heureFin)};${prog.matin || ''};${prog.apresMidi || ''}\n`;
             });
             if (Platform.OS === 'web') {
                 downloadCSVWeb(`stage-${stage.titre}.csv`, csv);
@@ -204,19 +191,11 @@ export default function ProgrammeStage() {
                                     { width: '100%', maxWidth: 600, alignSelf: 'center' },
                                 ]}
                             >
-                                {jours.map((day) => {
-                                    const prog = stage[`programme_${day}`]
-                                        ? JSON.parse(stage[`programme_${day}`])
-                                        : {
-                                              lieu: '',
-                                              matin: '',
-                                              apresMidi: '',
-                                              heureDebut: '',
-                                              heureFin: '',
-                                          };
-                                    let heureDebut =
-                                        prog.heureDebut || stage.heure_debut || '09:00';
-                                    let heureFin = prog.heureFin || stage.heure_fin || '17:00';
+                                {days.map((day) => {
+                                    const prog = getProgrammeFromStage(stage)[day];
+                                    let heureDebut = prog.heureDebut;
+                                    let heureFin = prog.heureFin;
+
                                     return (
                                         <View key={day} style={styles.dayBlock}>
                                             <Text style={styles.dayTitle}>

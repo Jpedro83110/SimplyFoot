@@ -92,11 +92,11 @@ export default function FeuilleMatch() {
             // 4. Récupérer infos coach
             let coachName = 'NC',
                 coachPrenom = '';
-            if (evt.coach_id) {
+            if (evt.created_by) {
                 const { data: coach } = await supabase
                     .from('utilisateurs')
                     .select('nom, prenom')
-                    .eq('id', evt.coach_id)
+                    .eq('id', evt.created_by)
                     .single();
                 if (coach) {
                     coachName = coach.nom || 'NC';

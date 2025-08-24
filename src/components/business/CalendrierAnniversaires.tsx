@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -12,7 +12,8 @@ import {
     Pressable,
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
-import vacancesScolaires from '../../lib/vacancesScolaires';
+import { GetUtilisateursByClubId } from '@/helpers/utilisateurs.helpers';
+import { vacancesScolaires, Zone } from '@/lib/vacancesScolaires';
 
 LocaleConfig.locales['fr'] = {
     monthNames: [
@@ -49,46 +50,75 @@ LocaleConfig.locales['fr'] = {
 };
 LocaleConfig.defaultLocale = 'fr';
 
-const ZONES = ['A', 'B', 'C'];
+const ZONES: Zone[] = ['A', 'B', 'C'];
 const VACANCES_COLORS = { A: '#00ffd055', B: '#00bfff55', C: '#ff00cc55' };
 const DOT_COLOR = '#00ff88';
 
-export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' }) {
-    const [zone, setZone] = useState(zoneInitiale);
+type BirthdayData = {
+    selected: boolean;
+    selectedColor: string;
+    marked: boolean;
+    disableTouchEvent: boolean;
+};
+
+type BirthdayTab = {
+    date: string;
+    joursRestants: number;
+    id: string;
+    nom: string | null;
+    prenom: string | null;
+    date_naissance: string | null;
+    role: string;
+};
+
+interface CalendrierAnniversairesProps {
+    membres: GetUtilisateursByClubId;
+    zoneInitiale?: Zone;
+}
+
+const CalendrierAnniversaires: FC<CalendrierAnniversairesProps> = ({
+    membres,
+    zoneInitiale = 'B',
+}) => {
+    const [zone, setZone] = useState<Zone>(zoneInitiale);
     const [markedDates, setMarkedDates] = useState({});
     const [loading, setLoading] = useState(true);
-    const [annivList, setAnnivList] = useState([]);
-    const [selectedAnniv, setSelectedAnniv] = useState(null);
+    const [annivList, setAnnivList] = useState<BirthdayTab[]>([]);
+    const [selectedAnniv, setSelectedAnniv] = useState<BirthdayTab | null>(null);
 
     useEffect(() => {
         setLoading(true);
         const now = new Date();
         const year = now.getFullYear();
-        let annivs = {};
-        let annivTab = [];
+        let birthdayData: Record<string, BirthdayData> = {};
+        let annivTab: BirthdayTab[] = [];
 
-        membres.forEach((m) => {
-            if (!m.date_naissance) {
+        membres.forEach((membre) => {
+            if (!membre.date_naissance) {
                 return;
             }
-            const date = new Date(m.date_naissance);
+
+            const date = new Date(membre.date_naissance);
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const key = `${year}-${month}-${day}`;
 
-            annivs[key] = {
+            birthdayData[key] = {
                 selected: true,
                 selectedColor: '#00ff88',
                 marked: true,
                 disableTouchEvent: false,
             };
+
             let annivDate = new Date(year, date.getMonth(), date.getDate());
             if (annivDate < now) {
                 annivDate.setFullYear(year + 1);
             }
-            const joursRestants = Math.ceil((annivDate - now) / (1000 * 3600 * 24));
+
+            const diffTime = annivDate.getTime() - now.getTime();
+            const joursRestants = Math.ceil(diffTime / (1000 * 3600 * 24));
             annivTab.push({
-                ...m,
+                ...membre,
                 date: key,
                 joursRestants,
             });
@@ -97,12 +127,12 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
 
         // Vacances scolaires
         const vacances = vacancesScolaires[zone];
-        let vacancesMap = {};
+        let vacancesMap: Record<string, any> = {}; // FIXME: typage bof
         vacances.forEach((v) => {
             let start = new Date(v.debut);
             let end = new Date(v.fin);
-            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                const key = d.toISOString().slice(0, 10);
+            for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+                const key = date.toISOString().slice(0, 10);
                 vacancesMap[key] = {
                     ...(vacancesMap[key] || {}),
                     customStyles: {
@@ -120,7 +150,7 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
 
         // Fusion anniversaires + vacances
         let allMarked = { ...vacancesMap };
-        Object.entries(annivs).forEach(([key, value]) => {
+        Object.entries(birthdayData).forEach(([key, value]) => {
             allMarked[key] = {
                 ...(allMarked[key] || {}),
                 ...value,
@@ -133,7 +163,7 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
     }, [membres, zone]);
 
     // Sélection jour anniversaire sur calendrier
-    const handleDayPress = (day) => {
+    const handleDayPress = (day: { dateString: string }) => {
         const found = annivList.find((m) => m.date === day.dateString);
         setSelectedAnniv(found || null);
     };
@@ -159,14 +189,16 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
                 {/* Sélecteur de zone chromé */}
                 <View style={styles.zoneRow}>
                     <Text style={styles.zoneLabel}>Zone scolaire :</Text>
-                    {ZONES.map((z) => (
+                    {ZONES.map((zone) => (
                         <TouchableOpacity
-                            key={z}
-                            style={[styles.zoneBtn, zone === z && styles.zoneBtnActive]}
-                            onPress={() => setZone(z)}
+                            key={zone}
+                            style={[styles.zoneBtn, zone === zone && styles.zoneBtnActive]}
+                            onPress={() => setZone(zone)}
                         >
-                            <Text style={zone === z ? styles.zoneBtnActiveTxt : styles.zoneBtnTxt}>
-                                {z}
+                            <Text
+                                style={zone === zone ? styles.zoneBtnActiveTxt : styles.zoneBtnTxt}
+                            >
+                                {zone}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -176,26 +208,28 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
                     style={styles.calendar}
                     markingType={'custom'}
                     markedDates={markedDates}
-                    theme={{
-                        backgroundColor: '#15181c',
-                        calendarBackground: '#15181c',
-                        textSectionTitleColor: '#70ffb8',
-                        selectedDayBackgroundColor: '#00ffcc',
-                        selectedDayTextColor: '#111',
-                        todayTextColor: '#00ff88',
-                        dayTextColor: '#fff',
-                        monthTextColor: '#80f2ff',
-                        arrowColor: '#00ff88',
-                        textDayFontWeight: '600',
-                        textMonthFontWeight: '700',
-                        textDayHeaderFontWeight: '700',
-                        textDayFontSize: 17,
-                        textMonthFontSize: 21,
-                        textDayHeaderFontSize: 15,
-                        'stylesheet.calendar.header': {
-                            monthText: { color: '#00ff88', fontSize: 22, fontWeight: '700' },
-                        },
-                    }}
+                    theme={
+                        {
+                            backgroundColor: '#15181c',
+                            calendarBackground: '#15181c',
+                            textSectionTitleColor: '#70ffb8',
+                            selectedDayBackgroundColor: '#00ffcc',
+                            selectedDayTextColor: '#111',
+                            todayTextColor: '#00ff88',
+                            dayTextColor: '#fff',
+                            monthTextColor: '#80f2ff',
+                            arrowColor: '#00ff88',
+                            textDayFontWeight: '600',
+                            textMonthFontWeight: '700',
+                            textDayHeaderFontWeight: '700',
+                            textDayFontSize: 17,
+                            textMonthFontSize: 21,
+                            textDayHeaderFontSize: 15,
+                            'stylesheet.calendar.header': {
+                                monthText: { color: '#00ff88', fontSize: 22, fontWeight: '700' },
+                            },
+                        } as any // FIXME: because of stylesheet.calendar.header
+                    }
                     onDayPress={handleDayPress}
                 />
 
@@ -256,14 +290,16 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
                             <Image
                                 source={{
                                     uri:
-                                        selectedAnniv.photo_url &&
+                                        // FIXME: pas de photo_url dans la table utilisateur
+                                        /*selectedAnniv.photo_url &&
                                         selectedAnniv.photo_url.trim() !== ''
                                             ? selectedAnniv.photo_url
-                                            : 'https://ui-avatars.com/api/?name=' +
-                                              encodeURIComponent(
-                                                  `${selectedAnniv.prenom || ''} ${selectedAnniv.nom || ''}`,
-                                              ) +
-                                              '&background=222&color=fff&rounded=true',
+                                            :*/
+                                        'https://ui-avatars.com/api/?name=' +
+                                        encodeURIComponent(
+                                            `${selectedAnniv.prenom || ''} ${selectedAnniv.nom || ''}`,
+                                        ) +
+                                        '&background=222&color=fff&rounded=true',
                                 }}
                                 style={styles.avatar}
                             />
@@ -296,13 +332,13 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
                                 <Image
                                     source={{
                                         uri:
-                                            m.photo_url && m.photo_url.trim() !== ''
+                                            // FIXME: pas de photo_url dans la table utilisateur
+                                            /*m.photo_url && m.photo_url.trim() !== ''
                                                 ? m.photo_url
-                                                : 'https://ui-avatars.com/api/?name=' +
-                                                  encodeURIComponent(
-                                                      `${m.prenom || ''} ${m.nom || ''}`,
-                                                  ) +
-                                                  '&background=222&color=fff&rounded=true',
+                                                : */
+                                            'https://ui-avatars.com/api/?name=' +
+                                            encodeURIComponent(`${m.prenom || ''} ${m.nom || ''}`) +
+                                            '&background=222&color=fff&rounded=true',
                                     }}
                                     style={styles.avatar}
                                 />
@@ -323,7 +359,9 @@ export default function CalendrierAnniversaires({ membres, zoneInitiale = 'B' })
             </View>
         </ScrollView>
     );
-}
+};
+
+export default CalendrierAnniversaires;
 
 const styles = StyleSheet.create({
     bg: {

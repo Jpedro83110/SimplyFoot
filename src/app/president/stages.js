@@ -17,12 +17,10 @@ import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { supabase } from '@/lib/supabase';
 import useCacheData from '@/lib/cache';
-import { formatDateForDisplay, normalizeHour } from '@/utils/date.utils';
+import { days, formatDateForDisplay, normalizeHour } from '@/utils/date.utils';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
-
-const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
 
 function downloadCSVWeb(filename, csv) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -51,7 +49,7 @@ export default function Stages() {
     const [heureFin, setHeureFin] = useState('17:00');
     const [programme, setProgramme] = useState(
         Object.fromEntries(
-            jours.map((j) => [
+            days.map((j) => [
                 j,
                 { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
             ]),
@@ -150,7 +148,7 @@ export default function Stages() {
         setHeureFin('17:00');
         setProgramme(
             Object.fromEntries(
-                jours.map((j) => [
+                days.map((j) => [
                     j,
                     { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
                 ]),
@@ -320,11 +318,11 @@ export default function Stages() {
         <table>
           <thead><tr><th>Jour</th><th>Lieu</th><th>Heures</th><th>Matin</th><th>Après-midi</th></tr></thead>
           <tbody>
-            ${jours
-                .map((jour) => {
-                    const prog = programme[jour];
+            ${days
+                .map((day) => {
+                    const prog = programme[day];
                     return `<tr>
-                <td>${jour.charAt(0).toUpperCase() + jour.slice(1)}</td>
+                <td>${day.charAt(0).toUpperCase() + day.slice(1)}</td>
                 <td>${prog?.lieu || ''}</td>
                 <td>${normalizeHour(prog?.heureDebut) || normalizeHour(heureDebut)}-${normalizeHour(prog?.heureFin) || normalizeHour(heureFin)}</td>
                 <td>${prog?.matin || ''}</td>
@@ -348,9 +346,9 @@ export default function Stages() {
     const exporterStageCSV = async () => {
         try {
             let csv = `Titre;Date début;Date fin;Âge min;Âge max;Heure début;Heure fin;Jour;Lieu;Heures;Matin;Après-midi\n`;
-            jours.forEach((jour) => {
-                const prog = programme[jour];
-                csv += `${titre};${dateDebut};${dateFin};${ageMin || ''};${ageMax || ''};${normalizeHour(heureDebut)};${normalizeHour(heureFin)};${jour};${prog?.lieu || ''};${normalizeHour(prog?.heureDebut) || normalizeHour(heureDebut)}-${normalizeHour(prog?.heureFin) || normalizeHour(heureFin)};${prog?.matin || ''};${prog?.apresMidi || ''}\n`;
+            days.forEach((day) => {
+                const prog = programme[day];
+                csv += `${titre};${dateDebut};${dateFin};${ageMin || ''};${ageMax || ''};${normalizeHour(heureDebut)};${normalizeHour(heureFin)};${day};${prog?.lieu || ''};${normalizeHour(prog?.heureDebut) || normalizeHour(heureDebut)}-${normalizeHour(prog?.heureFin) || normalizeHour(heureFin)};${prog?.matin || ''};${prog?.apresMidi || ''}\n`;
             });
 
             if (Platform.OS === 'web') {
@@ -498,7 +496,7 @@ export default function Stages() {
                                             />
                                         </View>
                                         <Text style={styles.subtitle}>Programme journalier</Text>
-                                        {jours.map((day) => (
+                                        {days.map((day) => (
                                             <View key={day} style={styles.dayBlock}>
                                                 <Text style={styles.dayTitle}>
                                                     {day.charAt(0).toUpperCase() + day.slice(1)}
@@ -724,7 +722,7 @@ export default function Stages() {
                                 />
                             </View>
                             <Text style={styles.subtitle}>Programme journalier</Text>
-                            {jours.map((day) => (
+                            {days.map((day) => (
                                 <View key={day} style={styles.dayBlock}>
                                     <Text style={styles.dayTitle}>
                                         {day.charAt(0).toUpperCase() + day.slice(1)}

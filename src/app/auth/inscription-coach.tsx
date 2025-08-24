@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -13,13 +13,15 @@ import {
     Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { signUp, supabase } from '@/lib/supabase';
 import { setupNotifications, initializeNotificationsForUser } from '../../lib/notifications';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '@/components/atoms/Button';
 import InputDate from '@/components/molecules/InputDate';
 import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
+import { useSession } from '@/hooks/useSession';
+import { insertUtilisateur } from '@/helpers/utilisateurs.helpers';
 
 // Validation email
 function isValidEmail(email: string) {
@@ -53,6 +55,8 @@ export default function InscriptionCoach() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
     const [notificationsInitializing, setNotificationsInitializing] = useState(false);
+
+    const { signIn } = useSession();
 
     // 🎂 Calcul automatique de l'âge
     useEffect(() => {
@@ -104,7 +108,7 @@ export default function InscriptionCoach() {
         }
 
         // Mots de passe
-        if (!password.trim()) {
+        if (!password) {
             return false;
         }
 
@@ -221,19 +225,10 @@ export default function InscriptionCoach() {
             console.log('✅ Club trouvé pour coach:', clubData.nom);
 
             // 2. Création du compte Auth
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                email: email.trim().toLowerCase(),
-                password: password.trim(),
+            const signUpData = await signUp({
+                email: email,
+                password: password,
             });
-
-            if (signUpError || !signUpData?.user) {
-                console.error('❌ Erreur inscription auth coach:', signUpError);
-                Alert.alert(
-                    'Erreur',
-                    `Inscription échouée : ${signUpError?.message || 'Erreur inconnue.'}`,
-                );
-                return;
-            }
 
             const userId = signUpData.user.id;
             console.log('✅ Compte auth coach créé:', userId);
@@ -244,23 +239,19 @@ export default function InscriptionCoach() {
 
             // 4. Insertion dans la table utilisateurs
             const dateNaissanceISO = formatDateToYYYYMMDD(dateNaissance);
-            const { error: insertUserError } = await supabase.from('utilisateurs').insert({
-                id: userId,
-                email: email.trim().toLowerCase(),
-                nom: nom.trim(),
-                prenom: prenom.trim(),
-                club_id: clubData.id,
-                role: 'coach',
-                expo_push_token: expoPushToken,
-                date_creation: new Date().toISOString(),
-                date_naissance: dateNaissanceISO,
+            await insertUtilisateur({
+                dataToInsert: {
+                    id: userId,
+                    email: email.trim().toLowerCase(),
+                    nom: nom.trim(),
+                    prenom: prenom.trim(),
+                    club_id: clubData.id,
+                    role: 'coach',
+                    expo_push_token: expoPushToken,
+                    date_creation: new Date().toISOString(),
+                    date_naissance: dateNaissanceISO,
+                },
             });
-
-            if (insertUserError) {
-                console.error('❌ Erreur insertion utilisateur coach:', insertUserError);
-                Alert.alert('Erreur', 'Utilisateur créé mais insertion incomplète (utilisateurs).');
-                return;
-            }
 
             console.log('✅ Utilisateur coach inséré dans la base');
 
@@ -325,6 +316,8 @@ export default function InscriptionCoach() {
                     },
                 ],
             );
+
+            await signIn({ email, password });
         } catch (error) {
             console.error('❌ Erreur inscription coach générale:', error);
             Alert.alert('Erreur', "Une erreur inattendue s'est produite. Veuillez réessayer.");

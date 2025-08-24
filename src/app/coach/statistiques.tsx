@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -9,57 +9,52 @@ import {
     Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '../../lib/supabase';
+import { useSession } from '@/hooks/useSession';
+import { getCoachEquipesEvaluations } from '@/helpers/equipes.helpers';
 
-function getBadge(note) {
+interface StatEquipe {
+    equipe: string;
+    mentale: number;
+    technique: number;
+    globale: number;
+    nbJoueurs: number;
+    nbJoueursEvalues: number;
+    nbEvalsMentales: number;
+    nbEvalsTechniques: number;
+}
+
+function getBadge(note: number) {
     if (note >= 90) {
         return require('../../assets/badges/platine.png');
-    }
-    if (note >= 75) {
+    } else if (note >= 75) {
         return require('../../assets/badges/or.png');
-    }
-    if (note >= 60) {
+    } else if (note >= 60) {
         return require('../../assets/badges/argent.png');
+    } else {
+        return require('../../assets/badges/bronze.png');
     }
-    return require('../../assets/badges/bronze.png');
 }
 
 export default function Statistiques() {
-    const [stats, setStats] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState<StatEquipe[]>([]);
+    const [loading, setLoading] = useState(false);
 
-    async function fetchStats(forceRefresh = false) {
+    const { utilisateur } = useSession();
+
+    const fetchStats = useCallback(async () => {
         try {
-            setLoading(true);
-            console.log('=== DÉBUT RÉCUPÉRATION STATISTIQUES ===');
-            console.log('forceRefresh parameter:', forceRefresh);
-
-            // Auth coach
-            const { data: session } = await supabase.auth.getSession();
-            const userId = session?.session?.user?.id;
-            console.log('Coach ID:', userId);
-
-            if (!userId) {
-                console.log('Pas de session coach');
-                setLoading(false);
+            if (!utilisateur?.club_id || !loading) {
                 return;
             }
 
-            // FORCAGE : ignorer complètement le cache pour le debug
-            console.log('FORCAGE - Cache ignoré complètement pour debug');
+            setLoading(true);
 
-            // 1. Récupère toutes les équipes du coach
-            console.log('Recherche des équipes pour le coach:', userId);
-            const { data: equipes, error: equipesError } = await supabase
-                .from('equipes')
-                .select('id, nom')
-                .eq('coach_id', userId);
+            const evaluations = await getCoachEquipesEvaluations({
+                coachId: utilisateur.id,
+                clubId: utilisateur.club_id,
+            });
 
-            console.log('Équipes trouvées:', equipes);
-            console.log('Erreur équipes:', equipesError);
-
-            if (!equipes || equipes.length === 0) {
-                console.log('Aucune équipe trouvée pour ce coach');
+            if (evaluations.length === 0) {
                 setStats([]);
                 setLoading(false);
                 return;
@@ -67,69 +62,10 @@ export default function Statistiques() {
 
             let statsEquipes = [];
 
-            // 2. Pour chaque équipe : joueurs, moyennes
-            for (let eq of equipes) {
-                console.log(`\n--- Traitement équipe: ${eq.nom} (${eq.id}) ---`);
-
-                // Récupère les joueurs de l'équipe
-                const { data: joueurs, error: joueursError } = await supabase
-                    .from('joueurs')
-                    .select('id, nom, prenom')
-                    .eq('equipe_id', eq.id);
-
-                console.log(`Joueurs de l'équipe ${eq.nom}:`, joueurs);
-                console.log('Erreur joueurs:', joueursError);
-
-                if (!joueurs || !joueurs.length) {
-                    console.log(`Pas de joueurs dans l'équipe ${eq.nom}`);
-                    continue;
-                }
-
-                // Récupère les utilisateurs correspondants à ces joueurs
-                const joueursIds = joueurs.map((j) => j.id);
-                console.log('IDs joueurs:', joueursIds);
-
-                const { data: utilisateurs, error: utilisateursError } = await supabase
-                    .from('utilisateurs')
-                    .select('id, joueur_id, nom, prenom')
-                    .eq('role', 'joueur')
-                    .in('joueur_id', joueursIds);
-
-                console.log('Utilisateurs correspondants:', utilisateurs);
-                console.log('Erreur utilisateurs:', utilisateursError);
-
-                if (!utilisateurs || !utilisateurs.length) {
-                    console.log(`Aucun utilisateur trouvé pour les joueurs de l'équipe ${eq.nom}`);
-                    continue;
-                }
-
-                // Crée un mapping joueur_id -> utilisateur_id
-                const joueurToUser = {};
-                utilisateurs.forEach((user) => {
-                    if (user.joueur_id) {
-                        joueurToUser[user.joueur_id] = user.id;
-                    }
-                });
-
-                console.log('Mapping joueur->utilisateur:', joueurToUser);
-
-                // Récupère les IDs utilisateurs pour les évaluations
-                const utilisateursIds = Object.values(joueurToUser);
-                console.log('IDs utilisateurs pour évaluations:', utilisateursIds);
-
-                if (!utilisateursIds.length) {
-                    console.log('Aucun ID utilisateur disponible');
-                    continue;
-                }
-
-                // Moyenne mentale - utilise les IDs utilisateurs
-                const { data: mentales, error: mentalesError } = await supabase
-                    .from('evaluations_mentales')
-                    .select('note_globale, moyenne, joueur_id')
-                    .in('joueur_id', utilisateursIds);
-
-                console.log('Évaluations mentales:', mentales);
-                console.log('Erreur évaluations mentales:', mentalesError);
+            for (let evaluation of evaluations) {
+                const mentales = evaluation.joueurs
+                    .map((joueur) => joueur.utilisateurs.evaluations_mentales)
+                    .flat();
 
                 const moyMentale =
                     mentales && mentales.length
@@ -141,72 +77,59 @@ export default function Statistiques() {
                           )
                         : 0;
 
-                console.log('Moyenne mentale calculée:', moyMentale);
-
-                // Moyenne technique - utilise les IDs utilisateurs
-                const { data: techniques, error: techniquesError } = await supabase
-                    .from('evaluations_techniques')
-                    .select('moyenne, joueur_id')
-                    .in('joueur_id', utilisateursIds);
-
-                console.log('Évaluations techniques:', techniques);
-                console.log('Erreur évaluations techniques:', techniquesError);
+                const techniques = evaluation.joueurs
+                    .map((joueur) => joueur.utilisateurs.evaluations_techniques)
+                    .filter((evaluation) => evaluation);
 
                 const moyTechnique =
                     techniques && techniques.length
                         ? Math.round(
-                              techniques.reduce((a, e) => a + Number(e.moyenne || 0), 0) /
-                                  techniques.length,
+                              techniques.reduce(
+                                  (prev, evaluation) => prev + Number(evaluation?.moyenne || 0),
+                                  0,
+                              ) / techniques.length,
                           )
                         : 0;
 
-                console.log('Moyenne technique calculée:', moyTechnique);
-
-                // Moyenne globale
                 const moyGlobale =
                     moyMentale > 0 && moyTechnique > 0
                         ? Math.round((moyMentale + moyTechnique) / 2)
                         : Math.max(moyMentale, moyTechnique);
 
-                console.log('Moyenne globale calculée:', moyGlobale);
+                const nbJoueursEvalues = evaluation.joueurs.filter(
+                    (joueur) =>
+                        joueur.utilisateurs.evaluations_mentales.length > 0 ||
+                        joueur.utilisateurs.evaluations_techniques,
+                ).length;
 
-                // Ajoute au tableau seulement si on a une moyenne
                 if (moyMentale > 0 || moyTechnique > 0) {
                     const statEquipe = {
-                        equipe: eq.nom,
+                        equipe: evaluation.nom,
                         mentale: moyMentale,
                         technique: moyTechnique,
                         globale: moyGlobale,
-                        nbJoueurs: joueurs.length,
-                        nbJoueursEvalues: utilisateursIds.length,
+                        nbJoueurs: evaluation.joueurs.length,
+                        nbJoueursEvalues,
                         nbEvalsMentales: mentales ? mentales.length : 0,
                         nbEvalsTechniques: techniques ? techniques.length : 0,
                     };
 
-                    console.log('Stat équipe ajoutée:', statEquipe);
                     statsEquipes.push(statEquipe);
-                } else {
-                    console.log(`Aucune évaluation trouvée pour l'équipe ${eq.nom}`);
                 }
             }
 
-            console.log('=== STATS FINALES ===');
-            console.log('Statistiques équipes:', statsEquipes);
-
             setStats(statsEquipes);
-            console.log('=== FIN RÉCUPÉRATION STATISTIQUES ===');
         } catch (error) {
-            console.error('Erreur dans fetchStats:', error);
+            console.error(error);
             setStats([]);
         } finally {
             setLoading(false);
         }
-    }
+    }, [loading, utilisateur?.club_id, utilisateur?.id]);
 
     useEffect(() => {
-        console.log('useEffect déclenché');
-        fetchStats(true);
-    }, []);
+        fetchStats();
+    }, [fetchStats]);
 
     if (loading) {
         return (
@@ -224,7 +147,7 @@ export default function Statistiques() {
                 <Text style={styles.emptySubtext}>
                     Créez des évaluations pour vos joueurs pour voir les statistiques d&apos;équipe.
                 </Text>
-                <Pressable onPress={() => fetchStats(true)} style={styles.refreshButton}>
+                <Pressable onPress={() => fetchStats()} style={styles.refreshButton}>
                     <Text style={styles.refreshText}>🔄 Actualiser</Text>
                 </Pressable>
             </View>
@@ -237,7 +160,7 @@ export default function Statistiques() {
                 <View style={styles.header}>
                     <Text style={styles.title}>🏆 Statistiques d&apos;équipe</Text>
                     <Pressable
-                        onPress={() => fetchStats(true)}
+                        onPress={() => fetchStats()}
                         style={styles.refreshButton}
                         disabled={loading}
                     >

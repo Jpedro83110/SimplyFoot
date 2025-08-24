@@ -1,6 +1,14 @@
 // /lib/vacancesScolaires.js
 
-const vacancesScolaires = {
+export type Zone = 'A' | 'B' | 'C';
+
+type SchoolHoliday = {
+    nom: string;
+    debut: string;
+    fin: string;
+};
+
+export const vacancesScolaires: Record<Zone, SchoolHoliday[]> = {
     A: [
         { nom: 'Vacances de la Toussaint', debut: '2024-10-19', fin: '2024-11-04' },
         { nom: 'Vacances de Noël', debut: '2024-12-21', fin: '2025-01-06' },
@@ -23,5 +31,3 @@ const vacancesScolaires = {
         { nom: "Vacances d'Été", debut: '2025-07-05', fin: '2025-09-01' },
     ],
 };
-
-export default vacancesScolaires;

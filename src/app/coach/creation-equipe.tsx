@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
-import useCacheData from '../../lib/cache';
+import { useSession } from '@/hooks/useSession';
 
 // Fonction utilitaire pour générer un code équipe unique
 function generateCodeEquipe(length = 6) {
@@ -25,6 +25,7 @@ function generateCodeEquipe(length = 6) {
 }
 
 // Génère et vérifie l'unicité du code équipe
+// FIXME: système dangereux
 async function generateUniqueCodeEquipe() {
     let code, exists;
     do {
@@ -44,52 +45,17 @@ export default function CreationEquipe() {
     const [nom, setNom] = useState('');
     const [categorie, setCategorie] = useState('');
     const [description, setDescription] = useState('');
-    const [coachId, setCoachId] = useState(null);
-    const [clubId, setClubId] = useState(null);
     const [codeEquipe, setCodeEquipe] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Ajout du cache : on tente d'abord cache, puis fallback Supabase si rien trouvé
-    const [userInfo, , loadingUserInfo] = useCacheData<{
-        club_id: any;
-        coach_id: any;
-    }>(
-        'coach_user_info',
-        async () => {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const id = sessionData?.session?.user?.id;
-
-            if (!id) {
-                return null;
-            }
-
-            const { data: userInfo } = await supabase
-                .from('utilisateurs')
-                .select('club_id')
-                .eq('id', id)
-                .single();
-            if (userInfo) {
-                return { ...userInfo, coach_id: id };
-            }
-
-            return null;
-        },
-        1800, // 30 min de cache, tu adaptes si besoin
-    );
-
-    useEffect(() => {
-        if (userInfo && userInfo.club_id) {
-            setClubId(userInfo.club_id);
-            setCoachId(userInfo.coach_id);
-        }
-    }, [userInfo]);
+    const { utilisateur } = useSession();
 
     const handleCreate = async () => {
         if (!nom || !categorie) {
             Alert.alert('Erreur', 'Merci de remplir au minimum le nom et la catégorie.');
             return;
         }
-        if (!coachId || !clubId) {
+        if (!utilisateur?.id || !utilisateur.club_id) {
             Alert.alert('Erreur', 'Informations utilisateur incomplètes.');
             return;
         }
@@ -106,8 +72,8 @@ export default function CreationEquipe() {
                     nom,
                     categorie,
                     description: description.trim() !== '' ? description : null,
-                    coach_id: coachId,
-                    club_id: clubId,
+                    coach_id: utilisateur.id,
+                    club_id: utilisateur.club_id,
                     code_equipe: codeEquipeGen, // On ajoute le code ici !
                 })
                 .select()
@@ -163,13 +129,9 @@ export default function CreationEquipe() {
                 onChangeText={setDescription}
             />
 
-            <TouchableOpacity
-                style={styles.button}
-                onPress={handleCreate}
-                disabled={loadingUserInfo || loading}
-            >
+            <TouchableOpacity style={styles.button} onPress={handleCreate} disabled={loading}>
                 <Text style={styles.buttonText}>
-                    {loadingUserInfo || loading ? 'Chargement...' : "Créer l'équipe"}
+                    {loading ? 'Chargement...' : "Créer l'équipe"}
                 </Text>
             </TouchableOpacity>
 

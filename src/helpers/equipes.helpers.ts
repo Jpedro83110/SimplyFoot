@@ -1,15 +1,60 @@
 import { supabase } from '@/lib/supabase';
 
+export type GetCoachEquipes = Awaited<ReturnType<typeof getCoachEquipes>>;
+
+export const getCoachEquipes = async ({ coachId, clubId }: { coachId: string; clubId: string }) => {
+    const { data, error } = await supabase
+        .from('equipes')
+        .select('id, nom, categorie')
+        .eq('coach_id', coachId)
+        .eq('club_id', clubId);
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 export type GetCoachEquipesWithJoueursCount = Awaited<
     Awaited<ReturnType<typeof getCoachEquipesWithJoueursCount>>
 >;
 
-export const getCoachEquipesWithJoueursCount = async (args: { coachId: string }) => {
-    const { coachId } = args;
-
+export const getCoachEquipesWithJoueursCount = async ({
+    coachId,
+    clubId,
+}: {
+    coachId: string;
+    clubId: string;
+}) => {
     const { data, error } = await supabase
         .from('equipes')
         .select('*, joueurs(count)')
+        .eq('coach_id', coachId)
+        .eq('club_id', clubId);
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
+export type GetCoachEquipesEvaluations = Awaited<ReturnType<typeof getCoachEquipesEvaluations>>;
+
+export const getCoachEquipesEvaluations = async ({
+    coachId,
+    clubId,
+}: {
+    coachId: string;
+    clubId: string;
+}) => {
+    const { data, error } = await supabase
+        .from('equipes')
+        .select(
+            'nom, joueurs:equipe_id(id, utilisateurs(id, evaluations_mentales!joueur_id(note_globale, moyenne), evaluations_techniques!joueur_id(moyenne)))',
+        )
+        .eq('club_id', clubId)
         .eq('coach_id', coachId);
 
     if (error) {
@@ -24,7 +69,7 @@ export type GetJoueurEquipeById = Awaited<ReturnType<typeof getJoueurEquipeById>
 export const getJoueurEquipeById = async (equipeId: string) => {
     const { data, error } = await supabase
         .from('equipes')
-        .select('*, club:club_id(logo_url)')
+        .select('id, club_id, nom, categorie, club:club_id(logo_url)')
         .eq('id', equipeId)
         .single();
 

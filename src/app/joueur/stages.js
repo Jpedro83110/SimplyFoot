@@ -9,6 +9,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
+import { days } from '@/utils/date.utils';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
@@ -76,7 +77,7 @@ export default function LectureStage() {
                     resizeMode="cover"
                     style={styles.background}
                 >
-                    {['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'].map((day) => (
+                    {days.map((day) => (
                         <View key={day} style={styles.dayBlock}>
                             <Text style={styles.dayTitle}>
                                 {day.charAt(0).toUpperCase() + day.slice(1)}

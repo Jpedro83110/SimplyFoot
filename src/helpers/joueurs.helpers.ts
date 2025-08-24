@@ -21,6 +21,21 @@ export const getJoueurById = async (args: { joueurId: string }) => {
     return data;
 };
 
+export type GetJoueursByEquipeId = Awaited<ReturnType<typeof getJoueursByEquipeId>>;
+
+export const getJoueursByEquipeId = async ({ equipeId }: { equipeId: string }) => {
+    const { data, error } = await supabase
+        .from('joueurs')
+        .select(`equipe_id, utilisateurs(id, prenom, nom)`)
+        .eq('equipe_id', equipeId);
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 export type GetEquipeIdByUtilisateurId = Awaited<ReturnType<typeof getEquipeIdByUtilisateurId>>;
 
 export const getEquipeIdByUtilisateurId = async (args: { utilisateurId: string }) => {

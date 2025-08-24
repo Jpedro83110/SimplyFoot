@@ -7,7 +7,7 @@
         "start:android": "expo run:android",
         "start:ios": "expo run:ios",
         "web": "expo start --web",
-        "generate:types": "supabase gen types typescript --project-id vkcojgudsrypkyxoendl > types/database.types.ts",
+        "generate:types": "supabase gen types typescript --project-id vkcojgudsrypkyxoendl > src/types/database.types.ts",
         "type-check": "tsc --noEmit",
         "build": "expo export",
         "build:web": "expo export -p web",
