@@ -40,7 +40,7 @@ export default function ConvocationsList() {
         const { data: eventsList, error } = await supabase
             .from('evenements')
             .select('*')
-            .eq('coach_id', userId)
+            .eq('created_by', userId)
             .gte('date', today)
             .order('date', { ascending: true });
         if (error) {

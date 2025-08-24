@@ -479,7 +479,7 @@ export type Database = {
                 Row: {
                     adversaires: string | null;
                     club_id: string | null;
-                    coach_id: string | null;
+                    created_by: string | null;
                     date: string | null;
                     date_creation: string | null;
                     description: string | null;
@@ -497,7 +497,7 @@ export type Database = {
                 Insert: {
                     adversaires?: string | null;
                     club_id?: string | null;
-                    coach_id?: string | null;
+                    created_by?: string | null;
                     date?: string | null;
                     date_creation?: string | null;
                     description?: string | null;
@@ -515,7 +515,7 @@ export type Database = {
                 Update: {
                     adversaires?: string | null;
                     club_id?: string | null;
-                    coach_id?: string | null;
+                    created_by?: string | null;
                     date?: string | null;
                     date_creation?: string | null;
                     description?: string | null;
@@ -532,8 +532,8 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'evenements_coach_id_fkey';
-                        columns: ['coach_id'];
+                        foreignKeyName: 'evenements_created_by_fkey';
+                        columns: ['created_by'];
                         isOneToOne: false;
                         referencedRelation: 'utilisateurs';
                         referencedColumns: ['id'];

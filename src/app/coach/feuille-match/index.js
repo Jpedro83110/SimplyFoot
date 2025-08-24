@@ -44,7 +44,7 @@ export default function ListeFeuillesMatch() {
             const { data: events, error: eventError } = await supabase
                 .from('evenements')
                 .select('*')
-                .eq('coach_id', uid)
+                .eq('created_by', uid)
                 .gte('date', filterDate) // ← AJOUTÉ: Filtre >= hier (pour inclure aujourd'hui)
                 .order('date', { ascending: true }); // ← MODIFIÉ: Ordre croissant pour voir les prochains en premier
 

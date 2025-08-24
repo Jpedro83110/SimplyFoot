@@ -44,7 +44,6 @@ export default function ListeCompositions() {
         console.log("Date d'aujourd'hui:", today.toISOString().split('T')[0]);
         console.log('Filtrage des événements à partir du:', filterDate);
 
-        // FIXME: replace let by const
         const evenementsList = await getEvenementByCoachId({
             coachId: userId,
             filterDate,

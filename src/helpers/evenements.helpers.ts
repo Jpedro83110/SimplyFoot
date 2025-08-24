@@ -2,19 +2,41 @@ import { supabase } from '@/lib/supabase';
 
 export type GetEvenementByCoachId = Awaited<ReturnType<typeof getEvenementByCoachId>>;
 
-export const getEvenementByCoachId = async (args: { coachId: string; filterDate?: string }) => {
-    const { coachId, filterDate } = args;
-
+export const getEvenementByCoachId = async ({
+    coachId,
+    filterDate,
+}: {
+    coachId: string;
+    filterDate?: string;
+}) => {
     let request = supabase
         .from('evenements')
         .select('id, titre, date, heure, lieu')
-        .eq('coach_id', coachId);
+        .eq('created_by', coachId);
 
     if (filterDate) {
         request = request.gte('date', filterDate);
     }
 
     const { data, error } = await request.order('date', { ascending: true });
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
+export type GetEvenementsByClubId = Awaited<ReturnType<typeof getEvenementsByClubId>>;
+
+export const getEvenementsByClubId = async ({ clubId }: { clubId: string }) => {
+    const { data, error } = await supabase
+        .from('evenements')
+        .select(
+            'id, type, titre, lieu, date, heure, description, utilisateurs:created_by(prenom, nom)',
+        )
+        .eq('club_id', clubId)
+        .order('date', { ascending: true });
 
     if (error) {
         throw error;

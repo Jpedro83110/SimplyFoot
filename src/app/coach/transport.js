@@ -57,12 +57,12 @@ export default function TransportManquant() {
 
                     const { data: evt } = await supabase
                         .from('evenements')
-                        .select('titre, date, heure, coach_id')
+                        .select('titre, date, heure, created_by')
                         .eq('id', p.evenement_id)
                         .single();
 
-                    // Affiche tout pour admin, sinon filtre coach_id
-                    if (!evt || (email !== 'demo@simplyfoot.fr' && evt.coach_id !== userId)) {
+                    // Affiche tout pour admin, sinon filtre created_by
+                    if (!evt || (email !== 'demo@simplyfoot.fr' && evt.created_by !== userId)) {
                         return null;
                     }
 

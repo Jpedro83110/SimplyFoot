@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '@/lib/supabase';
+import { setSession, updateUser } from '@/lib/supabase';
 import { useSession } from '@/hooks/useSession';
 
 export default function ResetPassword() {
@@ -29,9 +29,9 @@ export default function ResetPassword() {
             Alert.alert('Lien invalide ou expiré');
             router.replace('/auth/login-joueur');
         } else {
-            supabase.auth.setSession({
-                access_token: access_token as string,
-                refresh_token: '',
+            setSession({
+                accessToken: access_token as string,
+                refreshToken: '',
             });
         }
     }, [access_token, router]);
@@ -47,17 +47,13 @@ export default function ResetPassword() {
         }
 
         setLoading(true);
-        const { error } = await supabase.auth.updateUser({ password });
+        await updateUser({ password });
 
         setLoading(false);
 
-        if (error) {
-            Alert.alert('Erreur', error.message);
-        } else {
-            Alert.alert('Succès', 'Mot de passe modifié. Vous pouvez vous connecter.');
-            // Je me déconnecte l'utilisateur après la réinitialisation du mot de passe
-            await signOut();
-        }
+        Alert.alert('Succès', 'Mot de passe modifié. Vous pouvez vous connecter.');
+        // Je me déconnecte l'utilisateur après la réinitialisation du mot de passe
+        await signOut();
     };
 
     return (
