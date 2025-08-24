@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
     GetEvenementInfosByUtilisateurId,
     getEvenementInfosByUtilisateurId,
-} from '@/helpers/evenements.helper';
+} from '@/helpers/evenements.helpers';
 import { ParticipationsEvenementReponse } from '@/types/participationsEvenement.types';
 
 dayjs.locale('fr');

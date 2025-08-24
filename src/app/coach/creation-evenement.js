@@ -15,7 +15,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 import InputDate from '@/components/molecules/InputDate';
-import { formatDateToISO } from '@/lib/formatDate';
+import { formatDateToYYYYMMDD } from '@/utils/date.utils';
 
 const LOCATIONIQ_KEY = 'pk.1bc03891ccd317c6ca47a6d1b87bdbe1';
 const OPENWEATHER_KEY = '1c27efe2712135cb33936abb88a3d28a';
@@ -212,7 +212,7 @@ export default function CreateEvent() {
             const insertPayload = {
                 type,
                 titre,
-                date: date ? formatDateToISO(date) : '',
+                date: formatDateToYYYYMMDD(date) ?? '',
                 heure,
                 lieu,
                 lieu_complement: complement,

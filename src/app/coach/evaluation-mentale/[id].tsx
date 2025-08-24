@@ -14,7 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import Slider from '@react-native-community/slider';
 import useCacheData from '@/lib/cache';
-import { GetUtilisateurById, getUtilisateurById } from '@/helpers/utilisateurs.helper';
+import { GetUtilisateurById, getUtilisateurById } from '@/helpers/utilisateurs.helpers';
 
 export default function EvaluationMentale() {
     const { id } = useLocalSearchParams();
