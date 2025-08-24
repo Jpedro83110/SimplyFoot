@@ -37,7 +37,7 @@ export default function PresidentDashboard() {
 
     const { signOut } = useSession();
 
-    const { signOut, utilisateur } = useSession();
+    const { utilisateur } = useSession();
 
     const fetchPresident = async (userId) => {
         if (!userId) {
