@@ -25,8 +25,8 @@ export type GetJoueursByEquipeId = Awaited<ReturnType<typeof getJoueursByEquipeI
 
 export const getJoueursByEquipeId = async ({ equipeId }: { equipeId: string }) => {
     const { data, error } = await supabase
-        .from('utilisateurs')
-        .select(`id, prenom, nom, joueurs:joueur_id(id)`)
+        .from('joueurs')
+        .select(`equipe_id, utilisateurs(id, prenom, nom)`)
         .eq('equipe_id', equipeId);
 
     if (error) {

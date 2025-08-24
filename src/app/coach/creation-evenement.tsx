@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View,
     Text,
@@ -12,7 +12,7 @@ import {
     Keyboard,
     ActivityIndicator,
 } from 'react-native';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import InputDate from '@/components/molecules/InputDate';
 import { formatDateToYYYYMMDD } from '@/utils/date.utils';
@@ -21,6 +21,7 @@ import { useSession } from '@/hooks/useSession';
 import { LocationIQ } from '@/types/locationiq.types';
 import { getJoueursByEquipeId, GetJoueursByEquipeId } from '@/helpers/joueurs.helpers';
 import { Database } from '@/types/database.types';
+import Button from '@/components/atoms/Button';
 
 // FIXME: a mettre dans un .env
 const LOCATIONIQ_KEY = 'pk.1bc03891ccd317c6ca47a6d1b87bdbe1';
@@ -131,32 +132,31 @@ export default function CreateEvent() {
         Keyboard.dismiss();
     };
 
-    // --- Récupérer les joueurs de l'équipe sélectionnée ---
-    useEffect(() => {
-        const fetchJoueursEquipe = async () => {
-            setLoadingJoueurs(true);
+    const fetchJoueursEquipe = useCallback(
+        async (equipeId: string) => {
             setSelectedJoueurs([]);
             setJoueursEquipe([]);
-            if (!equipe) {
-                setLoadingJoueurs(false);
+
+            if (loadingJoueurs) {
                 return;
             }
 
+            setLoadingJoueurs(true);
+
             try {
-                const fetchedJoueursEquipe = await getJoueursByEquipeId({ equipeId: equipe });
+                const fetchedJoueursEquipe = await getJoueursByEquipeId({ equipeId });
 
                 setJoueursEquipe(fetchedJoueursEquipe);
-                // Utiliser les IDs UTILISATEURS pour les participations
-                setSelectedJoueurs(fetchedJoueursEquipe.map((joueur) => joueur.id));
+                setSelectedJoueurs(fetchedJoueursEquipe.map((joueur) => joueur.utilisateurs[0].id));
             } catch (error) {
                 console.error('Erreur générale fetchJoueursEquipe:', error);
                 setJoueursEquipe([]);
             } finally {
                 setLoadingJoueurs(false);
             }
-        };
-        fetchJoueursEquipe();
-    }, [equipe]);
+        },
+        [loadingJoueurs],
+    );
 
     // --- Création évènement ---
     const handleCreate = async () => {
@@ -164,6 +164,7 @@ export default function CreateEvent() {
             Alert.alert('Erreur', 'Merci de remplir tous les champs.');
             return;
         }
+
         if (!coords?.lat || !coords?.lon) {
             Alert.alert(
                 'Erreur',
@@ -171,6 +172,7 @@ export default function CreateEvent() {
             );
             return;
         }
+
         if (!meteo || meteo === 'Indisponible') {
             Alert.alert(
                 'Attention',
@@ -298,7 +300,7 @@ export default function CreateEvent() {
         if (selectedJoueurs.length === joueursEquipe.length) {
             setSelectedJoueurs([]);
         } else {
-            setSelectedJoueurs(joueursEquipe.map((joueur) => joueur.id)); // user_id au lieu de joueur_id
+            setSelectedJoueurs(joueursEquipe.map((joueur) => joueur.utilisateurs[0].id)); // user_id au lieu de joueur_id
         }
     };
 
@@ -311,7 +313,7 @@ export default function CreateEvent() {
         >
             <ScrollView
                 style={{ flex: 1, backgroundColor: '#121212' }}
-                contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
+                contentContainerStyle={{ padding: 24, paddingBottom: 24 }}
                 keyboardShouldPersistTaps="handled"
             >
                 <Text style={styles.title}>🗓️ Créer un Événement</Text>
@@ -348,7 +350,10 @@ export default function CreateEvent() {
                         <TouchableOpacity
                             key={eq.id}
                             style={[styles.choiceButton, equipe === eq.id && styles.choiceSelected]}
-                            onPress={() => setEquipe(eq.id)}
+                            onPress={async () => {
+                                setEquipe(eq.id);
+                                await fetchJoueursEquipe(eq.id);
+                            }}
                         >
                             <Text
                                 style={
@@ -462,19 +467,19 @@ export default function CreateEvent() {
                         <View>
                             {joueursEquipe.map((joueur) => (
                                 <TouchableOpacity
-                                    key={joueur.id} // Clé unique avec user_id
+                                    key={joueur.utilisateurs[0].id} // Clé unique avec user_id
                                     style={styles.joueurItem}
-                                    onPress={() => toggleJoueur(joueur.id)} // Utiliser user_id
+                                    onPress={() => toggleJoueur(joueur.utilisateurs[0].id)} // Utiliser user_id
                                 >
                                     <View
                                         style={[
                                             styles.checkbox,
-                                            selectedJoueurs.includes(joueur.id) &&
+                                            selectedJoueurs.includes(joueur.utilisateurs[0].id) &&
                                                 styles.checkboxChecked, // Vérifier user_id
                                         ]}
                                     />
                                     <Text style={styles.joueurText}>
-                                        {joueur.nom} {joueur.prenom}
+                                        {joueur.utilisateurs[0].nom} {joueur.utilisateurs[0].prenom}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -487,9 +492,13 @@ export default function CreateEvent() {
                     </>
                 )}
             </ScrollView>
-            <TouchableOpacity style={styles.buttonSticky} onPress={handleCreate}>
-                <Text style={styles.buttonText}>Créer</Text>
-            </TouchableOpacity>
+            <Button
+                text="Créer"
+                onPress={handleCreate}
+                loading={loadingJoueurs}
+                disabled={!titre || !date || !heure || !lieu || !equipe || loadingJoueurs}
+                color="primary"
+            />
         </KeyboardAvoidingView>
     );
 }
