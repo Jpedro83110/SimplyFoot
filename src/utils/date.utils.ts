@@ -6,7 +6,7 @@ export const formatDateForDisplay = ({
     date,
     locale,
 }: {
-    date?: Date | string;
+    date?: Date | string | null;
     locale?: string;
 }) => {
     if (!date) {

@@ -24,7 +24,7 @@ import { useCachedApi } from '@/hooks/useCachedApi';
 import { useSession } from '@/hooks/useSession';
 import { Database } from '@/types/database.types';
 import { getCoachEquipesWithJoueursCount } from '@/helpers/equipes.helpers';
-import { calculateAgeFromString } from '@/utils/date.utils';
+import { calculateAgeFromString, formatDateForDisplay } from '@/utils/date.utils';
 import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -647,7 +647,7 @@ export default function CoachDashboard() {
                 >
                     <Text style={styles.eventTitle}>{evenement.titre}</Text>
                     <Text style={styles.eventInfo}>
-                        📅 {evenement.date} à {evenement.heure}
+                        📅 {formatDateForDisplay({ date: evenement.date })} à {evenement.heure}
                     </Text>
                     <Text style={styles.eventInfo}>📍 {evenement.lieu}</Text>
                     {evenement.lieu_complement && (

@@ -75,7 +75,7 @@ export default function ProgrammeStage() {
         </style>
         </head><body>
         <h2>${stage.titre}</h2>
-        <p><strong>Dates :</strong> du ${stage.date_debut && formatDateForDisplay({ date: stage.date_debut })} au ${stage.date_fin && formatDateForDisplay({ date: stage.date_fin })}</p>
+        <p><strong>Dates :</strong> du ${formatDateForDisplay({ date: stage.date_debut })} au ${formatDateForDisplay({ date: stage.date_fin })}</p>
         ${stage.age_min && stage.age_max ? `<p><strong>Âge :</strong> ${stage.age_min} à ${stage.age_max} ans</p>` : ''}
         <table>
           <thead><tr><th>Jour</th><th>Lieu</th><th>Horaires</th><th>Matin</th><th>Après-midi</th></tr></thead>
@@ -171,11 +171,8 @@ export default function ProgrammeStage() {
                         >
                             <Text style={styles.stageTitle}>{stage.titre}</Text>
                             <Text style={styles.stageDate}>
-                                🗓️ Du{' '}
-                                {stage.date_debut &&
-                                    formatDateForDisplay({ date: stage.date_debut })}{' '}
-                                au{' '}
-                                {stage.date_fin && formatDateForDisplay({ date: stage.date_fin })}
+                                🗓️ Du {formatDateForDisplay({ date: stage.date_debut })} au{' '}
+                                {formatDateForDisplay({ date: stage.date_fin })}
                             </Text>
                             {stage.age_min && stage.age_max && (
                                 <Text style={styles.stageAge}>
