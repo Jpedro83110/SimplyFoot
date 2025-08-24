@@ -9,7 +9,7 @@ interface HeaderProps {
     showBack?: boolean;
 }
 
-export const Header: FC<HeaderProps> = ({ title, showBack = true }) => {
+const Header: FC<HeaderProps> = ({ title, showBack = true }) => {
     const router = useRouter();
     const segments = useSegments();
 
