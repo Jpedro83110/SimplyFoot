@@ -10,6 +10,7 @@ import {
     ActivityIndicator,
     Linking,
     Platform,
+    Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -18,19 +19,26 @@ import { decode } from 'base64-arraybuffer';
 import { supabase } from '@/lib/supabase';
 import useCacheData from '@/lib/cache';
 import { useSession } from '@/hooks/useSession';
+import { copyToClipboard } from '@/utils/copyToClipboard.utils';
+import Tooltip from 'react-native-walkthrough-tooltip';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
 const DARK_LIGHT = '#161b20';
 
+const { width } = Dimensions.get('window');
+const isMobile = width < 600;
+
 export default function PresidentDashboard() {
     const router = useRouter();
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
+    const [tooltipVisible, setTooltipVisible] = React.useState(false);
 
-    const { signOut, utilisateur } = useSession();
+    const { signOut } = useSession();
 
-    // Fonction pour récupérer les données du président
+    const { utilisateur } = useSession();
+
     const fetchPresident = async (userId) => {
         if (!userId) {
             throw new Error('ID utilisateur manquant');
@@ -53,7 +61,6 @@ export default function PresidentDashboard() {
         return data;
     };
 
-    // Fonction pour récupérer les données du club
     const fetchClub = async (userId) => {
         if (!userId) {
             throw new Error('ID utilisateur manquant');
@@ -67,6 +74,7 @@ export default function PresidentDashboard() {
           id, 
           nom, 
           abonnement_actif, 
+          code_acces,
           logo_url, 
           facebook_url, 
           instagram_url, 
@@ -85,7 +93,6 @@ export default function PresidentDashboard() {
         return clubRows[0].club;
     };
 
-    // Utilisation du cache pour les données
     const [president, , loadingPresident] = useCacheData(
         utilisateur?.id ? `president_${utilisateur?.id}` : null,
         () => fetchPresident(utilisateur?.id),
@@ -98,13 +105,11 @@ export default function PresidentDashboard() {
         6 * 3600,
     );
 
-    // FONCTION OPTIMISÉE - Upload logo mobile/web compatible
     const handleLogoUpload = async () => {
         try {
             setUploading(true);
             setError(null);
 
-            // Demander les permissions pour mobile
             if (Platform.OS !== 'web') {
                 const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                 if (status !== 'granted') {
@@ -117,7 +122,6 @@ export default function PresidentDashboard() {
             }
 
             if (Platform.OS === 'web') {
-                // Pour le web, on va utiliser un input file
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = 'image/*';
@@ -133,7 +137,6 @@ export default function PresidentDashboard() {
                     input.click();
                 });
             } else {
-                // Pour mobile
                 const result = await ImagePicker.launchImageLibraryAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     allowsEditing: true,
@@ -153,23 +156,16 @@ export default function PresidentDashboard() {
         }
     };
 
-    // FONCTION OPTIMISÉE - Traitement de l'upload
     const processLogoUpload = async (webFile, mobileImage) => {
         try {
-            console.log('🖼️ Début upload logo...');
-
-            // 1. Supprimer l'ancien logo s'il existe
             if (club?.logo_url && !club.logo_url.includes('logo.png')) {
                 try {
                     const urlParts = club.logo_url.split('/');
                     let oldFileName = urlParts[urlParts.length - 1];
 
-                    // Enlever le cache-buster s'il existe
                     oldFileName = oldFileName.split('?')[0];
 
                     const oldFilePath = `logos/${oldFileName}`;
-
-                    console.log('🗑️ Suppression ancien logo:', oldFilePath);
 
                     const { error: deleteError } = await supabase.storage
                         .from('fichiers')
@@ -180,38 +176,31 @@ export default function PresidentDashboard() {
                             "⚠️ Impossible de supprimer l'ancien logo:",
                             deleteError.message,
                         );
-                    } else {
-                        console.log('✅ Ancien logo supprimé');
                     }
                 } catch (deleteErr) {
                     console.warn('⚠️ Erreur lors de la suppression:', deleteErr);
                 }
             }
 
-            // 2. Préparer le nouveau logo selon la plateforme
             let fileData;
             let fileExt = 'png';
             let contentType = 'image/png';
 
             if (Platform.OS === 'web' && webFile) {
-                // Web : utiliser le fichier directement
                 fileData = webFile;
                 fileExt = webFile.type.split('/')[1] || 'png';
                 contentType = webFile.type;
 
-                // Vérifier la taille
                 if (webFile.size > 2 * 1024 * 1024) {
                     throw new Error('Le fichier est trop volumineux (max 2MB)');
                 }
             } else if (mobileImage) {
-                // Mobile : utiliser base64
                 if (!mobileImage.base64) {
                     throw new Error('Pas de données base64 disponibles');
                 }
 
                 fileData = decode(mobileImage.base64);
 
-                // Détecter le type depuis l'URI mobile
                 if (mobileImage.uri.includes('png') || mobileImage.type?.includes('png')) {
                     fileExt = 'png';
                     contentType = 'image/png';
@@ -227,12 +216,9 @@ export default function PresidentDashboard() {
                 throw new Error("Aucune donnée d'image disponible");
             }
 
-            // 3. Nom de fichier avec timestamp pour éviter les conflits
             const fileName = `logos/${club.id}_${Date.now()}.${fileExt}`;
-            console.log('📁 Upload nouveau logo:', fileName);
 
-            // 4. Upload vers Supabase Storage
-            const { data: uploadData, error: uploadError } = await supabase.storage
+            const { error: uploadError } = await supabase.storage
                 .from('fichiers')
                 .upload(fileName, fileData, {
                     contentType: contentType,
@@ -244,15 +230,10 @@ export default function PresidentDashboard() {
                 throw new Error(`Upload échoué: ${uploadError.message}`);
             }
 
-            console.log('✅ Logo uploadé:', uploadData.path);
-
-            // 5. Récupérer la nouvelle URL publique
             const { data: urlData } = supabase.storage.from('fichiers').getPublicUrl(fileName);
 
             const baseLogoUrl = urlData.publicUrl;
-            console.log('🔗 URL de base:', baseLogoUrl);
 
-            // 6. Mettre à jour la base de données
             const { error: updateError } = await supabase
                 .from('clubs')
                 .update({ logo_url: baseLogoUrl })
@@ -263,13 +244,11 @@ export default function PresidentDashboard() {
                 throw new Error(`Sauvegarde échouée: ${updateError.message}`);
             }
 
-            // 7. Mettre à jour l'état local (avec cache-buster seulement sur web)
             const displayLogoUrl =
                 Platform.OS === 'web' ? `${baseLogoUrl}?t=${Date.now()}` : baseLogoUrl;
 
             setClubState((prev) => ({ ...prev, logo_url: displayLogoUrl }));
 
-            console.log('🎉 Logo mis à jour avec succès !');
             Alert.alert('Succès ! 🖼️', 'Logo du club mis à jour !');
         } catch (error) {
             console.error('❌ Erreur:', error);
@@ -375,6 +354,7 @@ export default function PresidentDashboard() {
                                 {president ? `${president.prenom} ${president.nom}` : ''}
                             </Text>
                             <Text style={styles.title}>{club?.nom || 'Club'}</Text>
+
                             <View style={styles.badge}>
                                 <View
                                     style={[
@@ -393,12 +373,47 @@ export default function PresidentDashboard() {
                                 </Text>
                             </View>
 
-                            {/* Bouton modifier logo */}
-                            <TouchableOpacity onPress={handleLogoUpload} disabled={uploading}>
-                                <Text style={styles.logoButtonText}>
-                                    {uploading ? '⏳ Modification...' : '🖼 Modifier le logo'}
+                            <View>
+                                <Text style={styles.clubCodeTitle}>
+                                    Votre code club{' '}
+                                    <Tooltip
+                                        isVisible={tooltipVisible}
+                                        contentStyle={{ padding: 12, borderRadius: 8 }}
+                                        content={
+                                            <Text style={styles.tooltip}>
+                                                Partagez ce code avec vos joueurs et coachs pour
+                                                qu’ils puissent rejoindre le club.
+                                            </Text>
+                                        }
+                                        placement="bottom"
+                                        onClose={() => setTooltipVisible(false)}
+                                    >
+                                        <TouchableOpacity
+                                            onPress={() => setTooltipVisible(true)}
+                                            style={styles.infoButton}
+                                        >
+                                            <Ionicons
+                                                name="information-circle-outline"
+                                                size={18}
+                                                color={GREEN}
+                                            />
+                                        </TouchableOpacity>
+                                    </Tooltip>{' '}
+                                    :
+                                    <View style={styles.clubCodeBox}>
+                                        <Ionicons name="key-outline" size={16} color={GREEN} />{' '}
+                                        <Text selectable style={styles.clubCode}>
+                                            {club?.code_acces || 'Code indisponible'}
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={styles.copyButton}
+                                            onPress={() => copyToClipboard(club?.code_acces)}
+                                        >
+                                            <Ionicons name="copy-outline" size={18} color="#000" />
+                                        </TouchableOpacity>
+                                    </View>{' '}
                                 </Text>
-                            </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
                 </View>
@@ -507,7 +522,13 @@ export default function PresidentDashboard() {
 
                 {/* Bouton déconnexion */}
                 <TouchableOpacity style={styles.logoutButton} onPress={async () => await signOut()}>
-                    <Text style={styles.logoutText}>🚪 Se déconnecter</Text>
+                    <Ionicons
+                        name="log-out-outline"
+                        size={20}
+                        color="#00ff88"
+                        style={{ marginRight: 8 }}
+                    />
+                    <Text style={styles.logoutText}>Se déconnecter</Text>
                 </TouchableOpacity>
             </ScrollView>
         </ScrollView>
@@ -553,7 +574,6 @@ function Section({ title, children }) {
     );
 }
 
-// Styles
 const styles = StyleSheet.create({
     container: {
         alignSelf: 'center',
@@ -592,18 +612,17 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 15,
         gap: 25,
     },
     logoContainer: {
         position: 'relative',
-        width: 80,
-        height: 80,
+        width: isMobile ? 40 : 80,
+        height: isMobile ? 40 : 80,
     },
     logo: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
+        width: isMobile ? 40 : 80,
+        height: isMobile ? 40 : 80,
+        borderRadius: isMobile ? 20 : 40,
         backgroundColor: '#222',
     },
     uploadingOverlay: {
@@ -635,14 +654,14 @@ const styles = StyleSheet.create({
     },
     welcome: {
         color: '#888',
-        fontSize: 14,
-        marginBottom: 2,
+        fontSize: isMobile ? 12 : 14,
+        marginBottom: 12,
     },
     title: {
-        fontSize: 22,
+        fontSize: isMobile ? 20 : 22,
         fontWeight: 'bold',
         color: GREEN,
-        marginBottom: 8,
+        marginBottom: 16,
     },
     badge: {
         flexDirection: 'row',
@@ -658,11 +677,6 @@ const styles = StyleSheet.create({
     statusText: {
         color: '#ccc',
         fontSize: 13,
-    },
-    logoButtonText: {
-        color: GREEN,
-        fontSize: 13,
-        textDecorationLine: 'underline',
     },
     section: {
         marginBottom: 28,
@@ -735,12 +749,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#222',
     },
     logoutButton: {
-        marginTop: 20,
         borderColor: GREEN,
         backgroundColor: DARK_LIGHT,
         borderWidth: 2,
         paddingVertical: 16,
         borderRadius: 12,
+        flexDirection: 'row',
+        justifyContent: 'center',
         alignItems: 'center',
         width: '92%',
         maxWidth: 790,
@@ -749,5 +764,46 @@ const styles = StyleSheet.create({
         color: GREEN,
         fontSize: 16,
         fontWeight: '700',
+    },
+    clubCodeTitle: {
+        color: '#ccc',
+        fontSize: 14,
+    },
+    tooltip: {
+        color: '#111',
+        padding: 4,
+        fontSize: 13,
+        lineHeight: 18,
+        fontFamily: 'Arial',
+        textAlign: 'justify',
+    },
+    clubCodeBox: {
+        paddingTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginLeft: isMobile ? 0 : 26,
+    },
+    clubCode: {
+        color: GREEN,
+        fontSize: isMobile ? 12 : 16,
+        fontWeight: '700',
+        letterSpacing: 2,
+        fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    },
+    copyButton: {
+        backgroundColor: GREEN,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 6,
+        gap: 4,
+    },
+    clubCodeInfo: {
+        color: '#aaa',
+        fontSize: 12,
+        textAlign: 'center',
+        lineHeight: 16,
     },
 });

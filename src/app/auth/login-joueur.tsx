@@ -129,7 +129,7 @@ export default function LoginJoueur() {
                     color="primary"
                 />
 
-                <TouchableOpacity onPress={handleForgotPassword}>
+                <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotContainer}>
                     <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
                 </TouchableOpacity>
 
@@ -211,6 +211,10 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 14,
         marginLeft: 10,
+    },
+    forgotContainer: {
+        width: '100%',
+        alignItems: 'flex-end',
     },
     forgotText: {
         color: '#00ff88',
