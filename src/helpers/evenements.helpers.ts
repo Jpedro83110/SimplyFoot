@@ -8,7 +8,7 @@ export const getEvenementByCoachId = async (args: { coachId: string; filterDate?
     let request = supabase
         .from('evenements')
         .select('id, titre, date, heure, lieu')
-        .eq('coach_id', coachId);
+        .eq('created_by', coachId);
 
     if (filterDate) {
         request = request.gte('date', filterDate);

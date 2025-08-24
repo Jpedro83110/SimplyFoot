@@ -2,10 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
+import { useSession } from '@/hooks/useSession';
 
 export default function EvenementsClub() {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    const { utilisateur } = useSession();
 
     // Pour stocker les noms de créateur si tu veux les afficher
     const [usersById, setUsersById] = useState({});
@@ -30,10 +33,17 @@ export default function EvenementsClub() {
         }
 
         // Tous les événements du club (créés par président)
+
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const filterDate = yesterday.toISOString().split('T')[0];
+
         const { data: dataEvts, error } = await supabase
             .from('evenements')
             .select('*')
-            .eq('club_id', userData.club_id)
+            .eq('created_by', utilisateur.id)
+            .gte('date', filterDate)
             .order('date', { ascending: true });
 
         if (error) {

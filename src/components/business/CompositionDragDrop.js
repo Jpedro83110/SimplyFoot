@@ -32,7 +32,7 @@ export default function CompositionDragDrop({ evenementId }) {
                 // 1. Récupère l'événement (coach_id, equipe_id)
                 const { data: evt, error: evtError } = await supabase
                     .from('evenements')
-                    .select('equipe_id, coach_id')
+                    .select('equipe_id, created_by')
                     .eq('id', evenementId)
                     .single();
 
@@ -44,7 +44,7 @@ export default function CompositionDragDrop({ evenementId }) {
                     return;
                 }
                 setEquipeId(evt.equipe_id);
-                setCoachId(evt.coach_id);
+                setCoachId(evt.created_by);
 
                 // 2. Récupère toutes les participations à cet événement
                 const { data: participations, error: partError } = await supabase
@@ -324,7 +324,7 @@ export default function CompositionDragDrop({ evenementId }) {
     };
 
     // Debug info
-    const debugInfo = `Présents: ${presents.length} | Absents: ${absents.length} | Indécis: ${indecis.length}`;
+    const debugInfo = `Présents : ${presents.length} | Absents : ${absents.length} | Indécis : ${indecis.length}`;
 
     return (
         <ScrollView style={styles.wrapper}>
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
         marginTop: 5,
         fontStyle: 'italic',
     },
-    haut: { flex: 1, alignItems: 'flex-start', position: 'relative' },
+    haut: { flex: 1, alignItems: 'flex-start', position: 'relative', marginBottom: 30 },
     terrain: {
         width: SCREEN_WIDTH,
         height: SCREEN_HEIGHT * 0.5,

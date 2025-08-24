@@ -221,7 +221,7 @@ export default function CreateEvent() {
                 meteo,
                 latitude: coords.lat,
                 longitude: coords.lon,
-                coach_id: coachId,
+                created_by: coachId,
             };
 
             console.log('🎯 Création événement avec payload:', insertPayload);

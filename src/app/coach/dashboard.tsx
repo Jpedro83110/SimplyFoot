@@ -103,7 +103,7 @@ export default function CoachDashboard() {
             const { data, error } = await supabase
                 .from('evenements')
                 .select('*')
-                .eq('coach_id', utilisateur.id)
+                .eq('created_by', utilisateur.id)
                 .gte('date', filterDate)
                 .order('date', { ascending: true });
             if (error) {
