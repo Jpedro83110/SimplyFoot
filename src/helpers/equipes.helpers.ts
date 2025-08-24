@@ -40,6 +40,30 @@ export const getCoachEquipesWithJoueursCount = async ({
     return data;
 };
 
+export type GetCoachEquipesEvaluations = Awaited<ReturnType<typeof getCoachEquipesEvaluations>>;
+
+export const getCoachEquipesEvaluations = async ({
+    coachId,
+    clubId,
+}: {
+    coachId: string;
+    clubId: string;
+}) => {
+    const { data, error } = await supabase
+        .from('equipes')
+        .select(
+            'nom, joueurs:equipe_id(id, utilisateurs(id, evaluations_mentales!joueur_id(note_globale, moyenne), evaluations_techniques!joueur_id(moyenne)))',
+        )
+        .eq('club_id', clubId)
+        .eq('coach_id', coachId);
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 export type GetJoueurEquipeById = Awaited<ReturnType<typeof getJoueurEquipeById>>;
 
 export const getJoueurEquipeById = async (equipeId: string) => {
