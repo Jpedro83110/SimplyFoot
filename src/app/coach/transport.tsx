@@ -12,7 +12,7 @@ import { useSession } from '@/hooks/useSession';
 import {
     getBesoinTransport,
     GetBesoinTransport,
-    updateBesoinTransport,
+    updateParticipationsEvenement,
 } from '@/helpers/participationsEvenement.helpers';
 
 export default function TransportManquant() {
@@ -42,7 +42,7 @@ export default function TransportManquant() {
 
     const prendreCharge = async (participationId: string) => {
         try {
-            await updateBesoinTransport({
+            await updateParticipationsEvenement({
                 participationId,
                 dataToUpdate: { transport_valide_par: utilisateur?.id },
             });

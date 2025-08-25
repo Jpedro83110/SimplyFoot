@@ -16,8 +16,12 @@ import Slider from '@react-native-community/slider';
 import useCacheData from '@/lib/cache';
 import { GetUtilisateurById, getUtilisateurById } from '@/helpers/utilisateurs.helpers';
 
+type EvaluationMentaleParams = {
+    id: string;
+};
+
 export default function EvaluationMentale() {
-    const { id } = useLocalSearchParams();
+    const { id } = useLocalSearchParams<EvaluationMentaleParams>();
     const router = useRouter();
 
     const [valeurs, setValeurs] = useState({
@@ -40,7 +44,7 @@ export default function EvaluationMentale() {
             try {
                 // Étape 1: Récupérer les infos utilisateur
                 const utilisateur = await getUtilisateurById({
-                    utilisateurId: id as string,
+                    utilisateurId: id,
                 });
 
                 if (utilisateur) {
@@ -50,7 +54,7 @@ export default function EvaluationMentale() {
                     const { data: userByJoueurId, error: joueurError } = await supabase
                         .from('utilisateurs')
                         .select('id, nom, prenom, role, joueur_id')
-                        .eq('joueur_id', id as string)
+                        .eq('joueur_id', id)
                         .maybeSingle();
 
                     if (joueurError && joueurError.code !== 'PGRST116') {

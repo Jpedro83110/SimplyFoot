@@ -20,7 +20,7 @@ export const getBesoinTransport = async ({ clubId }: { clubId: string }) => {
     return data;
 };
 
-export const updateBesoinTransport = async ({
+export const updateParticipationsEvenement = async ({
     participationId,
     dataToUpdate,
 }: {

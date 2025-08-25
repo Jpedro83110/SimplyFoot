@@ -1,104 +1,56 @@
-import { useEffect, useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    RefreshControl,
-    Alert,
-} from 'react-native';
-import { supabase } from '@/lib/supabase';
+import { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { GetEvenementByCoachId, getEvenementByCoachId } from '@/helpers/evenements.helpers';
+import { useSession } from '@/hooks/useSession';
 
 export default function ListeCompositions() {
     const [evenements, setEvenements] = useState<GetEvenementByCoachId>([]);
     const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [lastRefresh, setLastRefresh] = useState(0);
+
+    const { utilisateur } = useSession();
+
     const router = useRouter();
 
-    // const CACHE_KEY = 'compo_evenements'; // FIXME useCachedApi
-    const MIN_INTERVAL = 10000; // 10s de cooldown
-
-    // Récupère les événements (avec cache)
-    async function fetchEvenements(forceRefresh = false) {
-        setLoading(true);
-
-        const { data: sessionData } = await supabase.auth.getSession();
-        const userId = sessionData?.session?.user?.id;
-
-        if (!userId) {
-            // FIXME manage error
-            console.error('Utilisateur non connecté ou ID introuvable');
+    const fetchEvenements = useCallback(async () => {
+        if (!utilisateur || loading) {
             return;
         }
 
-        // ✅ CORRECTION: Filtre à partir d'hier pour inclure les événements du jour
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-        const filterDate = yesterday.toISOString().split('T')[0]; // Format YYYY-MM-DD
+        setLoading(true);
 
-        console.log("Date d'aujourd'hui:", today.toISOString().split('T')[0]);
-        console.log('Filtrage des événements à partir du:', filterDate);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
 
         const evenementsList = await getEvenementByCoachId({
-            coachId: userId,
-            filterDate,
+            coachId: utilisateur.id,
+            since: yesterday,
         });
-
-        console.log('Événements futurs reçus:', evenementsList?.length || 0, 'événements');
 
         if (!evenementsList) {
             console.error('Erreur lors de la récupération des événements');
             return;
         }
 
-        console.log('Événements finaux après filtrage:', evenementsList.length);
         setEvenements(evenementsList);
         setLoading(false);
-        setRefreshing(false);
-    }
+    }, [loading, utilisateur]);
 
     useEffect(() => {
         fetchEvenements();
-    }, []);
-
-    // Rafraîchissement manuel avec cooldown anti-spam
-    const handleManualRefresh = async () => {
-        const now = Date.now();
-        if (loading || refreshing) {
-            return;
-        }
-        if (now - lastRefresh < MIN_INTERVAL) {
-            Alert.alert('Trop rapide', 'Merci de patienter avant un nouveau rafraîchissement !');
-            return;
-        }
-        setRefreshing(true);
-        setLastRefresh(now);
-        await fetchEvenements(true);
-    };
-
-    // Rafraîchissement classique (swipe down)
-    const onRefresh = () => {
-        setRefreshing(true);
-        setLastRefresh(Date.now());
-        fetchEvenements(true);
-    };
+    }, [fetchEvenements]);
 
     return (
         <ScrollView
             style={styles.container}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchEvenements} />}
         >
             <View style={styles.header}>
                 <Text style={styles.title}>📋 Sélectionne un événement</Text>
                 <TouchableOpacity
-                    style={[styles.refreshBtn, (loading || refreshing) && { opacity: 0.5 }]}
-                    onPress={handleManualRefresh}
-                    disabled={loading || refreshing}
+                    style={[styles.refreshBtn, loading && { opacity: 0.5 }]}
+                    onPress={fetchEvenements}
+                    disabled={loading}
                 >
                     <Text style={{ color: '#00ff88', fontWeight: 'bold' }}>🔄 Rafraîchir</Text>
                 </TouchableOpacity>

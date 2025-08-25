@@ -4,18 +4,18 @@ export type GetEvenementByCoachId = Awaited<ReturnType<typeof getEvenementByCoac
 
 export const getEvenementByCoachId = async ({
     coachId,
-    filterDate,
+    since,
 }: {
     coachId: string;
-    filterDate?: string;
+    since?: Date;
 }) => {
     let request = supabase
         .from('evenements')
         .select('id, titre, date, heure, lieu')
         .eq('created_by', coachId);
 
-    if (filterDate) {
-        request = request.gte('date', filterDate);
+    if (since) {
+        request = request.gte('date', since);
     }
 
     const { data, error } = await request.order('date', { ascending: true });
@@ -62,6 +62,24 @@ export const getEvenementInfosByUtilisateurId = async (args: {
         )
         // .neq('messages_besoin_transport.utilisateur_id', utilisateurId)
         .eq('participations_evenement.utilisateur_id', utilisateurId)
+        .eq('id', evenementId)
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
+export type GetEvenementInfosById = Awaited<ReturnType<typeof getEvenementInfosById>>;
+
+export const getEvenementInfosById = async ({ evenementId }: { evenementId: string }) => {
+    const { data, error } = await supabase
+        .from('evenements')
+        .select(
+            `titre, date, heure, lieu, participations_evenement(id, reponse, besoin_transport, transport_valide_par, lieu_rdv, heure_rdv, utilisateurs!utilisateur_id(nom, prenom, email, telephone, joueurs:joueur_id(poste)))`,
+        )
         .eq('id', evenementId)
         .single();
 

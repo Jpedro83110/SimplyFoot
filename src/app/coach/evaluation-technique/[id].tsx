@@ -11,13 +11,17 @@ import {
     Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import Slider from '@react-native-community/slider';
-import useCacheData from '../../../lib/cache';
+import useCacheData from '@/lib/cache';
 import { getUtilisateurById, GetUtilisateurById } from '@/helpers/utilisateurs.helpers';
 
+type EvaluationTechniqueParams = {
+    id: string;
+};
+
 export default function EvaluationTechnique() {
-    const { id } = useLocalSearchParams();
+    const { id } = useLocalSearchParams<EvaluationTechniqueParams>();
     const router = useRouter();
 
     const criteres = useMemo(
@@ -47,7 +51,7 @@ export default function EvaluationTechnique() {
             try {
                 // Étape 1: Récupérer les infos utilisateur
                 const utilisateur = await getUtilisateurById({
-                    utilisateurId: id as string,
+                    utilisateurId: id,
                 });
 
                 if (utilisateur) {
@@ -57,7 +61,7 @@ export default function EvaluationTechnique() {
                     const { data: userByJoueurId, error: joueurError } = await supabase
                         .from('utilisateurs')
                         .select('id, nom, prenom, role, joueur_id')
-                        .eq('joueur_id', id as string)
+                        .eq('joueur_id', id)
                         .maybeSingle();
 
                     if (joueurError && joueurError.code !== 'PGRST116') {
