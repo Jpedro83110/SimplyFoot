@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import CalendrierAnniversaires from '../../components/business/CalendrierAnniversaires';
+import CalendrierAnniversaires from '@/components/business/CalendrierAnniversaires';
 import { ActivityIndicator, View, ScrollView, Alert } from 'react-native';
 import { useSession } from '@/hooks/useSession';
 import { getUtilisateursByClubId, GetUtilisateursByClubId } from '@/helpers/utilisateurs.helpers';
