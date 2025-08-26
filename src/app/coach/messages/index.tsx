@@ -1,11 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { DARK_GRADIENT } from '@/utils/styleContants.utils';
-
-const GREEN = '#00ff88';
+import { COLOR_GREEN_300, DARK_GRADIENT } from '@/utils/styleContants.utils';
 
 export default function MessagesIndex() {
     const router = useRouter();
@@ -41,7 +39,7 @@ export default function MessagesIndex() {
                     <MaterialCommunityIcons
                         name="account-box-multiple-outline"
                         size={30}
-                        color={GREEN}
+                        color={COLOR_GREEN_300}
                         style={{ marginRight: 12 }}
                     />
                     <Text style={styles.buttonText}>Messagerie privée</Text>
@@ -54,7 +52,7 @@ export default function MessagesIndex() {
                     <MaterialCommunityIcons
                         name="account-group-outline"
                         size={30}
-                        color={GREEN}
+                        color={COLOR_GREEN_300}
                         style={{ marginRight: 12 }}
                     />
                     <Text style={styles.buttonText}>Messagerie de groupe</Text>
@@ -68,7 +66,7 @@ export default function MessagesIndex() {
                     <MaterialCommunityIcons
                         name="van-utility"
                         size={30}
-                        color={GREEN}
+                        color={COLOR_GREEN_300}
                         style={{ marginRight: 12 }}
                     />
                     <Text style={styles.buttonText}>Besoin de transport</Text>
@@ -96,14 +94,14 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: GREEN,
+        color: COLOR_GREEN_300,
         marginBottom: 40,
     },
     button: {
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
         borderRadius: 14,
         paddingVertical: 16,
         paddingHorizontal: 24,
@@ -114,7 +112,7 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     buttonText: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontSize: 18,
         fontWeight: '600',
     },
