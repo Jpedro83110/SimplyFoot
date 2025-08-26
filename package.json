@@ -16,6 +16,7 @@
         "pack:android": "node scripts/build-android.js",
         "copy-apk": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); const path = require('path'); const srcPath = path.join('android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk'); const destPath = `dist/simply-foot-v${pkg.version}.apk`; fs.copyFileSync(srcPath, destPath); console.log(`APK copied to ${destPath}`);\"",
         "stats": "node scripts/stats.js --top 5",
+        "stats:all": "node scripts/stats.js",
         "test": "jest",
         "test:watch": "jest --watchAll",
         "test:coverage": "jest --coverage",
