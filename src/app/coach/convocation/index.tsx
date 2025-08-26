@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -10,94 +10,66 @@ import {
     Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
+import {
+    deleteEvenementById,
+    GetEvenementsByClubId,
+    getEvenementsByClubId,
+} from '@/helpers/evenements.helpers';
+import { useSession } from '@/hooks/useSession';
 
 dayjs.locale('fr');
 
 export default function ConvocationsList() {
     const [loading, setLoading] = useState(true);
-    const [events, setEvents] = useState([]);
+    const [events, setEvents] = useState<GetEvenementsByClubId>([]);
     const router = useRouter();
 
-    useEffect(() => {
-        fetchEvents();
-    }, []);
+    const { utilisateur } = useSession();
 
-    async function fetchEvents() {
-        setLoading(true);
-        // Session coach
-        const { data: sessionData } = await supabase.auth.getSession();
-        const userId = sessionData?.session?.user?.id;
-        if (!userId) {
-            setEvents([]);
+    const fetchEvents = useCallback(async () => {
+        if (!utilisateur?.club_id || loading) {
             setLoading(false);
             return;
         }
-        // Récupère tous les événements à venir pour ce coach
-        const today = dayjs().format('YYYY-MM-DD');
-        const { data: eventsList, error } = await supabase
-            .from('evenements')
-            .select('*')
-            .eq('created_by', userId)
-            .gte('date', today)
-            .order('date', { ascending: true });
-        if (error) {
-            console.log('Erreur fetch events:', error);
-            setEvents([]);
-        } else {
-            setEvents(eventsList || []);
-        }
+
+        setLoading(true);
+
+        const fetchedEvenementsList = await getEvenementsByClubId({
+            clubId: utilisateur.club_id,
+            since: new Date(),
+        });
+
+        setEvents(fetchedEvenementsList);
         setLoading(false);
-    }
+    }, [loading, utilisateur?.club_id]);
+
+    useEffect(() => {
+        fetchEvents();
+    }, [fetchEvents]);
 
     // SUPPRESSION événement + participations
-    const handleDelete = (eventId) => {
+    const handleDelete = (evenementId: string) => {
         const confirmMsg = 'Supprimer définitivement cet événement et toutes ses participations ?';
         if (Platform.OS === 'web') {
             if (!window.confirm(confirmMsg)) {
                 return;
             }
-            doDelete(eventId);
+
+            doDelete(evenementId);
         } else {
             Alert.alert("Supprimer l'événement", confirmMsg, [
                 { text: 'Annuler', style: 'cancel' },
-                { text: 'Supprimer', style: 'destructive', onPress: () => doDelete(eventId) },
+                { text: 'Supprimer', style: 'destructive', onPress: () => doDelete(evenementId) },
             ]);
         }
     };
 
-    const doDelete = async (eventId) => {
+    const doDelete = async (evenementId: string) => {
         setLoading(true);
-        // 1. Supprimer les participations liées
-        const { error: errorPart } = await supabase
-            .from('participations_evenement')
-            .delete()
-            .eq('evenement_id', eventId);
-
-        if (errorPart) {
-            console.log('Erreur suppression participations:', errorPart);
-            Alert.alert(
-                'Erreur',
-                'Suppression participations impossible : ' + (errorPart.message || ''),
-            );
-            setLoading(false);
-            return;
-        }
-
-        // 2. Supprimer l'événement
-        const { error: errorEvt } = await supabase.from('evenements').delete().eq('id', eventId);
-
-        if (errorEvt) {
-            console.log('Erreur suppression evenement:', errorEvt);
-            Alert.alert('Erreur', 'Suppression événement impossible : ' + (errorEvt.message || ''));
-            setLoading(false);
-            return;
-        }
-
-        // 3. Rafraîchir la liste réelle depuis la base
-        await fetchEvents();
+        await deleteEvenementById({ evenementId });
+        setEvents((prev) => prev.filter((e) => e.id !== evenementId));
         setLoading(false);
     };
 

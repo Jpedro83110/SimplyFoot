@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -11,66 +11,54 @@ import {
     Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
+import { GetCoachEquipes, getCoachEquipes } from '@/helpers/equipes.helpers';
+import { useSession } from '@/hooks/useSession';
 
 export default function ListeEquipesCoach() {
     const router = useRouter();
-    const [equipes, setEquipes] = useState([]);
+    const [equipes, setEquipes] = useState<GetCoachEquipes>([]);
     const [loading, setLoading] = useState(true);
 
-    // Responsive :
+    const { utilisateur } = useSession();
+
     const screenWidth = Dimensions.get('window').width;
     const isMobile = screenWidth < 700 || Platform.OS !== 'web';
 
-    // Chargement des équipes du coach connecté
-    useEffect(() => {
-        let mounted = true;
-        async function fetchEquipes() {
-            setLoading(true);
-            try {
-                const { data: sessionData } = await supabase.auth.getSession();
-                const coachId = sessionData?.session?.user?.id;
-                if (!coachId) {
-                    return setEquipes([]);
-                }
-
-                // Récupère toutes les équipes où le coach est owner
-                const { data, error } = await supabase
-                    .from('equipes')
-                    .select('id, nom, categorie, code_equipe')
-                    .eq('coach_id', coachId)
-                    .order('categorie', { ascending: true });
-                if (error) {
-                    throw error;
-                }
-
-                if (mounted) {
-                    setEquipes(data || []);
-                }
-            } catch (error) {
-                console.error('Erreur lors du chargement des équipes:', error);
-                if (mounted) {
-                    setEquipes([]);
-                }
-            } finally {
-                if (mounted) {
-                    setLoading(false);
-                }
+    const fetchEquipes = useCallback(async () => {
+        try {
+            if (!utilisateur?.club_id || loading) {
+                return;
             }
-        }
-        fetchEquipes();
-        return () => {
-            mounted = false;
-        };
-    }, []);
 
-    // Copie du code équipe dans le presse-papier
-    const copierCode = (code) => {
+            setLoading(true);
+
+            const fetchedEquipes = await getCoachEquipes({
+                coachId: utilisateur.id,
+                clubId: utilisateur.club_id,
+            });
+
+            setEquipes(fetchedEquipes);
+            setLoading(false);
+        } catch (error) {
+            console.error('Erreur lors du chargement des équipes:', error);
+            Alert.alert(
+                'Erreur',
+                'Une erreur est survenue lors du chargement des équipes. Veuillez réessayer plus tard.',
+            );
+        }
+    }, [loading, utilisateur?.club_id, utilisateur?.id]);
+
+    useEffect(() => {
+        fetchEquipes();
+    }, [fetchEquipes]);
+
+    const copierCode = (code: string) => {
         if (!code) {
             return;
         }
+
         Clipboard.setStringAsync(code);
         Alert.alert('Copié !', 'Le code équipe a été copié.');
     };
@@ -105,7 +93,7 @@ export default function ListeEquipesCoach() {
                                         style={styles.copyButton}
                                         onPress={(e) => {
                                             e.stopPropagation && e.stopPropagation();
-                                            copierCode(item.code_equipe);
+                                            copierCode(item.code_equipe || ''); // FIXME: should can't be null
                                         }}
                                     >
                                         <Ionicons name="copy-outline" size={18} color="#00ff88" />

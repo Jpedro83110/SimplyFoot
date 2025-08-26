@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { GetEvenementByCoachId, getEvenementByCoachId } from '@/helpers/evenements.helpers';
+import { GetEvenementByCoachId, getEvenementsByClubId } from '@/helpers/evenements.helpers';
 import { useSession } from '@/hooks/useSession';
 
 export default function ListeCompositions() {
@@ -13,7 +13,7 @@ export default function ListeCompositions() {
     const router = useRouter();
 
     const fetchEvenements = useCallback(async () => {
-        if (!utilisateur || loading) {
+        if (!utilisateur?.club_id || loading) {
             return;
         }
 
@@ -22,8 +22,8 @@ export default function ListeCompositions() {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
 
-        const evenementsList = await getEvenementByCoachId({
-            coachId: utilisateur.id,
+        const evenementsList = await getEvenementsByClubId({
+            clubId: utilisateur.club_id,
             since: yesterday,
         });
 

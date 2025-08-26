@@ -5,9 +5,10 @@ export type GetCoachEquipes = Awaited<ReturnType<typeof getCoachEquipes>>;
 export const getCoachEquipes = async ({ coachId, clubId }: { coachId: string; clubId: string }) => {
     const { data, error } = await supabase
         .from('equipes')
-        .select('id, nom, categorie')
+        .select('id, nom, categorie, code_equipe')
         .eq('coach_id', coachId)
-        .eq('club_id', clubId);
+        .eq('club_id', clubId)
+        .order('categorie', { ascending: true });
 
     if (error) {
         throw error;

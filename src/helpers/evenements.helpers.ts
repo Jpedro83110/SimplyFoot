@@ -2,6 +2,9 @@ import { supabase } from '@/lib/supabase';
 
 export type GetEvenementByCoachId = Awaited<ReturnType<typeof getEvenementByCoachId>>;
 
+/**
+ * @deprecated use getEvenementsByClubId instead
+ */
 export const getEvenementByCoachId = async ({
     coachId,
     since,
@@ -29,14 +32,25 @@ export const getEvenementByCoachId = async ({
 
 export type GetEvenementsByClubId = Awaited<ReturnType<typeof getEvenementsByClubId>>;
 
-export const getEvenementsByClubId = async ({ clubId }: { clubId: string }) => {
-    const { data, error } = await supabase
+export const getEvenementsByClubId = async ({
+    clubId,
+    since,
+}: {
+    clubId: string;
+    since?: Date;
+}) => {
+    let request = supabase
         .from('evenements')
         .select(
-            'id, type, titre, lieu, date, heure, description, utilisateurs:created_by(prenom, nom)',
+            'id, type, titre, lieu, lieu_complement, date, heure, description, utilisateurs:created_by(prenom, nom)',
         )
-        .eq('club_id', clubId)
-        .order('date', { ascending: true });
+        .eq('club_id', clubId);
+
+    if (since) {
+        request = request.gte('date', since);
+    }
+
+    const { data, error } = await request.order('date', { ascending: true });
 
     if (error) {
         throw error;
@@ -88,4 +102,13 @@ export const getEvenementInfosById = async ({ evenementId }: { evenementId: stri
     }
 
     return data;
+};
+
+// also cascading delete participations_evenement linked to this evenement
+export const deleteEvenementById = async ({ evenementId }: { evenementId: string }) => {
+    const { error } = await supabase.from('evenements').delete().eq('id', evenementId);
+
+    if (error) {
+        throw error;
+    }
 };
