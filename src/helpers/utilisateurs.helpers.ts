@@ -3,9 +3,7 @@ import { Database } from '@/types/database.types';
 
 export type GetUtilisateurById = Awaited<ReturnType<typeof getUtilisateurById>>;
 
-export const getUtilisateurById = async (args: { utilisateurId: string }) => {
-    let { utilisateurId } = args;
-
+export const getUtilisateurById = async ({ utilisateurId }: { utilisateurId: string }) => {
     const { data, error } = await supabase
         .from('utilisateurs')
         .select(
