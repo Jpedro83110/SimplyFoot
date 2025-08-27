@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { GetEvenementByCoachId, getEvenementsByClubId } from '@/helpers/evenements.helpers';
 import { useSession } from '@/hooks/useSession';
+import { GetCoachEvenements, getCoachEvenements } from '@/helpers/evenements.helpers';
 
 export default function ListeCompositions() {
-    const [evenements, setEvenements] = useState<GetEvenementByCoachId>([]);
+    const [evenements, setEvenements] = useState<GetCoachEvenements>([]);
     const [loading, setLoading] = useState(true);
 
     const { utilisateur } = useSession();
@@ -13,7 +13,7 @@ export default function ListeCompositions() {
     const router = useRouter();
 
     const fetchEvenements = useCallback(async () => {
-        if (!utilisateur?.club_id || loading) {
+        if (!utilisateur?.id || loading) {
             return;
         }
 
@@ -22,8 +22,8 @@ export default function ListeCompositions() {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
 
-        const evenementsList = await getEvenementsByClubId({
-            clubId: utilisateur.club_id,
+        const evenementsList = await getCoachEvenements({
+            coachId: utilisateur.id,
             since: yesterday,
         });
 
@@ -34,7 +34,7 @@ export default function ListeCompositions() {
 
         setEvenements(evenementsList);
         setLoading(false);
-    }, [loading, utilisateur]);
+    }, [loading, utilisateur?.id]);
 
     useEffect(() => {
         fetchEvenements();

@@ -14,8 +14,8 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import {
     deleteEvenementById,
-    GetEvenementsByClubId,
-    getEvenementsByClubId,
+    GetCoachEvenements,
+    getCoachEvenements,
 } from '@/helpers/evenements.helpers';
 import { useSession } from '@/hooks/useSession';
 
@@ -23,27 +23,27 @@ dayjs.locale('fr');
 
 export default function ConvocationsList() {
     const [loading, setLoading] = useState(true);
-    const [events, setEvents] = useState<GetEvenementsByClubId>([]);
+    const [events, setEvents] = useState<GetCoachEvenements>([]);
     const router = useRouter();
 
     const { utilisateur } = useSession();
 
     const fetchEvents = useCallback(async () => {
-        if (!utilisateur?.club_id || loading) {
+        if (!utilisateur?.id || loading) {
             setLoading(false);
             return;
         }
 
         setLoading(true);
 
-        const fetchedEvenementsList = await getEvenementsByClubId({
-            clubId: utilisateur.club_id,
+        const fetchedEvenementsList = await getCoachEvenements({
+            coachId: utilisateur.id,
             since: new Date(),
         });
 
         setEvents(fetchedEvenementsList);
         setLoading(false);
-    }, [loading, utilisateur?.club_id]);
+    }, [loading, utilisateur?.id]);
 
     useEffect(() => {
         fetchEvents();

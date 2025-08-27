@@ -1,11 +1,8 @@
 import { supabase } from '@/lib/supabase';
 
-export type GetEvenementByCoachId = Awaited<ReturnType<typeof getEvenementByCoachId>>;
+export type GetCoachEvenementsByEquipes = Awaited<ReturnType<typeof getCoachEvenementsByEquipes>>;
 
-/**
- * @deprecated use getEvenementsByClubId instead
- */
-export const getEvenementByCoachId = async ({
+export const getCoachEvenementsByEquipes = async ({
     coachId,
     since,
 }: {
@@ -13,9 +10,11 @@ export const getEvenementByCoachId = async ({
     since?: Date;
 }) => {
     let request = supabase
-        .from('evenements')
-        .select('id, titre, date, heure, lieu')
-        .eq('created_by', coachId);
+        .from('equipes')
+        .select(
+            'nom, categorie, evenements!equipe_id(id, type, titre, lieu, lieu_complement, date, heure, description, utilisateurs:created_by(prenom, nom))',
+        )
+        .eq('coach_id', coachId); // id from utilisateurs table
 
     if (since) {
         request = request.gte('date', since);
@@ -28,6 +27,59 @@ export const getEvenementByCoachId = async ({
     }
 
     return data;
+};
+
+export type GetCoachEvenements = Awaited<ReturnType<typeof getCoachEvenements>>;
+
+export const getCoachEvenements = async ({ coachId, since }: { coachId: string; since?: Date }) => {
+    const equipes = await getCoachEvenementsByEquipes({ coachId, since });
+
+    const evenements = equipes?.flatMap((equipe) =>
+        equipe.evenements.map((evenement) => ({
+            ...evenement,
+        })),
+    );
+
+    return evenements.sort((a, b) =>
+        a.date && b.date ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : 0,
+    );
+};
+
+export type GetCoachEvenementsHasComposition = Awaited<
+    ReturnType<typeof getCoachEvenementsHasComposition>
+>;
+
+export const getCoachEvenementsHasComposition = async ({
+    coachId,
+    since,
+}: {
+    coachId: string;
+    since?: Date;
+}) => {
+    // FIXME: à optimiser avec un count des compositions
+    let request = supabase
+        .from('equipes')
+        .select(
+            'evenements!equipe_id(id, titre, date, heure, lieu, utilisateurs:created_by(id), compositions:evenement_id(id))',
+        )
+        .eq('coach_id', coachId); // id from utilisateurs table
+
+    if (since) {
+        request = request.gte('date', since);
+    }
+
+    const { data, error } = await request.order('date', { ascending: true });
+
+    if (error) {
+        throw error;
+    }
+
+    return data.flatMap((equipe) =>
+        equipe.evenements.map((evenement) => ({
+            ...evenement,
+            hasCompo: (evenement.compositions?.length ?? 0) > 0,
+        })),
+    );
 };
 
 export type GetEvenementsByClubId = Awaited<ReturnType<typeof getEvenementsByClubId>>;

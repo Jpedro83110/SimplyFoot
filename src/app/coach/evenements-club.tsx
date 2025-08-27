@@ -10,7 +10,6 @@ export default function EvenementsClub() {
 
     const { utilisateur } = useSession();
 
-    // Fetch club events (liés au club_id du coach connecté)
     const fetchClubEvents = useCallback(async () => {
         if (!utilisateur?.club_id) {
             return;
@@ -18,9 +17,7 @@ export default function EvenementsClub() {
 
         setLoading(true);
 
-        // Tous les événements du club (créés par président)
         const dataEvts = await getEvenementsByClubId({ clubId: utilisateur.club_id });
-
         setEvents(dataEvts);
 
         setLoading(false);
