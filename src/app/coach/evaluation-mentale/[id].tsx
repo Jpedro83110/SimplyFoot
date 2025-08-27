@@ -19,23 +19,25 @@ import {
     upsertEvaluationsMentales,
 } from '@/helpers/evaluationsMentales.helpers';
 import { useSession } from '@/hooks/useSession';
+import { Database } from '@/types/database.types';
 
 type EvaluationMentaleParams = {
     id: string;
+};
+
+const evaluationMentaleDefaultValues: EvaluationsMentale = {
+    motivation: 50,
+    rigueur: 50,
+    ponctualite: 50,
+    attitude: 50,
+    respect: 50,
 };
 
 export default function EvaluationMentale() {
     const { id } = useLocalSearchParams<EvaluationMentaleParams>();
     const router = useRouter();
 
-    const [valeurs, setValeurs] = useState<EvaluationsMentale>({
-        motivation: 50,
-        rigueur: 50,
-        ponctualite: 50,
-        attitude: 50,
-        respect: 50,
-    });
-
+    const [valeurs, setValeurs] = useState<EvaluationsMentale>(evaluationMentaleDefaultValues);
     const [evaluationsMentales, setEvaluationsMentales] =
         useState<GetEvaluationsMentalesByJoueur>();
     const [loading, setLoading] = useState(true);
@@ -43,7 +45,7 @@ export default function EvaluationMentale() {
 
     const { utilisateur } = useSession();
 
-    const fetchJoueurInfo = useCallback(async () => {
+    const fetchEvaluationsMentales = useCallback(async () => {
         if (!id || loading) {
             return;
         }
@@ -51,11 +53,11 @@ export default function EvaluationMentale() {
         setLoading(true);
 
         try {
-            const utilisateur = await getEvaluationsMentalesByJoueur({
+            const fetchedEvaluationsMentales = await getEvaluationsMentalesByJoueur({
                 joueurId: id,
             });
 
-            setEvaluationsMentales(utilisateur);
+            setEvaluationsMentales(fetchedEvaluationsMentales);
         } catch (error) {
             console.error('Erreur générale:', error);
             Alert.alert('Erreur', 'Impossible de charger les informations du joueur');
@@ -65,8 +67,8 @@ export default function EvaluationMentale() {
     }, [id, loading]);
 
     useEffect(() => {
-        fetchJoueurInfo();
-    }, [fetchJoueurInfo]);
+        fetchEvaluationsMentales();
+    }, [fetchEvaluationsMentales]);
 
     useEffect(() => {
         if (evaluationsMentales) {
@@ -80,10 +82,10 @@ export default function EvaluationMentale() {
         }
     }, [evaluationsMentales]);
 
-    const handleSliderChange = (key: string, value: string) => {
+    const handleSliderChange = (key: string, value: number) => {
         setValeurs((prev) => ({
             ...prev,
-            [key]: Math.max(0, Math.min(100, parseInt(value) || 0)),
+            [key]: Math.max(0, Math.min(100, value)),
         }));
     };
 
@@ -92,20 +94,20 @@ export default function EvaluationMentale() {
         return Math.round(total / Object.values(valeurs).length);
     };
 
-    const enregistrerEvaluation = async () => {
+    const handleSave = async () => {
         setSaving(true);
 
         try {
             const moyenne = calculerMoyenne();
 
-            if (!evaluationsMentales?.utilisateurs?.id || !utilisateur?.id) {
+            if (!utilisateur?.id) {
                 Alert.alert('Erreur', 'Joueur ou coach introuvable');
                 return;
             }
 
             // Objet complet avec tous les champs nécessaires
-            const updates = {
-                joueur_id: evaluationsMentales.utilisateurs.id,
+            const updates: Database['public']['Tables']['evaluations_mentales']['Update'] = {
+                joueur_id: id,
                 coach_id: utilisateur?.id,
                 date: new Date().toISOString().split('T')[0],
                 motivation: valeurs.motivation,
@@ -117,13 +119,11 @@ export default function EvaluationMentale() {
                 moyenne: moyenne,
                 updated_at: new Date().toISOString(),
                 created_at: new Date().toISOString(),
-                implication: null,
-                commentaire: null,
             };
 
             // Stratégie UPDATE puis INSERT
             await upsertEvaluationsMentales({
-                joueurId: evaluationsMentales.utilisateurs.id,
+                joueurId: id,
                 coachId: utilisateur.id,
                 dataToUpdate: updates,
             });
@@ -132,15 +132,13 @@ export default function EvaluationMentale() {
                 {
                     text: 'OK',
                     onPress: () => {
-                        router.replace(
-                            `/coach/joueur/${evaluationsMentales?.utilisateurs?.joueur_id}`,
-                        );
+                        router.replace(`/coach/joueur/${id}`);
                     },
                 },
             ]);
 
             if (Platform.OS === 'web') {
-                router.replace(`/coach/joueur/${evaluationsMentales?.utilisateurs?.joueur_id}`);
+                router.replace(`/coach/joueur/${id}`);
             }
         } catch (error) {
             Alert.alert('Erreur', `Erreur inattendue: ${(error as Error).message}`);
@@ -175,7 +173,7 @@ export default function EvaluationMentale() {
                 </View>
             )}
 
-            {Object.entries(valeurs).map(([key, val]) => (
+            {Object.entries(valeurs).map(([key, val]: [string, number]) => (
                 <View key={key} style={styles.sliderBlock}>
                     <Text style={styles.label}>
                         {key.charAt(0).toUpperCase() + key.slice(1)} : {val}/100
@@ -184,8 +182,8 @@ export default function EvaluationMentale() {
                         <TextInput
                             style={styles.input}
                             keyboardType="numeric"
-                            value={String(val)}
-                            onChangeText={(text) => handleSliderChange(key, text)}
+                            value={`${val}`}
+                            onChangeText={(text) => handleSliderChange(key, parseInt(text) || 0)}
                             placeholder="0 à 100"
                             placeholderTextColor="#555"
                         />
@@ -213,7 +211,7 @@ export default function EvaluationMentale() {
                                 minimumTrackTintColor="#00ff88"
                                 maximumTrackTintColor="#555"
                                 thumbTintColor="#00ff88"
-                                onValueChange={(value) => handleSliderChange(key, value.toString())}
+                                onValueChange={(value) => handleSliderChange(key, value)}
                             />
                             <Text
                                 style={[
@@ -234,7 +232,7 @@ export default function EvaluationMentale() {
 
             <Pressable
                 style={[styles.button, (saving || loading) && styles.buttonDisabled]}
-                onPress={enregistrerEvaluation}
+                onPress={handleSave}
                 disabled={saving || loading}
             >
                 <Text style={styles.buttonText}>
