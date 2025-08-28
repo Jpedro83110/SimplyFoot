@@ -19,7 +19,7 @@ import { useSession } from '@/hooks/useSession';
 export default function ListeEquipesCoach() {
     const router = useRouter();
     const [equipes, setEquipes] = useState<GetCoachEquipes>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     const { utilisateur } = useSession();
 

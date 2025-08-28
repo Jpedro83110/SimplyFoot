@@ -6,7 +6,7 @@ import { GetCoachEvenements, getCoachEvenements } from '@/helpers/evenements.hel
 
 export default function ListeCompositions() {
     const [evenements, setEvenements] = useState<GetCoachEvenements>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     const { utilisateur } = useSession();
 

@@ -6,12 +6,12 @@ import { getUtilisateursByClubId, GetUtilisateursByClubId } from '@/helpers/util
 
 export default function CoachAnniversaires() {
     const [membres, setMembres] = useState<GetUtilisateursByClubId>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     const { staff } = useSession();
 
     const loadData = useCallback(async () => {
-        if (!staff?.club_id) {
+        if (!staff?.club_id || loading) {
             return;
         }
 
@@ -26,7 +26,7 @@ export default function CoachAnniversaires() {
             );
         }
         setLoading(false);
-    }, [staff]);
+    }, [loading, staff?.club_id]);
 
     useEffect(() => {
         loadData();

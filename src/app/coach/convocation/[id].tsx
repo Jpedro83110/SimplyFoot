@@ -19,7 +19,7 @@ type ConvocationDetailParams = {
 
 export default function ConvocationDetail() {
     const { id } = useLocalSearchParams<ConvocationDetailParams>();
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [event, setEvent] = useState<GetEvenementInfosById | null>(null);
 
     const presents = useMemo(

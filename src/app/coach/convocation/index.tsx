@@ -22,7 +22,7 @@ import { useSession } from '@/hooks/useSession';
 dayjs.locale('fr');
 
 export default function ConvocationsList() {
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [events, setEvents] = useState<GetCoachEvenements>([]);
     const router = useRouter();
 

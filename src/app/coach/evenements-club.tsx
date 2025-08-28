@@ -6,12 +6,12 @@ import { GetEvenementsByClubId, getEvenementsByClubId } from '@/helpers/evenemen
 
 export default function EvenementsClub() {
     const [events, setEvents] = useState<GetEvenementsByClubId>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     const { utilisateur } = useSession();
 
     const fetchClubEvents = useCallback(async () => {
-        if (!utilisateur?.club_id) {
+        if (!utilisateur?.club_id || loading) {
             return;
         }
 
@@ -21,7 +21,7 @@ export default function EvenementsClub() {
         setEvents(dataEvts);
 
         setLoading(false);
-    }, [utilisateur?.club_id]);
+    }, [loading, utilisateur?.club_id]);
 
     useEffect(() => {
         fetchClubEvents();

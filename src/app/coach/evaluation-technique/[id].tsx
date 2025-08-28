@@ -43,7 +43,7 @@ export default function EvaluationTechnique() {
     const [valeurs, setValeurs] = useState<EvaluationsTechnique>(evaluationTechniqueDefaultValues);
     const [evaluationsTechniques, setEvaluationsTechniques] =
         useState<GetEvaluationsTechniquesByJoueur>();
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
     const { utilisateur } = useSession();

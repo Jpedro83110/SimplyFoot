@@ -17,7 +17,7 @@ import { formatDateForDisplay } from '@/utils/date.utils';
 
 export default function ListeFeuillesMatch() {
     const [evenements, setEvenements] = useState<GetCoachEvenementsHasComposition>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const router = useRouter();
 
     const { utilisateur } = useSession();

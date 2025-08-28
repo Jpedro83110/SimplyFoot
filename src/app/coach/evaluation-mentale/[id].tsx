@@ -40,7 +40,7 @@ export default function EvaluationMentale() {
     const [valeurs, setValeurs] = useState<EvaluationsMentale>(evaluationMentaleDefaultValues);
     const [evaluationsMentales, setEvaluationsMentales] =
         useState<GetEvaluationsMentalesByJoueur>();
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
     const { utilisateur } = useSession();
