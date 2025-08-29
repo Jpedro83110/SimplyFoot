@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -6,130 +6,108 @@ import {
     ScrollView,
     StyleSheet,
     Pressable,
-    Alert,
     ImageBackground,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '../../../lib/supabase';
-import useCacheData from '../../../lib/cache';
+import {
+    deleteMessagesGroupeCoachOneWeekOld,
+    getMessagesGroupeCoach,
+    GetMessagesGroupeCoach,
+    insertMessageGroupeCoach,
+} from '@/helpers/messagesGroupeCoach.helpers';
+import useEffectOnce from 'react-use/lib/useEffectOnce';
+import { useSession } from '@/hooks/useSession';
+import { GetCoachEquipes, getCoachEquipes } from '@/helpers/equipes.helpers';
+import { insertReponsesMessagesJoueur } from '@/helpers/reponsesMessagesJoueur.helpers';
+import { formatDateForDisplay } from '@/utils/date.utils';
 
 export default function MessagesGroupesCoach() {
-    const [coachId, setCoachId] = useState(null);
-    const [equipes, setEquipes] = useState([]);
+    const [equipes, setEquipes] = useState<GetCoachEquipes>([]);
     const [equipeId, setEquipeId] = useState('');
+    const [messagesGroupeCoach, setMessagesGroupeCoach] = useState<GetMessagesGroupeCoach>([]);
     const [message, setMessage] = useState('');
-    const [reponses, setReponses] = useState({});
-    const [reponseText, setReponseText] = useState({});
-    const [, setLoading] = useState(false); // FIXME
+    const [reponseText, setReponseText] = useState<Record<string, string>>({});
+    const [loading, setLoading] = useState(false);
 
-    // Purge tous les messages de groupe de +7j à chaque ouverture
-    useEffect(() => {
-        const purgeOldMessagesGroupe = async () => {
-            const septJours = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-            await supabase.from('messages_groupe_coach').delete().lt('created_at', septJours);
-        };
-        purgeOldMessagesGroupe();
-    }, []);
+    const { utilisateur } = useSession();
 
-    useEffect(() => {
-        (async () => {
-            const session = await supabase.auth.getSession();
-            const id = session.data.session.user.id;
-            setCoachId(id);
-            const { data: eqs } = await supabase.from('equipes').select('*').eq('coach_id', id);
-            setEquipes(eqs || []);
-        })();
-    }, []);
+    useEffectOnce(() => {
+        deleteMessagesGroupeCoachOneWeekOld();
+    });
 
-    // Gestion du cache pour messages d'équipe
-    const cacheKey = equipeId ? `messages_groupes_${equipeId}` : null;
-    const [cachedMsgs, refreshMsgs] = useCacheData(
-        cacheKey,
-        async () => {
-            if (!equipeId) {
-                return [];
-            }
-            const septJours = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-            const { data: msgs } = await supabase
-                .from('messages_groupe_coach')
-                .select('*')
-                .eq('equipe_id', equipeId)
-                .gte('created_at', septJours)
-                .order('created_at', { ascending: true });
-            return msgs || [];
-        },
-        30, // TTL du cache en secondes
-    );
-
-    useEffect(() => {
-        if (equipeId) {
-            setLoading(true);
-            refreshMsgs().then(() => setLoading(false));
-        }
-    }, [equipeId, refreshMsgs]);
-
-    // Chargement des réponses liées aux messages
-    useEffect(() => {
-        async function fetchReponses() {
-            if (cachedMsgs && cachedMsgs.length) {
-                const { data: reps } = await supabase
-                    .from('reponses_messages_joueur')
-                    .select('*')
-                    .in(
-                        'message_id',
-                        cachedMsgs.map((m) => m.id),
-                    )
-                    .order('created_at', { ascending: true });
-                const regroupees = {};
-                for (let rep of reps || []) {
-                    if (!regroupees[rep.message_id]) {
-                        regroupees[rep.message_id] = [];
-                    }
-                    regroupees[rep.message_id].push(rep);
-                }
-                setReponses(regroupees);
-            } else {
-                setReponses({});
-            }
-        }
-        fetchReponses();
-    }, [cachedMsgs]);
-
-    const envoyerMessage = async () => {
-        if (!message.trim() || !equipeId) {
+    const fetchEquipes = useCallback(async () => {
+        if (!utilisateur?.club_id) {
             return;
         }
-        await supabase.from('messages_groupe_coach').insert({
-            equipe_id: equipeId,
-            coach_id: coachId,
-            titre: 'Message important',
-            contenu: message,
+
+        const fetchedEquipes = await getCoachEquipes({
+            coachId: utilisateur.id,
+            clubId: utilisateur.club_id,
         });
+
+        setEquipes(fetchedEquipes);
+    }, [utilisateur?.club_id, utilisateur?.id]);
+
+    useEffect(() => {
+        fetchEquipes();
+    }, [fetchEquipes]);
+
+    const fetchMessagesGroupeCoach = useCallback(async () => {
+        if (!equipeId || loading) {
+            return;
+        }
+
+        setLoading(true);
+
+        const fetchedMessagesGroupeCoach = await getMessagesGroupeCoach({ equipeId });
+
+        setMessagesGroupeCoach(fetchedMessagesGroupeCoach);
+        setLoading(false);
+    }, [equipeId, loading]);
+
+    useEffect(() => {
+        fetchMessagesGroupeCoach();
+    }, [fetchMessagesGroupeCoach]);
+
+    const envoyerMessage = useCallback(async () => {
+        if (!message || !equipeId || !utilisateur?.id) {
+            return;
+        }
+
+        await insertMessageGroupeCoach({
+            dataToInsert: {
+                equipe_id: equipeId,
+                coach_id: utilisateur.id,
+                titre: 'Message important',
+                contenu: message,
+            },
+        });
+
         setMessage('');
-        refreshMsgs();
-    };
+        fetchMessagesGroupeCoach();
+    }, [message, equipeId, utilisateur?.id, fetchMessagesGroupeCoach]);
 
-    const envoyerReponse = async (msgId) => {
-        const contenu = reponseText[msgId];
-        if (!contenu || !contenu.trim()) {
-            return;
-        }
+    const envoyerReponse = useCallback(
+        async (msgId: string) => {
+            const contenu = reponseText[msgId];
 
-        const { error } = await supabase.from('reponses_messages_joueur').insert({
-            message_id: msgId,
-            coach_id: coachId,
-            texte: contenu,
-            auteur: 'coach',
-        });
+            if (!contenu || !utilisateur?.id) {
+                return;
+            }
 
-        if (!error) {
-            setReponseText((prev) => ({ ...prev, [msgId]: '' }));
-            refreshMsgs();
-        } else {
-            Alert.alert('Erreur', error.message);
-        }
-    };
+            await insertReponsesMessagesJoueur({
+                dataToInsert: {
+                    message_id: msgId,
+                    joueur_id: utilisateur.id,
+                    texte: contenu,
+                },
+            });
+
+            fetchMessagesGroupeCoach();
+        },
+        [reponseText, utilisateur?.id, fetchMessagesGroupeCoach],
+    );
 
     return (
         <ImageBackground
@@ -166,29 +144,29 @@ export default function MessagesGroupesCoach() {
                         <Text style={styles.boutonText}>Envoyer</Text>
                     </Pressable>
                     <View style={{ marginTop: 30 }}>
-                        {(cachedMsgs || []).map((msg) => (
-                            <View key={msg.id} style={styles.card}>
-                                <Text style={styles.messageTitle}>{msg.titre}</Text>
-                                <Text style={styles.messageContent}>{msg.contenu}</Text>
+                        {messagesGroupeCoach.map((message) => (
+                            <View key={message.id} style={styles.card}>
+                                <Text style={styles.messageTitle}>{message.titre}</Text>
+                                <Text style={styles.messageContent}>{message.contenu}</Text>
                                 <Text style={styles.messageMeta}>
-                                    📅 {new Date(msg.created_at).toLocaleString()}
+                                    📅 {formatDateForDisplay({ date: message.created_at })}
                                 </Text>
-                                {reponses[msg.id]?.map((rep, i) => (
+                                {message.reponses_messages_joueur.map((reponse, i) => (
                                     <Text key={i} style={styles.reponse}>
-                                        🧒 {rep.texte}
+                                        🧒 {reponse.texte}
                                     </Text>
                                 ))}
                                 <TextInput
                                     placeholder="Répondre à tous..."
                                     placeholderTextColor="#777"
-                                    value={reponseText[msg.id] || ''}
+                                    value={reponseText[message.id] || ''}
                                     onChangeText={(txt) =>
-                                        setReponseText((prev) => ({ ...prev, [msg.id]: txt }))
+                                        setReponseText((prev) => ({ ...prev, [message.id]: txt }))
                                     }
                                     style={styles.input}
                                 />
                                 <Pressable
-                                    onPress={() => envoyerReponse(msg.id)}
+                                    onPress={() => envoyerReponse(message.id)}
                                     style={styles.bouton}
                                 >
                                     <Ionicons name="send" size={18} color="#111" />
