@@ -156,6 +156,37 @@ export const getEvenementInfosById = async ({ evenementId }: { evenementId: stri
     return data;
 };
 
+export type GetEquipeEvenementBesoinsTransport = Awaited<
+    ReturnType<typeof getEquipeEvenementBesoinsTransport>
+>;
+
+export const getEquipeEvenementBesoinsTransport = async ({
+    equipeId,
+    since,
+}: {
+    equipeId: string;
+    since?: Date;
+}) => {
+    let request = supabase
+        .from('evenements')
+        .select(
+            'id, titre, lieu, date, messages_besoin_transport(id, adresse_demande, heure_demande, etat, utilisateurs(prenom, nom, joueurs(decharges_generales(parent_prenom, parent_nom, accepte_transport))))',
+        )
+        .eq('equipe_id', equipeId);
+
+    if (since) {
+        request = request.gte('date', since);
+    }
+
+    const { data, error } = await request.order('date', { ascending: true });
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 // also cascading delete participations_evenement linked to this evenement
 export const deleteEvenementById = async ({ evenementId }: { evenementId: string }) => {
     const { error } = await supabase.from('evenements').delete().eq('id', evenementId);
