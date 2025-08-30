@@ -12,7 +12,6 @@ import {
     Keyboard,
     ActivityIndicator,
 } from 'react-native';
-import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import InputDate from '@/components/molecules/InputDate';
 import { formatDateToYYYYMMDD } from '@/utils/date.utils';
@@ -20,12 +19,9 @@ import { GetCoachEquipes, getCoachEquipes } from '@/helpers/equipes.helpers';
 import { useSession } from '@/hooks/useSession';
 import { LocationIQ } from '@/types/locationiq.types';
 import { getJoueursByEquipeId, GetJoueursByEquipeId } from '@/helpers/joueurs.helpers';
-import { Database } from '@/types/database.types';
 import Button from '@/components/atoms/Button';
-
-// FIXME: a mettre dans un .env
-const LOCATIONIQ_KEY = 'pk.1bc03891ccd317c6ca47a6d1b87bdbe1';
-const OPENWEATHER_KEY = '1c27efe2712135cb33936abb88a3d28a';
+import { LOCATIONIQ_KEY, OPENWEATHER_KEY } from '@/utils/constants.utils';
+import { createEvenement } from '@/helpers/evenements.helpers';
 
 const TYPE_LABELS = [
     { label: 'Match', value: 'match' },
@@ -50,7 +46,7 @@ export default function CreateEvent() {
     const [adversaires, setAdversaires] = useState('');
 
     const [joueursEquipe, setJoueursEquipe] = useState<GetJoueursByEquipeId>([]);
-    const [selectedJoueurs, setSelectedJoueurs] = useState<string[]>([]);
+    const [selectedJoueursId, setSelectedJoueursId] = useState<string[]>([]);
     const [loadingJoueurs, setLoadingJoueurs] = useState(false);
 
     const [fetchingLieu, setFetchingLieu] = useState(false);
@@ -70,12 +66,10 @@ export default function CreateEvent() {
         setEquipes(fetchedEquipes);
     }, [utilisateur?.club_id, utilisateur?.id]);
 
-    // --- Equipes du coach ---
     useEffect(() => {
         fetchEquipes();
     }, [fetchEquipes]);
 
-    // --- Suggestions de lieux ---
     let timerLieu = useRef<NodeJS.Timeout | undefined>(undefined);
     const chercherLieu = (text: string) => {
         setLieu(text);
@@ -103,7 +97,6 @@ export default function CreateEvent() {
         }, 500);
     };
 
-    // --- Rafraîchit la météo dès que date ou coords changent ---
     useEffect(() => {
         const fetchMeteo = async () => {
             if (!date || !coords?.lat || !coords?.lon) {
@@ -135,7 +128,7 @@ export default function CreateEvent() {
 
     const fetchJoueursEquipe = useCallback(
         async (equipeId: string) => {
-            setSelectedJoueurs([]);
+            setSelectedJoueursId([]);
             setJoueursEquipe([]);
 
             if (loadingJoueurs) {
@@ -148,7 +141,9 @@ export default function CreateEvent() {
                 const fetchedJoueursEquipe = await getJoueursByEquipeId({ equipeId });
 
                 setJoueursEquipe(fetchedJoueursEquipe);
-                setSelectedJoueurs(fetchedJoueursEquipe.map((joueur) => joueur.utilisateurs[0].id));
+                setSelectedJoueursId(
+                    fetchedJoueursEquipe.map((joueur) => joueur.utilisateurs[0].id),
+                );
             } catch (error) {
                 console.error('Erreur générale fetchJoueursEquipe:', error);
                 setJoueursEquipe([]);
@@ -159,8 +154,7 @@ export default function CreateEvent() {
         [loadingJoueurs],
     );
 
-    // --- Création évènement ---
-    const handleCreate = async () => {
+    const handleCreate = useCallback(async () => {
         if (!titre || !date || !heure || !lieu || !equipe) {
             Alert.alert('Erreur', 'Merci de remplir tous les champs.');
             return;
@@ -182,130 +176,63 @@ export default function CreateEvent() {
         }
 
         try {
-            // 1. Création de l'évènement
-            const insertPayload: Database['public']['Tables']['evenements']['Insert'] = {
-                type,
-                titre,
-                date: formatDateToYYYYMMDD(date) ?? '',
-                heure,
-                lieu,
-                lieu_complement: complement,
-                equipe_id: equipe,
-                adversaires,
-                meteo,
-                latitude: coords.lat,
-                longitude: coords.lon,
-                created_by: utilisateur?.id ?? '',
-            };
-
-            console.log('🎯 Création événement avec payload:', insertPayload);
-
-            const { data: nouvelEvenement, error } = await supabase
-                .from('evenements')
-                .insert(insertPayload)
-                .select()
-                .single();
-
-            if (error) {
-                console.error('❌ Erreur création événement:', error);
-                Alert.alert('Erreur', error.message);
-                return;
-            }
-
-            console.log('✅ Événement créé:', nouvelEvenement);
-
-            // 2. Insérer la participation pour chaque joueur sélectionné
-            if (selectedJoueurs && selectedJoueurs.length > 0) {
-                console.log('👥 Joueurs sélectionnés:', selectedJoueurs);
-
-                // Vérifie s'il existe déjà une participation (évite les conflits 409)
-                const { data: deja, error: dejaErr } = await supabase
-                    .from('participations_evenement')
-                    .select('id, utilisateur_id')
-                    .eq('evenement_id', nouvelEvenement.id);
-
-                if (dejaErr) {
-                    console.error('⚠️ Erreur vérification participations existantes:', dejaErr);
-                }
-
-                const dejaIds = deja ? deja.map((p) => p.utilisateur_id) : [];
-                console.log('🔍 Participations déjà existantes:', dejaIds);
-
-                const participations = selectedJoueurs
-                    .filter((userId) => !dejaIds.includes(userId))
-                    .map((userId) => ({
-                        utilisateur_id: userId,
-                        evenement_id: nouvelEvenement.id,
-                        reponse: null,
-                        besoin_transport: false,
-                    }));
-
-                console.log('📝 Participations à insérer:', participations);
-
-                if (participations.length > 0) {
-                    // ✅ CORRECTION : Syntaxe correcte pour Supabase upsert
-                    const { error: partError } = await supabase
-                        .from('participations_evenement')
-                        .upsert(participations);
-
-                    if (partError) {
-                        console.error('❌ Erreur participations:', partError);
-                        Alert.alert(
-                            'Erreur',
-                            `Événement créé mais erreur participations: ${partError.message}`,
-                        );
-                        return;
-                    }
-
-                    console.log('✅ Participations créées avec succès');
-                } else {
-                    console.log('ℹ️ Aucune nouvelle participation à créer');
-                }
-            }
+            await createEvenement({
+                dataToInsert: {
+                    type,
+                    titre,
+                    date: formatDateToYYYYMMDD(date) ?? '',
+                    heure,
+                    lieu,
+                    lieu_complement: complement,
+                    equipe_id: equipe,
+                    adversaires,
+                    meteo,
+                    latitude: coords.lat,
+                    longitude: coords.lon,
+                    created_by: utilisateur?.id ?? '',
+                },
+                joueursId: selectedJoueursId,
+            });
 
             Alert.alert('✅ Évènement bien créé !');
             router.replace('/coach/dashboard');
-
-            // Reset le formulaire
-            setType('match');
-            setTitre('');
-            setDate(new Date());
-            setHeure('');
-            setLieu('');
-            setLieuxResultats([]);
-            setCoords(null);
-            setComplement('');
-            setMeteo('');
-            setEquipe('');
-            setAdversaires('');
-            setJoueursEquipe([]);
-            setSelectedJoueurs([]);
         } catch (error) {
-            console.error('💥 Erreur générale:', error);
             Alert.alert(
                 'Erreur',
                 `Une erreur inattendue s'est produite: ${(error as Error).message}`,
             );
         }
-    };
+    }, [
+        adversaires,
+        complement,
+        coords?.lat,
+        coords?.lon,
+        date,
+        equipe,
+        heure,
+        lieu,
+        meteo,
+        router,
+        selectedJoueursId,
+        titre,
+        type,
+        utilisateur?.id,
+    ]);
 
-    // Sélectionne/déselectionne un joueur (avec ID UTILISATEUR maintenant)
     const toggleJoueur = (userId: string) => {
-        setSelectedJoueurs((prev) =>
+        setSelectedJoueursId((prev) =>
             prev.includes(userId) ? prev.filter((uid) => uid !== userId) : [...prev, userId],
         );
     };
 
-    // Tout sélectionner/désélectionner
     const toggleAllJoueurs = () => {
-        if (selectedJoueurs.length === joueursEquipe.length) {
-            setSelectedJoueurs([]);
+        if (selectedJoueursId.length === joueursEquipe.length) {
+            setSelectedJoueursId([]);
         } else {
-            setSelectedJoueurs(joueursEquipe.map((joueur) => joueur.utilisateurs[0].id)); // user_id au lieu de joueur_id
+            setSelectedJoueursId(joueursEquipe.map((joueur) => joueur.utilisateurs[0].id));
         }
     };
 
-    // --- UI ---
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -459,7 +386,7 @@ export default function CreateEvent() {
                                 onPress={toggleAllJoueurs}
                             >
                                 <Text style={styles.selectAllText}>
-                                    {selectedJoueurs.length === joueursEquipe.length
+                                    {selectedJoueursId.length === joueursEquipe.length
                                         ? 'Tout désélectionner'
                                         : "Sélectionner toute l'équipe"}
                                 </Text>
@@ -468,15 +395,15 @@ export default function CreateEvent() {
                         <View>
                             {joueursEquipe.map((joueur) => (
                                 <TouchableOpacity
-                                    key={joueur.utilisateurs[0].id} // Clé unique avec user_id
+                                    key={joueur.utilisateurs[0].id}
                                     style={styles.joueurItem}
-                                    onPress={() => toggleJoueur(joueur.utilisateurs[0].id)} // Utiliser user_id
+                                    onPress={() => toggleJoueur(joueur.utilisateurs[0].id)}
                                 >
                                     <View
                                         style={[
                                             styles.checkbox,
-                                            selectedJoueurs.includes(joueur.utilisateurs[0].id) &&
-                                                styles.checkboxChecked, // Vérifier user_id
+                                            selectedJoueursId.includes(joueur.utilisateurs[0].id) &&
+                                                styles.checkboxChecked,
                                         ]}
                                     />
                                     <Text style={styles.joueurText}>

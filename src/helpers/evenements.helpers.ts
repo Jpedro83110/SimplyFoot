@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { Database } from '@/types/database.types';
 
 export type GetCoachEvenementsByEquipes = Awaited<ReturnType<typeof getCoachEvenementsByEquipes>>;
 
@@ -185,6 +186,46 @@ export const getEquipeEvenementBesoinsTransport = async ({
     }
 
     return data;
+};
+
+export const createEvenement = async ({
+    dataToInsert,
+    joueursId,
+}: {
+    dataToInsert: Database['public']['Tables']['evenements']['Insert'];
+    joueursId: string[];
+}) => {
+    // FIXME: change db schema to make equipe_id not nullable
+    if (!dataToInsert.equipe_id) {
+        throw new Error('equipe_id is required to create an evenement');
+    }
+
+    const { data: insertedEvenement, error: insertEvenementError } = await supabase
+        .from('evenements')
+        .insert(dataToInsert)
+        .select('id')
+        .single();
+
+    if (insertEvenementError) {
+        throw insertEvenementError;
+    } else if (!insertedEvenement) {
+        throw new Error('Failed to insert evenement');
+    }
+
+    const { error: insertParticipationsError } = await supabase
+        .from('participations_evenement')
+        .insert(
+            joueursId.map((joueurId) => ({
+                evenement_id: insertedEvenement?.id,
+                utilisateur_id: joueurId,
+                reponse: null,
+                besoin_transport: false,
+            })),
+        );
+
+    if (insertParticipationsError) {
+        throw insertParticipationsError;
+    }
 };
 
 // also cascading delete participations_evenement linked to this evenement
