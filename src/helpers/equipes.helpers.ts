@@ -30,7 +30,31 @@ export const getCoachEquipesWithJoueursCount = async ({
 }) => {
     const { data, error } = await supabase
         .from('equipes')
-        .select('*, joueurs(count)')
+        .select('id, nom, joueurs(count)')
+        .eq('coach_id', coachId)
+        .eq('club_id', clubId);
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
+export type GetCoachEquipesWithJoueurs = Awaited<
+    Awaited<ReturnType<typeof getCoachEquipesWithJoueurs>>
+>;
+
+export const getCoachEquipesWithJoueurs = async ({
+    coachId,
+    clubId,
+}: {
+    coachId: string;
+    clubId: string;
+}) => {
+    const { data, error } = await supabase
+        .from('equipes')
+        .select('id, nom, joueurs(utilisateurs:joueur_id(id, prenom, nom))')
         .eq('coach_id', coachId)
         .eq('club_id', clubId);
 
