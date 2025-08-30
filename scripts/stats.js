@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Directories to analyze
-const SOURCE_DIRS = ['app', 'components', 'context', 'helpers', 'hooks', 'lib', 'utils'];
+const SOURCE_DIRS = ['app', 'components', 'contexts', 'helpers', 'hooks', 'lib', 'utils'];
 
 // File extensions
 const JS_EXTENSIONS = ['.js', '.jsx'];
@@ -527,6 +527,7 @@ function analyzeCodebase(options = {}) {
         const codeLines = (s.jsLines || 0) + (s.tsLines || 0);
         return {
             dir: dirName,
+            icon: getDirIcon(dirName),
             codeLines,
             jsLines: s.jsLines || 0,
             tsLines: s.tsLines || 0,
@@ -601,10 +602,10 @@ function analyzeCodebase(options = {}) {
         const totalForPercent = Math.max(1, totalCodeLines); // avoid division by zero
         perDirArray.forEach((d, idx) => {
             const rank = idx + 1;
-            const percent = ((d.codeLines / totalForPercent) * 100).toFixed(2);
+            const percent = ((d.codeLines / totalForPercent) * 100).toFixed(02);
             // Afficher TypeScript avant JavaScript
             console.log(
-                ` ${rank}. ${d.dir} — ${d.codeLines} lignes (${percent}%) — TS: ${d.tsLines}, JS: ${d.jsLines}, styles: ${d.styleLines} — source files: ${d.jsFiles + d.tsFiles}`,
+                ` ${rank}. ${d.icon} ${d.dir} — ${d.codeLines} lignes (${percent}%) — TS: ${d.tsLines}, JS: ${d.jsLines}, styles: ${d.styleLines} — source files: ${d.jsFiles + d.tsFiles}`,
             );
         });
     }
@@ -711,6 +712,22 @@ function analyzeCodebase(options = {}) {
         // New: per-directory stats and ranking
         perDirectory: perDirArray,
     };
+}
+
+/**
+ * Retourne une icône logique pour un répertoire source donné
+ */
+function getDirIcon(dirName) {
+    const map = {
+        app: '📱',
+        components: '🧩',
+        contexts: '🔗',
+        helpers: '🛠️',
+        hooks: '⚓️',
+        lib: '📚',
+        utils: '🔧',
+    };
+    return map[dirName] || '📁';
 }
 
 // Script execution
