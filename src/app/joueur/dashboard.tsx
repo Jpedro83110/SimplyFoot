@@ -29,7 +29,7 @@ import {
 import { Database } from '@/types/database.types';
 import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
 import { GetClubById, getClubById } from '@/helpers/clubs.helpers';
-import { GetJoueurEquipeById, getJoueurEquipeById } from '@/helpers/equipes.helpers';
+import { GetEquipeById, getEquipeById } from '@/helpers/equipes.helpers';
 
 const LAST_MESSAGES_VIEWED = 'last-messages-viewed';
 const DEADLINE_LICENCE = new Date('2025-10-15T23:59:59');
@@ -48,7 +48,7 @@ export default function JoueurDashboard() {
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [timeLeft, setTimeLeft] = useState<TimeLeft>({});
     const [refreshKey, setRefreshKey] = useState(Date.now());
-    const [equipe, setEquipe] = useState<GetJoueurEquipeById | null>(null);
+    const [equipe, setEquipe] = useState<GetEquipeById | null>(null);
     const [club, setClub] = useState<GetClubById | null>(null);
     const [evenement, setEvenement] = useState<
         Database['public']['Tables']['evenements']['Row'] | null
@@ -165,7 +165,7 @@ export default function JoueurDashboard() {
                 photo_profil_url: joueur?.photo_profil_url,
             });
 
-            const equipeData = await getJoueurEquipeById(joueur.equipe_id);
+            const equipeData = await getEquipeById({ equipeId: joueur.equipe_id });
             setEquipe(equipeData);
 
             if (!equipeData?.club_id) {
