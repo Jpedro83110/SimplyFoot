@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
     View,
     Text,
@@ -10,15 +10,20 @@ import {
     useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
-import useCacheData from '../../../lib/cache';
-import { formatDateForDisplay } from '@/utils/date.utils';
-// Ajout import formatDate
+import { calculateAgeFromString, formatDateForDisplay } from '@/utils/date.utils';
+import { useSession } from '@/hooks/useSession';
+import { getTeamList, GetTeamList } from '@/helpers/evenements.helpers';
+import useEffectOnce from 'react-use/lib/useEffectOnce';
+import { isMobile as isMobileUtils } from '@/utils/style.utils';
+
+type FeuilleMatchParams = {
+    id: string;
+};
 
 export default function FeuilleMatch() {
-    const { id } = useLocalSearchParams();
+    const { id } = useLocalSearchParams<FeuilleMatchParams>();
     const { width } = useWindowDimensions();
     const [customDate, setCustomDate] = useState('');
     const [customLieu, setCustomLieu] = useState('');
@@ -28,205 +33,68 @@ export default function FeuilleMatch() {
     const [signClubAdv, setSignClubAdv] = useState('');
     const [signDate, setSignDate] = useState('');
 
-    const fetchFeuilleAll = async () => {
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<Error | null>(null);
+    const [teamList, setTeamList] = useState<GetTeamList | null>(null);
+
+    const { utilisateur } = useSession();
+
+    const fetchTeamList = useCallback(async () => {
+        if (loading) {
+            return;
+        }
+
+        setLoading(true);
+
         try {
-            // 1. Vérifier qu'il y a une composition validée
-            const { data: compos, error: composError } = await supabase
-                .from('compositions')
-                .select('*')
-                .eq('evenement_id', id)
-                .limit(1);
-
-            if (composError) {
-                console.error('Erreur compositions:', composError);
-            }
-
-            if (!compos || compos.length === 0) {
-                return { error: 'Aucune composition validée pour cet événement.' };
-            }
-
-            const compo = compos[0];
-            let joueursComposition = compo.joueurs;
-            if (typeof joueursComposition === 'string') {
-                try {
-                    joueursComposition = JSON.parse(joueursComposition);
-                } catch {
-                    joueursComposition = {};
-                }
-            }
-
-            // 🎯 CORRECTION PRINCIPALE : Récupérer les IDs des joueurs de la composition
-            const joueursCompoIds = Object.keys(joueursComposition || {});
-
-            if (joueursCompoIds.length === 0) {
-                return { error: 'Aucun joueur trouvé dans la composition validée.' };
-            }
-
-            // 2. Récupérer l'événement
-            const { data: evt, error: evtError } = await supabase
-                .from('evenements')
-                .select('*')
-                .eq('id', id)
-                .single();
-
-            if (evtError || !evt) {
-                console.error('Erreur événement:', evtError);
-                return { error: 'Événement introuvable.' };
-            }
-
-            // 3. Récupérer infos équipe
-            let nomEquipe = 'NC',
-                nomCategorie = 'NC';
-            if (evt.equipe_id) {
-                const { data: eq } = await supabase
-                    .from('equipes')
-                    .select('nom, categorie')
-                    .eq('id', evt.equipe_id)
-                    .single();
-                if (eq) {
-                    nomEquipe = eq.nom || 'NC';
-                    nomCategorie = eq.categorie || 'NC';
-                }
-            }
-
-            // 4. Récupérer infos coach
-            let coachName = 'NC',
-                coachPrenom = '';
-            if (evt.created_by) {
-                const { data: coach } = await supabase
-                    .from('utilisateurs')
-                    .select('nom, prenom')
-                    .eq('id', evt.created_by)
-                    .single();
-                if (coach) {
-                    coachName = coach.nom || 'NC';
-                    coachPrenom = coach.prenom || '';
-                }
-            }
-
-            // 5. 🎯 NOUVELLE LOGIQUE : Récupérer directement les joueurs de la composition
-            const joueursInfos = await Promise.all(
-                joueursCompoIds.map(async (joueurId) => {
-                    const { data: j, error: joueurError } = await supabase
-                        .from('joueurs')
-                        .select('id, nom, prenom, numero_licence, date_naissance')
-                        .eq('id', joueurId)
-                        .single();
-
-                    if (joueurError) {
-                        console.error(`Erreur joueur ${joueurId}:`, joueurError);
-                        return null; // Ignorer les joueurs introuvables
-                    }
-
-                    if (!j) {
-                        return null;
-                    }
-
-                    let age = '';
-                    if (j.date_naissance) {
-                        const birth = new Date(j.date_naissance);
-                        const now = new Date();
-                        age = (now.getFullYear() - birth.getFullYear()).toString();
-                    }
-
-                    const joueurFinal = {
-                        id: j.id || '',
-                        prenom: j.prenom || '',
-                        nom: j.nom || '',
-                        licence: j.numero_licence || '',
-                        age: age || '',
-                    };
-
-                    return joueurFinal;
-                }),
-            );
-
-            // Filtrer les joueurs null (introuvables)
-            const joueursValides = joueursInfos.filter((j) => j !== null);
-
-            // Tri alphabétique
-            joueursValides.sort((a, b) => (a.nom + a.prenom).localeCompare(b.nom + b.prenom));
-
-            // Limiter à 12 joueurs
-            const joueursA = joueursValides.slice(0, 12);
-
-            const result = {
-                joueurs: joueursA,
-                infoMatch: {
-                    titre: evt.titre || '',
-                    date: evt.date || '',
-                    lieu: evt.lieu || '',
-                    equipe: nomEquipe,
-                    categorie: nomCategorie,
-                    coach: `${coachPrenom} ${coachName}`,
-                    adversaire: evt.adversaire || '',
-                },
-            };
-
-            return result;
+            const data = await getTeamList({ evenementId: id });
+            setTeamList(data);
         } catch (error) {
-            console.error('Erreur générale:', error);
-            return { error: `Erreur lors du chargement: ${error.message}` };
+            setError(error as Error);
         }
-    };
 
-    const [data, refresh, loading] = useCacheData(`feuille-match-${id}`, fetchFeuilleAll, 1800);
-    const joueurs = data?.joueurs || [];
-    const infoMatch = data?.infoMatch || {};
-    const error = data?.error || null;
+        setLoading(false);
+    }, [id, loading]);
 
-    const columns = ['Nom', 'Prénom', 'Âge', 'Licence'];
-    const MAX_J = 12;
-    const isMobile = width < 700;
+    useEffectOnce(() => {
+        fetchTeamList();
+    });
 
-    // 🔧 CORRECTION : Protection pour formatDateForDisplay
-    const safeFormatDate = (dateStr) => {
-        if (!dateStr) {
-            return '';
-        }
-        try {
-            const formatted = formatDateForDisplay({ date: dateStr });
-            return formatted || '';
-        } catch (e) {
-            console.error('Erreur formatDateForDisplay:', e);
-            return dateStr;
-        }
-    };
+    const isMobile = isMobileUtils(width);
 
-    // Pour l'affichage du format date correct - 🔧 CORRECTION
     const displayDate = customDate
-        ? safeFormatDate(customDate)
-        : infoMatch?.date
-          ? safeFormatDate(infoMatch.date)
+        ? formatDateForDisplay({ date: customDate })
+        : teamList?.date
+          ? formatDateForDisplay({ date: teamList.date })
           : '';
-    const displayLieu = customLieu || infoMatch?.lieu || '';
-    const displayAdversaire = customAdversaire || infoMatch?.adversaire || '';
+    const displayLieu = customLieu || teamList?.lieu || '';
+    const displayAdversaire = customAdversaire || teamList?.adversaires || '';
 
-    // Impression PDF (identique web/mobile)
     const handlePrint = async () => {
-        const myRows = [];
-        for (let i = 0; i < MAX_J; i++) {
-            const j = joueurs[i] || {};
-            myRows.push(`
-        <tr>
-          <td style="border:1.5px solid #222;padding:14px;min-width:105px;height:32px;font-size:16px;">${j.nom || ''}</td>
-          <td style="border:1.5px solid #222;padding:14px;min-width:105px;">${j.prenom || ''}</td>
-          <td style="border:1.5px solid #222;padding:14px;min-width:58px;">${j.age || ''}</td>
-          <td style="border:1.5px solid #222;padding:14px;min-width:94px;">${j.licence || ''}</td>
-        </tr>
-      `);
-        }
-        const myRowsAdv = [];
-        for (let i = 0; i < MAX_J; i++) {
-            myRowsAdv.push(`
-        <tr>
-          <td style="border:1.5px solid #222;padding:14px;min-width:105px;height:32px;"></td>
-          <td style="border:1.5px solid #222;padding:14px;min-width:105px;"></td>
-          <td style="border:1.5px solid #222;padding:14px;min-width:58px;"></td>
-          <td style="border:1.5px solid #222;padding:14px;min-width:94px;"></td>
-        </tr>
-      `);
-        }
+        const myRows = teamList?.equipes?.joueurs.map(
+            (joueur) =>
+                `
+                    <tr>
+                        <td style="border:1.5px solid #222;padding:14px;min-width:105px;height:32px;font-size:16px;">${joueur.utilisateurs[0].nom}</td>
+                        <td style="border:1.5px solid #222;padding:14px;min-width:105px;">${joueur.utilisateurs[0].prenom}</td>
+                        <td style="border:1.5px solid #222;padding:14px;min-width:58px;">${calculateAgeFromString(joueur.utilisateurs[0].date_naissance ?? '')}</td>
+                        <td style="border:1.5px solid #222;padding:14px;min-width:94px;">${joueur.numero_licence}</td>
+                    </tr>
+                `,
+        );
+
+        const myRowsAdv = Array.from({ length: 12 }).map(
+            () =>
+                `
+                    <tr>
+                        <td style="border:1.5px solid #222;padding:14px;min-width:105px;height:32px;"></td>
+                        <td style="border:1.5px solid #222;padding:14px;min-width:105px;"></td>
+                        <td style="border:1.5px solid #222;padding:14px;min-width:58px;"></td>
+                        <td style="border:1.5px solid #222;padding:14px;min-width:94px;"></td>
+                    </tr>
+                `,
+        );
+
         const html = `
       <style>
         body { font-family: Arial, sans-serif; color:#222; }
@@ -252,8 +120,8 @@ export default function FeuilleMatch() {
       <div class="infoswrap">
         <div class="infos">
           <b>Date :</b> ${displayDate} &nbsp; | &nbsp; <b>Lieu :</b> ${displayLieu}<br>
-          <b>Équipe :</b> ${infoMatch.equipe || ''} &nbsp; | &nbsp; <b>Catégorie :</b> ${infoMatch.categorie || ''}<br>
-          <b>Coach :</b> ${infoMatch.coach || ''}<br>
+          <b>Équipe :</b> ${teamList?.equipes?.nom} &nbsp; | &nbsp; <b>Catégorie :</b> ${teamList?.equipes?.categorie}<br>
+          <b>Coach :</b> ${utilisateur?.prenom} ${utilisateur?.nom}<br>
           <b>Adversaire :</b> ${displayAdversaire || '_________________'}
         </div>
         <div class="signatures">
@@ -266,16 +134,26 @@ export default function FeuilleMatch() {
       <div class="double">
         <div class="tableBlock">
           <table>
-            <tr><th colspan="4">${infoMatch.equipe || ''}</th></tr>
-            <tr>${columns.map((c) => `<th>${c}</th>`).join('')}</tr>
-            ${myRows.join('')}
+            <tr><th colspan="4">${teamList?.equipes?.nom}</th></tr>
+            <tr>
+                <th>Nom</th>
+                <th>Prénom</th>
+                <th>Âge</th>
+                <th>Licence</th>
+            </tr>
+            ${myRows?.join('')}
           </table>
         </div>
         <div class="tableBlock">
           <table>
             <tr><th colspan="4">Adversaire : ${displayAdversaire || '_________'}</th></tr>
-            <tr>${columns.map((c) => `<th>${c}</th>`).join('')}</tr>
-            ${myRowsAdv.join('')}
+            <tr>
+                <th>Nom</th>
+                <th>Prénom</th>
+                <th>Âge</th>
+                <th>Licence</th>
+            </tr>
+            ${myRowsAdv?.join('')}
           </table>
         </div>
       </div>
@@ -302,8 +180,8 @@ export default function FeuilleMatch() {
     if (error) {
         return (
             <View style={styles.container}>
-                <Text style={styles.empty}>{error}</Text>
-                <TouchableOpacity style={styles.button} onPress={refresh}>
+                <Text style={styles.empty}>{error?.message}</Text>
+                <TouchableOpacity style={styles.button} onPress={fetchTeamList}>
                     <Text style={styles.buttonText}>🔄 Réessayer</Text>
                 </TouchableOpacity>
             </View>
@@ -313,25 +191,16 @@ export default function FeuilleMatch() {
     return (
         <ScrollView style={styles.container}>
             <Text style={styles.title}>📝 Feuille de match</Text>
-
-            {/* Debug info */}
-            <Text style={styles.debug}>
-                {joueurs.length} joueur(s) de la composition | Équipe: {infoMatch?.equipe || ''} |
-                Coach: {infoMatch?.coach || ''}
-            </Text>
-
-            {/* EN-TÊTE */}
             <View style={[styles.headerWrap, isMobile ? styles.mobileHeaderWrap : null]}>
                 <View style={isMobile ? styles.mobileInfosCol : styles.infosCol}>
-                    {/* Date */}
                     <View style={isMobile ? styles.mobileField : styles.row}>
                         <Text style={isMobile ? styles.mobileDetail : styles.detail}>Date :</Text>
                         <TextInput
                             value={customDate}
                             onChangeText={(txt) => setCustomDate(txt)}
                             placeholder={
-                                infoMatch?.date
-                                    ? safeFormatDate(infoMatch.date) || 'JJ/MM/AAAA'
+                                teamList?.date
+                                    ? formatDateForDisplay({ date: teamList.date }) || 'JJ/MM/AAAA'
                                     : 'JJ/MM/AAAA'
                             }
                             style={[
@@ -349,7 +218,7 @@ export default function FeuilleMatch() {
                         <TextInput
                             value={customLieu}
                             onChangeText={setCustomLieu}
-                            placeholder={infoMatch?.lieu || 'Lieu'}
+                            placeholder={teamList?.lieu || 'Lieu'}
                             style={[
                                 isMobile ? styles.mobileInput : styles.input,
                                 { color: '#fff', backgroundColor: isMobile ? '#333' : '#161616' },
@@ -358,13 +227,13 @@ export default function FeuilleMatch() {
                         />
                     </View>
                     <Text style={isMobile ? styles.mobileDetail : styles.detail}>
-                        Équipe : {infoMatch?.equipe || ''}
+                        Équipe : {teamList?.equipes?.nom || ''}
                     </Text>
                     <Text style={isMobile ? styles.mobileDetail : styles.detail}>
-                        Catégorie : {infoMatch?.categorie || ''}
+                        Catégorie : {teamList?.equipes?.categorie || ''}
                     </Text>
                     <Text style={isMobile ? styles.mobileDetail : styles.detail}>
-                        Coach : {infoMatch?.coach || ''}
+                        Coach : {utilisateur?.prenom} {utilisateur?.nom}
                     </Text>
                     {/* Adversaire */}
                     <View style={isMobile ? styles.mobileField : styles.row}>
@@ -374,7 +243,7 @@ export default function FeuilleMatch() {
                         <TextInput
                             value={customAdversaire}
                             onChangeText={setCustomAdversaire}
-                            placeholder={infoMatch?.adversaire || 'Adversaire'}
+                            placeholder={teamList?.adversaires || 'Adversaire'}
                             style={[
                                 isMobile ? styles.mobileInput : styles.input,
                                 { color: '#fff', backgroundColor: isMobile ? '#333' : '#161616' },
@@ -454,38 +323,53 @@ export default function FeuilleMatch() {
                         <Text
                             style={[styles.headerCell, isMobile ? styles.mobileHeaderCell : null]}
                         >
-                            {infoMatch.equipe || ''}
+                            {teamList?.equipes?.nom || ''}
                         </Text>
                     </View>
                     <View style={styles.subHeaderRow}>
-                        {columns.map((col, i) => (
-                            <Text
-                                key={'colA-' + i}
-                                style={[
-                                    styles.cellHeader,
-                                    isMobile ? styles.mobileCellHeader : null,
-                                ]}
-                            >
-                                {col}
-                            </Text>
-                        ))}
+                        <Text
+                            key={'colA-1'}
+                            style={[styles.cellHeader, isMobile ? styles.mobileCellHeader : null]}
+                        >
+                            Nom
+                        </Text>
+                        <Text
+                            key={'colA-2'}
+                            style={[styles.cellHeader, isMobile ? styles.mobileCellHeader : null]}
+                        >
+                            Prénom
+                        </Text>
+                        <Text
+                            key={'colA-3'}
+                            style={[styles.cellHeader, isMobile ? styles.mobileCellHeader : null]}
+                        >
+                            Âge
+                        </Text>
+                        <Text
+                            key={'colA-4'}
+                            style={[styles.cellHeader, isMobile ? styles.mobileCellHeader : null]}
+                        >
+                            Licence
+                        </Text>
                     </View>
-                    {Array.from({ length: MAX_J }).map((_, idx) => (
+                    {teamList?.equipes?.joueurs?.map((joueur) => (
                         <View
-                            key={'team-' + idx}
+                            key={`joueur-${joueur.id}`}
                             style={[styles.dataRow, isMobile ? styles.mobileDataRow : null]}
                         >
                             <Text style={[styles.cell, isMobile ? styles.mobileCell : null]}>
-                                {joueurs[idx]?.nom || ''}
+                                {joueur.utilisateurs[0]?.nom}
                             </Text>
                             <Text style={[styles.cell, isMobile ? styles.mobileCell : null]}>
-                                {joueurs[idx]?.prenom || ''}
+                                {joueur.utilisateurs[0]?.prenom}
                             </Text>
                             <Text style={[styles.cell, isMobile ? styles.mobileCell : null]}>
-                                {joueurs[idx]?.age || ''}
+                                {calculateAgeFromString(
+                                    joueur.utilisateurs[0]?.date_naissance || '',
+                                )}
                             </Text>
                             <Text style={[styles.cell, isMobile ? styles.mobileCell : null]}>
-                                {joueurs[idx]?.licence || ''}
+                                {joueur.numero_licence}
                             </Text>
                         </View>
                     ))}
@@ -500,19 +384,32 @@ export default function FeuilleMatch() {
                         </Text>
                     </View>
                     <View style={styles.subHeaderRow}>
-                        {columns.map((col, i) => (
-                            <Text
-                                key={'colAdv-' + i}
-                                style={[
-                                    styles.cellHeader,
-                                    isMobile ? styles.mobileCellHeader : null,
-                                ]}
-                            >
-                                {col}
-                            </Text>
-                        ))}
+                        <Text
+                            key={'colAdv-1'}
+                            style={[styles.cellHeader, isMobile ? styles.mobileCellHeader : null]}
+                        >
+                            Nom
+                        </Text>
+                        <Text
+                            key={'colAdv-2'}
+                            style={[styles.cellHeader, isMobile ? styles.mobileCellHeader : null]}
+                        >
+                            Prénom
+                        </Text>
+                        <Text
+                            key={'colAdv-3'}
+                            style={[styles.cellHeader, isMobile ? styles.mobileCellHeader : null]}
+                        >
+                            Âge
+                        </Text>
+                        <Text
+                            key={'colAdv-4'}
+                            style={[styles.cellHeader, isMobile ? styles.mobileCellHeader : null]}
+                        >
+                            Licence
+                        </Text>
                     </View>
-                    {Array.from({ length: MAX_J }).map((_, idx) => (
+                    {Array.from({ length: 12 }).map((_, idx) => (
                         <View
                             key={'adv-' + idx}
                             style={[styles.dataRow, isMobile ? styles.mobileDataRow : null]}
@@ -538,15 +435,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginBottom: 10,
     },
-    debug: {
-        color: '#666',
-        fontSize: 12,
-        textAlign: 'center',
-        marginBottom: 15,
-        fontStyle: 'italic',
-    },
-
-    // En-tête responsive
     headerWrap: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
     infosCol: { flex: 1, minWidth: 240 },
     signaturesCol: { minWidth: 240, marginLeft: 32 },
@@ -564,8 +452,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 3,
     },
-
-    // Signatures
     signatureRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 6 },
     signatureLabel: {
         color: '#ccc',
@@ -584,7 +470,6 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         fontSize: 16,
     },
-
     button: {
         backgroundColor: '#00ff88',
         paddingVertical: 15,
@@ -594,8 +479,6 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     buttonText: { color: '#000', fontWeight: 'bold', fontSize: 16 },
-
-    // Tableaux
     tablesWrap: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, gap: 12 },
     tableBlock: {
         flex: 1,
@@ -636,8 +519,6 @@ const styles = StyleSheet.create({
         borderColor: '#222',
     },
     empty: { color: '#888', textAlign: 'center', marginTop: 40, fontStyle: 'italic', fontSize: 15 },
-
-    // --- MOBILE STYLES ---
     mobileHeaderWrap: {
         flexDirection: 'column',
         alignItems: 'stretch',

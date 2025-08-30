@@ -188,6 +188,24 @@ export const getEquipeEvenementBesoinsTransport = async ({
     return data;
 };
 
+export type GetTeamList = Awaited<ReturnType<typeof getTeamList>>;
+
+export const getTeamList = async ({ evenementId }: { evenementId: string }) => {
+    const { data, error } = await supabase
+        .from('evenements')
+        .select(
+            'date, lieu, adversaires, compositions:evenement_id(id), equipes:equipe_id(nom, categorie, joueurs(id, numero_licence, utilisateurs(nom, prenom, date_naissance)))',
+        )
+        .eq('id', evenementId)
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 export const createEvenement = async ({
     dataToInsert,
     joueursId,
