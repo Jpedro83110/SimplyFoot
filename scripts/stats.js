@@ -722,7 +722,7 @@ function getDirIcon(dirName) {
         app: '📱',
         components: '🧩',
         contexts: '🔗',
-        helpers: '🛠️',
+        helpers: '🛠️ ',
         hooks: '⚓️',
         lib: '📚',
         utils: '🔧',
