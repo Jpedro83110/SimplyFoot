@@ -1,4 +1,4 @@
-import { AuthContext, authContextDefaultValue } from '@/context/AuthContext';
+import { AuthContext, authContextDefaultValue } from '@/contexts/AuthContext';
 import { useContext } from 'react';
 
 // This hook can be used to access the user info.

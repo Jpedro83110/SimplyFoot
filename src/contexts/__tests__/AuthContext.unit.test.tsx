@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, act } from '@testing-library/react';
-import { AuthContext, AuthProvider } from '@/context/AuthContext';
+import { AuthContext, AuthProvider } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
