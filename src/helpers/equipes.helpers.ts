@@ -1,4 +1,19 @@
 import { supabase } from '@/lib/supabase';
+import { Database } from '@/types/database.types';
+
+export const checkIfCodeEquipeExists = async (codeEquipe: string) => {
+    const { data, error } = await supabase
+        .from('equipes')
+        .select('id')
+        .eq('code_equipe', codeEquipe)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return !!data;
+};
 
 export type GetCoachEquipes = Awaited<ReturnType<typeof getCoachEquipes>>;
 
@@ -103,4 +118,16 @@ export const getJoueurEquipeById = async (equipeId: string) => {
     }
 
     return data;
+};
+
+export const insertEquipe = async ({
+    dataToInsert,
+}: {
+    dataToInsert: Database['public']['Tables']['equipes']['Insert'];
+}) => {
+    const { error } = await supabase.from('equipes').insert(dataToInsert);
+
+    if (error) {
+        throw error;
+    }
 };
