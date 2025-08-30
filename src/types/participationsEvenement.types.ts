@@ -1,1 +1,4 @@
-export type ParticipationsEvenementReponse = 'present' | 'absent';
+export enum ParticipationsEvenementReponse {
+    PRESENT = 'present',
+    ABSENT = 'absent',
+}

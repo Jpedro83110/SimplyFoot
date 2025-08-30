@@ -17,8 +17,12 @@ interface Critere {
     color: string;
 }
 
+type EvalMentaleParams = {
+    user: string;
+};
+
 export default function EvalMentale() {
-    const { user } = useLocalSearchParams();
+    const { user } = useLocalSearchParams<EvalMentaleParams>();
     const [evalData, setEvalData] = useState<{
         note_globale?: any;
         motivation: any;
@@ -62,18 +66,10 @@ export default function EvalMentale() {
                 const currentRole = utilisateur?.role || 'joueur';
                 setRole(currentRole);
 
-                let joueurId = '';
-
-                if (Array.isArray(user)) {
-                    joueurId = user[0];
-                } else {
-                    joueurId = user;
-                }
-
                 const { data, error } = await supabase
                     .from('evaluations_mentales')
                     .select('note_globale, motivation, rigueur, ponctualite, attitude, respect')
-                    .eq('joueur_id', joueurId)
+                    .eq('joueur_id', user)
                     .single();
 
                 if (error && error.code !== 'PGRST116') {

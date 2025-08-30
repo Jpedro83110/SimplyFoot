@@ -294,7 +294,7 @@ function countTestFileMetrics(filePath) {
  * Analyzes files in source directories
  */
 function analyzeCodebase(options = {}) {
-    const { verbose = false } = options;
+    const { verbose = false, topCount } = options; // topCount: number | undefined
     let jsLines = 0;
     let jsFiles = 0;
     let tsLines = 0;
@@ -347,16 +347,17 @@ function analyzeCodebase(options = {}) {
         const jsFilesInDir = findFiles(dirPath, JS_EXTENSIONS);
         for (const file of jsFilesInDir) {
             const { codeLines, styleLines: fileStyleLines } = countLinesWithStyles(file);
-            const totalFileLines = codeLines + fileStyleLines;
             jsLines += codeLines;
             styleLines += fileStyleLines;
             jsFiles++;
-            fileLinesArray.push(totalFileLines);
+            // store only code lines for size/median/average/top calculations
+            fileLinesArray.push(codeLines);
 
-            // Add file details
+            // Add file details (lines = code-only) — now also keep styleLines
             fileDetails.push({
                 path: path.relative(process.cwd(), file),
-                lines: totalFileLines,
+                lines: codeLines,
+                styleLines: fileStyleLines,
                 type: 'JS',
             });
 
@@ -371,16 +372,17 @@ function analyzeCodebase(options = {}) {
         const tsFilesInDir = findFiles(dirPath, TS_EXTENSIONS);
         for (const file of tsFilesInDir) {
             const { codeLines, styleLines: fileStyleLines } = countLinesWithStyles(file);
-            const totalFileLines = codeLines + fileStyleLines;
             tsLines += codeLines;
             styleLines += fileStyleLines;
             tsFiles++;
-            fileLinesArray.push(totalFileLines);
+            // store only code lines for size/median/average/top calculations
+            fileLinesArray.push(codeLines);
 
-            // Add file details
+            // Add file details (lines = code-only) — now also keep styleLines
             fileDetails.push({
                 path: path.relative(process.cwd(), file),
-                lines: totalFileLines,
+                lines: codeLines,
+                styleLines: fileStyleLines,
                 type: 'TS',
             });
 
@@ -447,8 +449,8 @@ function analyzeCodebase(options = {}) {
     let medianLinesPerFile = 0;
 
     if (totalFiles > 0) {
-        // Average
-        averageLinesPerFile = Math.round(totalLines / totalFiles);
+        // Average (use only code lines, exclude style lines)
+        averageLinesPerFile = Math.round(totalCodeLines / totalFiles);
 
         // Median
         const sortedFileLinesArray = [...fileLinesArray].sort((a, b) => a - b);
@@ -468,8 +470,8 @@ function analyzeCodebase(options = {}) {
     const jsBarLength = totalCodeLines > 0 ? Math.round((jsLines / totalCodeLines) * barLength) : 0;
     const tsBarLength = barLength - jsBarLength;
 
-    // Create top 5 largest files
-    const top5Files = fileDetails.sort((a, b) => b.lines - a.lines).slice(0, 5);
+    // Sort all files by code lines (desc) and keep full list
+    const allFilesSorted = fileDetails.sort((a, b) => b.lines - a.lines);
 
     // New: Top 5 largest test files
     const top5TestFiles = testFileDetails.sort((a, b) => b.lines - a.lines).slice(0, 5);
@@ -494,12 +496,31 @@ function analyzeCodebase(options = {}) {
     console.log(`   Median: ${medianLinesPerFile} lines per file`);
     console.log(`   Average: ${averageLinesPerFile} lines per file`);
     console.log('');
-    console.log('🏆 TOP 5 LARGEST FILES:');
-    top5Files.forEach((file, index) => {
-        const rank = index + 1;
-        const typeIcon = file.type === 'TS' ? '🔷' : '🔶';
-        console.log(`   ${rank}. ${typeIcon} ${file.path} (${file.lines} lines)`);
-    });
+
+    if (typeof topCount === 'number' && topCount > 0) {
+        const topFiles = allFilesSorted.slice(0, topCount);
+        console.log(`🏆 TOP ${topCount} LARGEST FILES:`);
+        topFiles.forEach((file, index) => {
+            const rank = index + 1;
+            const typeIcon = file.type === 'TS' ? '🔷' : '🔶';
+            const stylePart =
+                typeof file.styleLines === 'number' ? `, ${file.styleLines} style` : '';
+            console.log(
+                `   ${rank}. ${typeIcon} ${file.path} — ${file.lines} code${stylePart} lines`,
+            );
+        });
+    } else {
+        console.log('🏆 ALL FILES (sorted by code lines):');
+        allFilesSorted.forEach((file, index) => {
+            const rank = index + 1;
+            const typeIcon = file.type === 'TS' ? '🔷' : '🔶';
+            const stylePart =
+                typeof file.styleLines === 'number' ? `, ${file.styleLines} style` : '';
+            console.log(
+                `   ${rank}. ${typeIcon} ${file.path} — ${file.lines} code${stylePart} lines`,
+            );
+        });
+    }
 
     // New: Print tests statistics
     if (testTotals.files > 0) {
@@ -588,8 +609,13 @@ function analyzeCodebase(options = {}) {
             averageLinesPerFile,
             medianLinesPerFile,
         },
-        // New: top 5 files
-        top5Files,
+        // New: all files sorted by code lines
+        allFiles: allFilesSorted,
+        // If caller requested a topCount, also expose the top slice for convenience
+        topFiles:
+            typeof topCount === 'number' && topCount > 0
+                ? allFilesSorted.slice(0, topCount)
+                : undefined,
         // New: tests summary
         tests: {
             totals: testTotals,
@@ -601,11 +627,29 @@ function analyzeCodebase(options = {}) {
 
 // Script execution
 if (require.main === module) {
-    // Check if verbose option is passed as argument
-    const verbose = process.argv.includes('--verbose') || process.argv.includes('-v');
+    // Check CLI options
+    const argv = process.argv;
+    const verbose = argv.includes('--verbose') || argv.includes('-v');
+
+    // parse --top=N or --top N
+    let topCount;
+    for (let i = 2; i < argv.length; i++) {
+        const a = argv[i];
+        if (a.startsWith('--top=')) {
+            const v = parseInt(a.split('=')[1], 10);
+            if (!Number.isNaN(v)) {
+                topCount = v;
+            }
+        } else if (a === '--top' && i + 1 < argv.length) {
+            const v = parseInt(argv[i + 1], 10);
+            if (!Number.isNaN(v)) {
+                topCount = v;
+            }
+        }
+    }
 
     try {
-        analyzeCodebase({ verbose });
+        analyzeCodebase({ verbose, topCount });
     } catch (error) {
         console.error('❌ Error during analysis:', error.message);
         process.exit(1);

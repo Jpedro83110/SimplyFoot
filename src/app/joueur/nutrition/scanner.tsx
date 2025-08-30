@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, Text, StyleSheet, Platform, Pressable } from 'react-native';
 
 // Importez le vrai scanner

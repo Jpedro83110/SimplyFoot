@@ -6,25 +6,22 @@ import { GetEvenementsByClubId, getEvenementsByClubId } from '@/helpers/evenemen
 
 export default function EvenementsClub() {
     const [events, setEvents] = useState<GetEvenementsByClubId>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     const { utilisateur } = useSession();
 
-    // Fetch club events (liés au club_id du coach connecté)
     const fetchClubEvents = useCallback(async () => {
-        if (!utilisateur?.club_id) {
+        if (!utilisateur?.club_id || loading) {
             return;
         }
 
         setLoading(true);
 
-        // Tous les événements du club (créés par président)
         const dataEvts = await getEvenementsByClubId({ clubId: utilisateur.club_id });
-
         setEvents(dataEvts);
 
         setLoading(false);
-    }, [utilisateur?.club_id]);
+    }, [loading, utilisateur?.club_id]);
 
     useEffect(() => {
         fetchClubEvents();

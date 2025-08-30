@@ -26,8 +26,12 @@ import { ParticipationsEvenementReponse } from '@/types/participationsEvenement.
 
 dayjs.locale('fr');
 
+type ConvocationReponseParams = {
+    id: string;
+};
+
 export default function ConvocationReponse() {
-    const { id: evenementId }: { id: string } = useLocalSearchParams();
+    const { id: evenementId } = useLocalSearchParams<ConvocationReponseParams>();
     const [evenementInfos, setEvenementInfos] = useState<GetEvenementInfosByUtilisateurId>();
 
     const [loading, setLoading] = useState(true);
@@ -293,7 +297,7 @@ export default function ConvocationReponse() {
                     ]}
                     onPress={() => {
                         setBesoinTransport(false);
-                        envoyerReponse('present');
+                        envoyerReponse(ParticipationsEvenementReponse.PRESENT);
                     }}
                     disabled={reponseLoading}
                 >
@@ -318,7 +322,7 @@ export default function ConvocationReponse() {
                     ]}
                     onPress={() => {
                         setBesoinTransport(false);
-                        envoyerReponse('absent');
+                        envoyerReponse(ParticipationsEvenementReponse.ABSENT);
                     }}
                     disabled={reponseLoading}
                 >

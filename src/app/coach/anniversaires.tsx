@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import CalendrierAnniversaires from '../../components/business/CalendrierAnniversaires';
+import CalendrierAnniversaires from '@/components/business/CalendrierAnniversaires';
 import { ActivityIndicator, View, ScrollView, Alert } from 'react-native';
 import { useSession } from '@/hooks/useSession';
 import { getUtilisateursByClubId, GetUtilisateursByClubId } from '@/helpers/utilisateurs.helpers';
 
 export default function CoachAnniversaires() {
     const [membres, setMembres] = useState<GetUtilisateursByClubId>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     const { staff } = useSession();
 
     const loadData = useCallback(async () => {
-        if (!staff?.club_id) {
+        if (!staff?.club_id || loading) {
             return;
         }
 
@@ -26,7 +26,7 @@ export default function CoachAnniversaires() {
             );
         }
         setLoading(false);
-    }, [staff]);
+    }, [loading, staff?.club_id]);
 
     useEffect(() => {
         loadData();

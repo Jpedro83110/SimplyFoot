@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,12 +8,38 @@ import {
     Pressable,
     ScrollView,
 } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
+
+// FIXME: a extraire dans un fichier de types / revoir la feature
+interface ProductInfo {
+    nom: string;
+    marque: string;
+    quantite: string;
+    code: string;
+    image?: string;
+    nutriscore?: string;
+    ecoscore?: string;
+    nova?: number;
+    nutrition: {
+        calories?: number | null;
+        proteines?: number | null;
+        glucides?: number | null;
+        lipides?: number | null;
+        fibres?: number | null;
+        sucres?: number | null;
+        sel?: number | null;
+        sodium?: number | null;
+    };
+    ingredients: string;
+    allergenes: string[];
+    labels: string[];
+    categories: string[];
+}
 
 export default function NutritionScannerReal() {
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
-    const [productData, setProductData] = useState(null);
+    const [productData, setProductData] = useState<ProductInfo | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -23,7 +49,7 @@ export default function NutritionScannerReal() {
         }
     }, [permission, requestPermission]);
 
-    const handleBarCodeScanned = async ({ type, data }) => {
+    const handleBarCodeScanned = async ({ data }: BarcodeScanningResult) => {
         if (scanned) {
             return;
         }
@@ -119,7 +145,7 @@ export default function NutritionScannerReal() {
     };
 
     // Fonctions d'analyse pour footballeurs
-    const getNutriScoreColor = (score) => {
+    const getNutriScoreColor = (score?: string) => {
         switch ((score || '').toUpperCase()) {
             case 'A':
                 return '#00ff88';
@@ -136,7 +162,7 @@ export default function NutritionScannerReal() {
         }
     };
 
-    const getFootballAdvice = (product) => {
+    const getFootballAdvice = (product: ProductInfo) => {
         const { nutriscore, nutrition } = product;
         // const calories = nutrition.calories; // FIXME: not used
         const proteines = nutrition.proteines;
@@ -159,14 +185,14 @@ export default function NutritionScannerReal() {
                 icon: '⭐',
             };
         } else if (nutriscore === 'B' || nutriscore === 'b') {
-            if (proteines >= 10) {
+            if (proteines && proteines >= 10) {
                 advice = {
                     timing: "Parfait après l'entraînement pour la récupération",
                     performance: 'Bon pour développer les muscles',
                     color: '#85d1ce',
                     icon: '💪',
                 };
-            } else if (glucides >= 15) {
+            } else if (glucides && glucides >= 15) {
                 advice = {
                     timing: "Bien avant l'entraînement pour l'énergie",
                     performance: "Bonne source d'énergie",
@@ -189,7 +215,7 @@ export default function NutritionScannerReal() {
                 icon: '⚖️',
             };
         } else {
-            if (sucres >= 15) {
+            if (sucres && sucres >= 15) {
                 advice = {
                     timing: 'Éviter avant les matchs - risque de pic glycémique',
                     performance: 'Peut nuire aux performances',
@@ -209,7 +235,7 @@ export default function NutritionScannerReal() {
         return advice;
     };
 
-    const formatNutrition = (value) => {
+    const formatNutrition = (value?: number | null) => {
         if (!value) {
             return 'N/A';
         }
@@ -257,7 +283,7 @@ export default function NutritionScannerReal() {
                         style={styles.camera}
                         facing="back"
                         barcodeScannerSettings={{
-                            barCodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128'],
+                            barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128'],
                         }}
                         onBarcodeScanned={handleBarCodeScanned}
                     />

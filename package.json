@@ -15,7 +15,8 @@
         "build:ios": "expo export -p ios",
         "pack:android": "node scripts/build-android.js",
         "copy-apk": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); const path = require('path'); const srcPath = path.join('android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk'); const destPath = `dist/simply-foot-v${pkg.version}.apk`; fs.copyFileSync(srcPath, destPath); console.log(`APK copied to ${destPath}`);\"",
-        "stats": "node scripts/stats.js",
+        "stats": "node scripts/stats.js --top 5",
+        "stats:all": "node scripts/stats.js",
         "test": "jest",
         "test:watch": "jest --watchAll",
         "test:coverage": "jest --coverage",
@@ -88,6 +89,7 @@
         "react-native-walkthrough-tooltip": "^1.6.0",
         "react-native-web": "^0.20.0",
         "react-use": "^17.6.0",
+        "uuid": "^11.1.0",
         "victory": "^37.3.6"
     },
     "devDependencies": {

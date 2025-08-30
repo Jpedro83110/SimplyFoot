@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Alert } from 'react-native';
 
 export default function Abonnement() {
     const [clubName, setClubName] = useState('');
     const [nbEquipes, setNbEquipes] = useState('');
     const [nbStaff, setNbStaff] = useState('');
-    const [codeEquipe, setCodeEquipe] = useState(null);
+    const [codeEquipe, setCodeEquipe] = useState<string | null>(null);
 
     const handleGenerateCode = () => {
         if (!clubName || !nbEquipes || !nbStaff) {

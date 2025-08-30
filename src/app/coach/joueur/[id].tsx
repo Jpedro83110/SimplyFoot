@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -11,99 +11,74 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
+import {
+    deleteCoachSuiviPersonnalise,
+    GetCoachSuivisPersonnalisesByJoueurId,
+    getCoachSuivisPersonnalisesByJoueurId,
+    SuiviPersonnalise,
+    upsertCoachSuiviPersonnalise,
+} from '@/helpers/suivisPersonnalises.helpers';
+import { useSession } from '@/hooks/useSession';
+import { Database } from '@/types/database.types';
+import { formatDateForDisplay } from '@/utils/date.utils';
+
+type JoueurDetailParams = {
+    id: string;
+};
 
 export default function JoueurDetail() {
-    const { id } = useLocalSearchParams();
+    const { id } = useLocalSearchParams<JoueurDetailParams>();
     const router = useRouter();
 
-    // --- INFOS JOUEUR ET UTILISATEUR ---
-    const [joueur, setJoueur] = useState(null);
-    const [utilisateur, setUtilisateur] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
-    // --- SUIVI PERSONNALISÉ ---
-    const [suivi, setSuivi] = useState(null);
-    const [newSuivi, setNewSuivi] = useState({ point_fort: '', axe_travail: '' });
+    const [suivi, setSuivi] = useState<GetCoachSuivisPersonnalisesByJoueurId | null>(null);
+    const [newSuivi, setNewSuivi] = useState<SuiviPersonnalise>({
+        point_fort: '',
+        axe_travail: '',
+    });
     const [saving, setSaving] = useState(false);
 
-    // 🔧 FONCTION DE RECHARGEMENT COMPLÈTE
+    const { utilisateur } = useSession();
+
     const fetchAll = useCallback(async () => {
+        if (!utilisateur?.id || loading) {
+            return;
+        }
+
         setLoading(true);
 
         try {
-            // 1. Charger joueur (table joueurs)
-            const { data: j, error: e1 } = await supabase
-                .from('joueurs')
-                .select('*')
-                .eq('id', id)
-                .single();
+            const fetchedSuiviPersonnalises = await getCoachSuivisPersonnalisesByJoueurId({
+                coachId: utilisateur.id,
+                joueurId: id,
+            });
 
-            if (e1) {
-                console.error('Erreur joueur:', e1);
-            }
-
-            // 2. Charger utilisateur lié
-            let u = null;
-            if (j) {
-                const { data: util } = await supabase
-                    .from('utilisateurs')
-                    .select('*')
-                    .eq('joueur_id', j.id)
-                    .single();
-                u = util;
-            }
-
-            setJoueur(j || null);
-            setUtilisateur(u || null);
-
-            // 3. Charger suivi personnalisé du coach connecté
-            const { data: sessionData } = await supabase.auth.getSession();
-            const coachId = sessionData?.session?.user?.id;
-
-            if (coachId) {
-                // 🎯 CORRECTION : Utiliser toujours l'ID de l'utilisateur pour les suivis
-                const utilisateurId = u?.id;
-
-                if (utilisateurId) {
-                    const { data: suiviData } = await supabase
-                        .from('suivis_personnalises')
-                        .select('*')
-                        .eq('joueur_id', utilisateurId) // ID utilisateur, pas ID joueur
-                        .eq('coach_id', coachId)
-                        .single();
-
-                    setSuivi(suiviData || null);
-
-                    // Pré-remplir les champs avec les données existantes
-                    if (suiviData) {
-                        setNewSuivi({
-                            point_fort: suiviData.point_fort || '',
-                            axe_travail: suiviData.axe_travail || '',
-                        });
-                    }
-                } else {
-                    console.warn('Aucun utilisateur trouvé pour ce joueur');
-                    setSuivi(null);
-                }
-            } else {
-                setSuivi(null);
-            }
+            setSuivi(fetchedSuiviPersonnalises || null);
         } catch (error) {
             console.error('Erreur générale:', error);
             Alert.alert('Erreur', 'Impossible de charger les données');
         }
 
         setLoading(false);
-    }, [id]);
+    }, [id, loading, utilisateur?.id]);
 
     useEffect(() => {
         fetchAll();
     }, [fetchAll, id]);
 
+    useEffect(() => {
+        if (suivi) {
+            setNewSuivi({
+                axe_travail: suivi.axe_travail || '',
+                point_fort: suivi.point_fort || '',
+            });
+        }
+    }, [suivi]);
+
     // --- Ajouter / MAJ suivi personnalisé ---
-    const ajouterOuMajSuivi = async () => {
-        if (!newSuivi.point_fort?.trim() && !newSuivi.axe_travail?.trim()) {
+    const ajouterOuMajSuivi = useCallback(async () => {
+        if (!newSuivi.point_fort && !newSuivi.axe_travail) {
             Alert.alert(
                 'Information',
                 'Veuillez remplir au moins un champ (point fort ou axe de travail)',
@@ -111,74 +86,39 @@ export default function JoueurDetail() {
             return;
         }
 
+        if (!utilisateur?.id || !suivi?.utilisateurs?.id) {
+            return;
+        }
+
         setSaving(true);
 
         try {
-            // Récupérer l'id du coach connecté
-            const { data: sessionData } = await supabase.auth.getSession();
-            const coachId = sessionData?.session?.user?.id;
-
-            if (!coachId) {
-                Alert.alert('Erreur', 'Utilisateur non identifié.');
-                setSaving(false);
-                return;
-            }
-
-            // 🎯 SOLUTION SIMPLE : Utiliser l'ID utilisateur directement
-            const utilisateurId = utilisateur?.id;
-
-            if (!utilisateurId) {
-                Alert.alert(
-                    'Erreur',
-                    'Aucun utilisateur associé à ce joueur. Impossible de sauvegarder le suivi.',
-                );
-                setSaving(false);
-                return;
-            }
-
-            console.log('💾 Sauvegarde suivi:', {
-                joueur_id: utilisateurId, // ID utilisateur
-                coach_id: coachId,
+            const dataToUpdate: Database['public']['Tables']['suivis_personnalises']['Update'] = {
+                joueur_id: suivi.utilisateurs.id,
+                coach_id: utilisateur.id,
                 point_fort: newSuivi.point_fort,
                 axe_travail: newSuivi.axe_travail,
+                updated_at: new Date().toISOString(),
+            };
+
+            await upsertCoachSuiviPersonnalise({
+                suiviPersonnaliseId: suivi.id,
+                dataToUpdate,
             });
 
-            // Sauvegarder avec l'ID utilisateur
-            const { data, error } = await supabase
-                .from('suivis_personnalises')
-                .upsert(
-                    {
-                        joueur_id: utilisateurId, // Toujours l'ID utilisateur
-                        coach_id: coachId,
-                        point_fort: newSuivi.point_fort.trim(),
-                        axe_travail: newSuivi.axe_travail.trim(),
-                        updated_at: new Date().toISOString(),
-                    },
-                    {
-                        onConflict: 'joueur_id,coach_id',
-                        ignoreDuplicates: false,
-                    },
-                )
-                .select();
-
             setSaving(false);
-
-            if (error) {
-                console.error('Erreur sauvegarde:', error);
-                Alert.alert('Erreur', `Impossible de sauvegarder: ${error.message}`);
-            } else {
-                console.log('✅ Suivi sauvegardé:', data);
-                Alert.alert('✅ Succès', 'Suivi personnalisé mis à jour !');
-
-                // Recharger toutes les données
-                await fetchAll();
-            }
         } catch (error) {
             console.error('Erreur générale sauvegarde:', error);
             Alert.alert('Erreur', 'Une erreur inattendue est survenue');
             setSaving(false);
         }
-    };
+    }, [
+        newSuivi.axe_travail,
+        newSuivi.point_fort,
+        suivi?.id,
+        suivi?.utilisateurs?.id,
+        utilisateur?.id,
+    ]);
 
     // 🔧 CORRECTION : Fonction de suppression du suivi
     const supprimerSuivi = async () => {
@@ -191,23 +131,16 @@ export default function JoueurDetail() {
                     text: 'Supprimer',
                     style: 'destructive',
                     onPress: async () => {
-                        const { data: sessionData } = await supabase.auth.getSession();
-                        const coachId = sessionData?.session?.user?.id;
+                        try {
+                            await deleteCoachSuiviPersonnalise({
+                                suiviPersonnaliseId: suivi?.id || '',
+                            });
 
-                        if (coachId && utilisateur?.id) {
-                            const { error } = await supabase
-                                .from('suivis_personnalises')
-                                .delete()
-                                .eq('joueur_id', utilisateur.id) // Toujours l'ID utilisateur
-                                .eq('coach_id', coachId);
-
-                            if (error) {
-                                Alert.alert('Erreur', error.message);
-                            } else {
-                                setNewSuivi({ point_fort: '', axe_travail: '' });
-                                setSuivi(null);
-                                Alert.alert('✅ Supprimé', 'Suivi personnalisé supprimé');
-                            }
+                            setNewSuivi({ point_fort: '', axe_travail: '' });
+                            setSuivi(null);
+                            Alert.alert('✅ Supprimé', 'Suivi personnalisé supprimé');
+                        } catch (error) {
+                            Alert.alert('Erreur', (error as Error).message);
                         }
                     },
                 },
@@ -215,7 +148,7 @@ export default function JoueurDetail() {
         );
     };
 
-    if (loading || !joueur) {
+    if (loading || !suivi?.utilisateurs?.joueurs) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />
@@ -228,15 +161,16 @@ export default function JoueurDetail() {
         <ScrollView contentContainerStyle={styles.container}>
             <Image source={require('../../../assets/logo-v2.png')} style={styles.avatar} />
             <Text style={styles.title}>
-                {(utilisateur?.prenom || joueur.prenom) + ' ' + (utilisateur?.nom || joueur.nom)}
+                {suivi.utilisateurs.prenom + ' ' + suivi.utilisateurs.nom}
             </Text>
-            <Text style={styles.subtitle}>Poste : {joueur.poste}</Text>
+            <Text style={styles.subtitle}>Poste : {suivi.utilisateurs.joueurs.poste}</Text>
 
             <View style={styles.statsBlock}>
                 <Text style={styles.statsTitle}>📊 Statistiques</Text>
-                <Text style={styles.statLine}>Matchs joués : {joueur.matchs || 0}</Text>
-                <Text style={styles.statLine}>Buts : {joueur.buts || 0}</Text>
-                <Text style={styles.statLine}>Passes décisives : {joueur.passes || 0}</Text>
+                {/* FIXME: Match, buts et passes décisives n'existe pas encore en bdd */}
+                <Text style={styles.statLine}>Matchs joués : {0}</Text>
+                <Text style={styles.statLine}>Buts : {0}</Text>
+                <Text style={styles.statLine}>Passes décisives : {0}</Text>
             </View>
 
             <View style={styles.followUpBlock}>
@@ -287,9 +221,11 @@ export default function JoueurDetail() {
                     <View style={styles.suiviCard}>
                         <Text style={styles.suiviText}>
                             📅 Dernière mise à jour :{' '}
-                            {suivi.updated_at?.split('T')[0] ||
-                                suivi.created_at?.split('T')[0] ||
-                                'Date inconnue'}
+                            {suivi.updated_at
+                                ? formatDateForDisplay({ date: suivi.updated_at })
+                                : suivi.created_at
+                                  ? formatDateForDisplay({ date: suivi.created_at })
+                                  : 'Date inconnue'}
                         </Text>
                         {suivi.point_fort ? (
                             <Text style={[styles.suiviContenu, { color: '#00ff88' }]}>

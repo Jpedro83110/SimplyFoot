@@ -13,9 +13,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { setSession, updateUser } from '@/lib/supabase';
 import { useSession } from '@/hooks/useSession';
 
+type ResetPasswordParams = {
+    access_token?: string;
+};
+
 export default function ResetPassword() {
     const router = useRouter();
-    const { access_token } = useLocalSearchParams();
+    const { access_token } = useLocalSearchParams<ResetPasswordParams>();
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [password, setPassword] = useState('');
@@ -30,7 +34,7 @@ export default function ResetPassword() {
             router.replace('/auth/login-joueur');
         } else {
             setSession({
-                accessToken: access_token as string,
+                accessToken: access_token,
                 refreshToken: '',
             });
         }

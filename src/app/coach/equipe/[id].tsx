@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -14,105 +14,95 @@ import {
     Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
-import useCacheData from '../../../lib/cache';
+import { getEquipeWithJoueurById, GetEquipeWithJoueurById } from '@/helpers/equipes.helpers';
+import useEffectOnce from 'react-use/lib/useEffectOnce';
+
+type EquipeDetailParams = {
+    id: string;
+};
 
 export default function EquipeDetail() {
-    const { id } = useLocalSearchParams();
+    const { id } = useLocalSearchParams<EquipeDetailParams>();
     const router = useRouter();
-    const [equipeNom, setEquipeNom] = useState('');
-    const [codeEquipe, setCodeEquipe] = useState('');
-    const [joueurs, setJoueurs] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [equipeWithJoueurs, setEquipeWithJoueurs] = useState<GetEquipeWithJoueurById | null>(
+        null,
+    );
 
     // Responsive params
     const screenWidth = Dimensions.get('window').width;
     const isMobile = screenWidth < 700 || Platform.OS !== 'web';
 
-    // Utilise le cache, TTL 10 min
-    const fetchEquipe = async () => {
-        const { data: equipe, error: err1 } = await supabase
-            .from('equipes')
-            .select('nom, code_equipe')
-            .eq('id', id)
-            .single();
-
-        const { data: joueursEquipe, error: err2 } = await supabase
-            .from('joueurs')
-            .select('*')
-            .eq('equipe_id', id);
-
-        if (err1 || err2) {
-            return { equipeNom: 'Erreur de chargement', codeEquipe: '', joueurs: [] };
-        } else {
-            return {
-                equipeNom: equipe?.nom || 'Équipe',
-                codeEquipe: equipe?.code_equipe || '',
-                joueurs: joueursEquipe || [],
-            };
+    const fetchEquipeWithJoueurs = useCallback(async () => {
+        if (loading) {
+            return;
         }
-    };
 
-    const [cacheData, refresh, loading] = useCacheData(
-        `coach_equipe_${id}`,
-        fetchEquipe,
-        600, // 10 min
-    );
+        setLoading(true);
 
-    useEffect(() => {
-        if (cacheData) {
-            setEquipeNom(cacheData.equipeNom);
-            setCodeEquipe(cacheData.codeEquipe);
-            setJoueurs(cacheData.joueurs);
-        }
-    }, [cacheData]);
+        const fetchedEquipeWithJoueur = await getEquipeWithJoueurById({ equipeId: id });
+        setEquipeWithJoueurs(fetchedEquipeWithJoueur);
+
+        setLoading(false);
+    }, [id, loading]);
+
+    useEffectOnce(() => {
+        fetchEquipeWithJoueurs();
+    });
 
     // Copier code équipe
     const copierCodeEquipe = async () => {
-        if (codeEquipe) {
-            await Clipboard.setStringAsync(codeEquipe);
-            Alert.alert('Copié !', 'Le code équipe a été copié.');
-        }
+        await Clipboard.setStringAsync(equipeWithJoueurs?.code_equipe || '');
+        Alert.alert('Copié !', 'Le code équipe a été copié.'); // FIXME: nécessaire ? Pas mieux avec un toast ?
     };
 
     if (loading) {
         return <ActivityIndicator style={{ marginTop: 50 }} color="#00ff88" />;
     }
 
+    if (!equipeWithJoueurs) {
+        return (
+            <View style={styles.container}>
+                <Text style={styles.title}>Équipe introuvable.</Text>
+            </View>
+        );
+    }
+
     return (
         <ScrollView style={styles.container}>
-            <TouchableOpacity onPress={refresh} style={{ marginBottom: 18, alignSelf: 'flex-end' }}>
+            <TouchableOpacity
+                onPress={fetchEquipeWithJoueurs}
+                style={{ marginBottom: 18, alignSelf: 'flex-end' }}
+            >
                 <Text style={{ color: '#00ff88', fontSize: 14 }}>🔄 Rafraîchir</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>⚽ {equipeNom}</Text>
+            <Text style={styles.title}>⚽ {equipeWithJoueurs.nom}</Text>
 
-            {/* Code équipe affiché avec bouton copier */}
-            {codeEquipe ? (
-                <View style={styles.codeBlock}>
-                    <Ionicons name="key-outline" size={20} color="#00ff88" />
-                    <Text selectable style={styles.codeEquipe}>
-                        {codeEquipe}
-                    </Text>
-                    <TouchableOpacity
-                        style={styles.copyButton}
-                        onPress={copierCodeEquipe}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons name="copy-outline" size={18} color="#00ff88" />
-                        <Text style={styles.copyButtonText}>Copier</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : null}
+            <View style={styles.codeBlock}>
+                <Ionicons name="key-outline" size={20} color="#00ff88" />
+                <Text selectable style={styles.codeEquipe}>
+                    {equipeWithJoueurs.code_equipe}
+                </Text>
+                <TouchableOpacity
+                    style={styles.copyButton}
+                    onPress={copierCodeEquipe}
+                    activeOpacity={0.7}
+                >
+                    <Ionicons name="copy-outline" size={18} color="#00ff88" />
+                    <Text style={styles.copyButtonText}>Copier</Text>
+                </TouchableOpacity>
+            </View>
 
             <View style={styles.block}>
                 <Text style={styles.label}>Nom de l&apos;équipe :</Text>
-                <Text style={styles.value}>{equipeNom}</Text>
+                <Text style={styles.value}>{equipeWithJoueurs.nom}</Text>
             </View>
 
             <Text style={styles.sectionTitle}>👥 Liste des joueurs</Text>
             <FlatList
-                data={joueurs}
+                data={equipeWithJoueurs.joueurs}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={{ paddingBottom: 32 }}
                 renderItem={({ item }) => (
@@ -129,7 +119,7 @@ export default function EquipeDetail() {
                                         ? item.photo_profil_url
                                         : 'https://ui-avatars.com/api/?name=' +
                                           encodeURIComponent(
-                                              `${item.prenom || ''} ${item.nom || ''}`,
+                                              `${item.utilisateurs[0].prenom || ''} ${item.utilisateurs[0].nom || ''}`,
                                           ) +
                                           '&background=222&color=fff&rounded=true',
                             }}
@@ -137,10 +127,10 @@ export default function EquipeDetail() {
                         />
                         <View style={styles.playerInfoContainer}>
                             <Text style={styles.playerName}>
-                                {item.prenom} {item.nom}
+                                {item.utilisateurs[0].prenom} {item.utilisateurs[0].nom}
                             </Text>
                             <Text style={styles.playerInfo}>
-                                Date naissance : {item.date_naissance || '—'}
+                                Date naissance : {item.utilisateurs[0].date_naissance || '—'}
                             </Text>
                             <Text style={styles.playerInfo}>Poste : {item.poste || '—'}</Text>
                             <Text style={styles.playerInfo}>

@@ -58,21 +58,22 @@ export default function CreateEvent() {
 
     const router = useRouter();
 
+    const fetchEquipes = useCallback(async () => {
+        if (!utilisateur?.club_id) {
+            return;
+        }
+
+        const fetchedEquipes = await getCoachEquipes({
+            coachId: utilisateur.id,
+            clubId: utilisateur.club_id,
+        });
+        setEquipes(fetchedEquipes);
+    }, [utilisateur?.club_id, utilisateur?.id]);
+
     // --- Equipes du coach ---
     useEffect(() => {
-        const fetchEquipes = async () => {
-            if (!utilisateur?.club_id) {
-                return;
-            }
-
-            const fetchedEquipes = await getCoachEquipes({
-                coachId: utilisateur.id,
-                clubId: utilisateur.club_id,
-            });
-            setEquipes(fetchedEquipes);
-        };
         fetchEquipes();
-    }, [utilisateur?.club_id, utilisateur?.id]);
+    }, [fetchEquipes]);
 
     // --- Suggestions de lieux ---
     let timerLieu = useRef<NodeJS.Timeout | undefined>(undefined);

@@ -1,4 +1,3 @@
-// app/joueur/motivation.js
 import React, { useState, useEffect } from 'react';
 import { Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ScrollView } from 'react-native';
 import Slider from '@react-native-community/slider';

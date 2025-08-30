@@ -10,91 +10,85 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '../../../lib/supabase';
-import { getCoachMessagesPrives } from '@/helpers/messagesPrives.helpers';
-import { useCachedApi } from '@/hooks/useCachedApi';
-import { Database } from '@/types/database.types';
+import {
+    GetCoachMessagesPrivesWithJoueur,
+    getCoachMessagesPrivesWithJoueur,
+    insertMessagePrive,
+} from '@/helpers/messagesPrives.helpers';
+import { useSession } from '@/hooks/useSession';
+import { getCoachEquipesWithJoueurs, GetCoachEquipesWithJoueurs } from '@/helpers/equipes.helpers';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function MessagesPrivesCoach() {
-    const [coachId, setCoachId] = useState<string>();
-    const [equipes, setEquipes] = useState<Database['public']['Tables']['equipes']['Row'][]>([]);
-    const [joueurs, setJoueurs] = useState<
-        // FIXME
-        {
-            prenom: any;
-            nom: any;
-            utilisateurs: {
-                id: any;
-            }[];
-        }[]
-    >([]);
-    const [selectedEquipe, setSelectedEquipe] = useState<string>();
+    const [equipesWithJoueurs, setEquipesWithJoueurs] = useState<GetCoachEquipesWithJoueurs>([]);
+    const [messagesPrives, setMessagesPrives] = useState<GetCoachMessagesPrivesWithJoueur>([]);
+    const [selectedEquipe, setSelectedEquipe] = useState<GetCoachEquipesWithJoueurs[number]>();
     const [selectedJoueurId, setSelectedJoueurId] = useState<string>();
     const [message, setMessage] = useState('');
 
-    useEffect(() => {
-        (async () => {
-            const session = await supabase.auth.getSession();
-            const userId = session.data.session?.user.id;
-            setCoachId(userId);
+    const { utilisateur } = useSession();
 
-            if (!userId) {
-                return; // FIXME: gestion erreur
-            }
-
-            const { data: equipes } = await supabase
-                .from('equipes')
-                .select('*')
-                .eq('coach_id', userId);
-            setEquipes(equipes || []);
-        })();
-    }, []);
-
-    useEffect(() => {
-        if (selectedEquipe) {
-            supabase
-                .from('joueurs')
-                .select('prenom, nom, utilisateurs(id)')
-                .eq('equipe_id', selectedEquipe)
-                .then(({ data }) => setJoueurs(data || []));
-        }
-    }, [selectedEquipe]);
-
-    const [coachMessages, , fetchCoachMessages, refreshCoachMessages] = useCachedApi(
-        `messages_prives_${coachId}_${selectedJoueurId}`,
-        useCallback(async () => {
-            if (!coachId || !selectedJoueurId) {
-                return [];
-            }
-            const data = await getCoachMessagesPrives({ coachId });
-            const messages = (data || []).filter(
-                (message) =>
-                    (message.emetteur_id === coachId &&
-                        message.recepteur_id === selectedJoueurId) ||
-                    (message.recepteur_id === coachId && message.emetteur_id === selectedJoueurId),
-            );
-            return messages || [];
-        }, [coachId, selectedJoueurId]),
-    );
-
-    useEffect(() => {
-        fetchCoachMessages();
-    }, [fetchCoachMessages, selectedJoueurId]);
-
-    const handleEnvoyer = async () => {
-        if (!message.trim() || !selectedJoueurId) {
+    const fetchEquipesWithJoueurs = useCallback(async () => {
+        if (!utilisateur?.club_id) {
             return;
         }
 
-        await supabase.from('messages_prives').insert({
-            emetteur_id: coachId,
-            recepteur_id: selectedJoueurId,
-            auteur: 'coach',
-            texte: message,
+        const fetchedEquipesWithJoueurs = await getCoachEquipesWithJoueurs({
+            coachId: utilisateur.id,
+            clubId: utilisateur.club_id,
+        });
+
+        setEquipesWithJoueurs(fetchedEquipesWithJoueurs);
+    }, [utilisateur?.club_id, utilisateur?.id]);
+
+    useEffect(() => {
+        fetchEquipesWithJoueurs();
+    }, [fetchEquipesWithJoueurs]);
+
+    const fetchMessagesPrives = useCallback(async () => {
+        if (!utilisateur?.id || !selectedJoueurId) {
+            return;
+        }
+
+        const fetchedMessagesPrives = await getCoachMessagesPrivesWithJoueur({
+            coachId: utilisateur.id,
+            joueurId: selectedJoueurId,
+        });
+        setMessagesPrives(fetchedMessagesPrives);
+    }, [utilisateur?.id, selectedJoueurId]);
+
+    useEffect(() => {
+        fetchMessagesPrives();
+    }, [fetchMessagesPrives]);
+
+    const handleEnvoyer = async () => {
+        if (!utilisateur?.id || !selectedJoueurId) {
+            return;
+        }
+
+        await insertMessagePrive({
+            dataToInsert: {
+                emetteur_id: utilisateur.id,
+                recepteur_id: selectedJoueurId,
+                auteur: 'coach',
+                texte: message,
+            },
         });
 
         setMessage('');
-        refreshCoachMessages();
+        setMessagesPrives((prev) => [
+            ...prev,
+            {
+                // generate random uuid, we don't need the real id here
+                // we wan't to avoid send request to refresh conversation
+                id: uuidv4(),
+                emetteur_id: utilisateur.id,
+                recepteur_id: selectedJoueurId,
+                auteur: 'coach',
+                texte: message,
+                created_at: new Date().toISOString(),
+            },
+        ]);
     };
 
     return (
@@ -109,46 +103,55 @@ export default function MessagesPrivesCoach() {
 
                     <Text style={styles.label}>Sélectionne une équipe :</Text>
                     <View style={styles.selectWrap}>
-                        {equipes.map((eq) => (
+                        {equipesWithJoueurs.map((equipe) => (
                             <Pressable
-                                key={eq.id}
+                                key={equipe.id}
                                 onPress={() => {
-                                    setSelectedEquipe(eq.id);
+                                    setSelectedEquipe(equipe);
                                     setSelectedJoueurId(undefined);
                                 }}
                                 style={[
                                     styles.equipeButton,
-                                    selectedEquipe === eq.id && styles.equipeButtonSelected,
+                                    selectedEquipe?.id === equipe.id && styles.equipeButtonSelected,
                                 ]}
                             >
-                                <Text style={styles.equipeText}>{eq.nom}</Text>
+                                <Text style={styles.equipeText}>{equipe.nom}</Text>
                             </Pressable>
                         ))}
                     </View>
 
-                    <Text style={styles.label}>Sélectionne un joueur :</Text>
-                    <View style={styles.selectWrap}>
-                        {joueurs.map((joueur) => (
-                            <Pressable
-                                key={joueur.utilisateurs[0].id}
-                                onPress={() => {
-                                    setSelectedJoueurId(joueur.utilisateurs[0].id);
-                                }}
-                                style={[
-                                    styles.equipeButton,
-                                    selectedJoueurId === joueur.utilisateurs[0].id &&
-                                        styles.equipeButtonSelected,
-                                ]}
-                            >
-                                <Text style={styles.equipeText}>
-                                    {joueur.prenom} {joueur.nom}
-                                </Text>
-                            </Pressable>
-                        ))}
-                    </View>
+                    {selectedEquipe && selectedEquipe.joueurs.length === 0 ? (
+                        <>
+                            <Text style={styles.label}>Sélectionne un joueur :</Text>
+                            <View style={styles.selectWrap}>
+                                {selectedEquipe.joueurs.map((joueur) => (
+                                    <Pressable
+                                        key={joueur.utilisateurs[0].id}
+                                        onPress={() => {
+                                            setSelectedJoueurId(joueur.utilisateurs[0].id);
+                                        }}
+                                        style={[
+                                            styles.equipeButton,
+                                            selectedJoueurId === joueur.utilisateurs[0].id &&
+                                                styles.equipeButtonSelected,
+                                        ]}
+                                    >
+                                        <Text style={styles.equipeText}>
+                                            {joueur.utilisateurs[0].prenom}{' '}
+                                            {joueur.utilisateurs[0].nom}
+                                        </Text>
+                                    </Pressable>
+                                ))}
+                            </View>
+                        </>
+                    ) : (
+                        <Text style={styles.label}>
+                            Il n&apos;y a pas de joueurs dans cette équipe.
+                        </Text>
+                    )}
 
                     <View style={styles.filContainer}>
-                        {(coachMessages || []).map((message) => (
+                        {messagesPrives.map((message) => (
                             <View
                                 key={message.id}
                                 style={[
