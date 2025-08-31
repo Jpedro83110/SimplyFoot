@@ -12,7 +12,7 @@ import Toast from 'react-native-toast-message';
 import * as JoueursHelper from '@/helpers/joueurs.helpers';
 import * as UtilisateursHelper from '@/helpers/utilisateurs.helpers';
 import * as StaffHelper from '@/helpers/staff.helpers';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import * as ClubAdminsHelper from '@/helpers/clubsAdmins.helpers';
 import { Database } from '@/types/database.types';
 
@@ -62,6 +62,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const [joueur, setJoueur] = useState<JoueursHelper.GetJoueurById>();
     const [staff, setStaff] = useState<StaffHelper.GetStaffByUtilisateurId>();
     const [clubAdmin, setClubAdmin] = useState<ClubAdminsHelper.GetClubAdminByUserId>();
+    const pathname = usePathname();
 
     const isLoggedIn = useMemo(
         () => !isLoading && !!session && !!utilisateur,
@@ -87,16 +88,28 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (isLoggedIn && utilisateur) {
             // utilisateur can't be null here
             switch (utilisateur.role) {
+                // if (pathname.startsWith('/admin')) {
+                //     return;
+                // }
                 // case 'admin':
                 //     router.replace('/admin/dashboard');
                 //     break;
                 case 'president':
+                    if (pathname.startsWith('/president')) {
+                        return;
+                    }
                     router.replace('/president/dashboard');
                     break;
                 case 'coach':
+                    if (pathname.startsWith('/coach')) {
+                        return;
+                    }
                     router.replace('/coach/dashboard');
                     break;
                 case 'joueur':
+                    if (pathname.startsWith('/joueur')) {
+                        return;
+                    }
                     router.replace('/joueur/dashboard');
                     break;
                 default:
@@ -109,7 +122,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         } else if (isLoggedOut) {
             router.replace('/');
         }
-    }, [isLoggedIn, isLoggedOut, utilisateur]);
+    }, [isLoggedIn, isLoggedOut, pathname, utilisateur]);
 
     const signOut = useCallback(async () => {
         try {

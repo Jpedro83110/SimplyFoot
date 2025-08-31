@@ -18,7 +18,7 @@ export const getCoachEvenementsByEquipes = async ({
         .eq('coach_id', coachId); // id from utilisateurs table
 
     if (since) {
-        request = request.gte('date', since);
+        request = request.gte('date', since.toISOString().split('T')[0]);
     }
 
     const { data, error } = await request.order('date', { ascending: true });
@@ -66,7 +66,7 @@ export const getCoachEvenementsHasComposition = async ({
         .eq('coach_id', coachId); // id from utilisateurs table
 
     if (since) {
-        request = request.gte('date', since);
+        request = request.gte('date', since.toISOString().split('T')[0]);
     }
 
     const { data, error } = await request.order('date', { ascending: true });
@@ -100,7 +100,7 @@ export const getEvenementsByClubId = async ({
         .eq('club_id', clubId);
 
     if (since) {
-        request = request.gte('date', since);
+        request = request.gte('date', since.toISOString().split('T')[0]);
     }
 
     const { data, error } = await request.order('date', { ascending: true });
@@ -176,7 +176,7 @@ export const getEquipeEvenementBesoinsTransport = async ({
         .eq('equipe_id', equipeId);
 
     if (since) {
-        request = request.gte('date', since);
+        request = request.gte('date', since.toISOString().split('T')[0]);
     }
 
     const { data, error } = await request.order('date', { ascending: true });

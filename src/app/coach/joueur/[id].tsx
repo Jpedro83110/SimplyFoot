@@ -42,7 +42,7 @@ export default function JoueurDetail() {
     const { utilisateur } = useSession();
 
     const fetchAll = useCallback(async () => {
-        if (!utilisateur?.id || loading) {
+        if (!utilisateur?.id || loading || suivi) {
             return;
         }
 
@@ -54,14 +54,14 @@ export default function JoueurDetail() {
                 joueurId: id,
             });
 
-            setSuivi(fetchedSuiviPersonnalises || null);
+            setSuivi(fetchedSuiviPersonnalises);
         } catch (error) {
             console.error('Erreur générale:', error);
             Alert.alert('Erreur', 'Impossible de charger les données');
         }
 
         setLoading(false);
-    }, [id, loading, utilisateur?.id]);
+    }, [id, loading, suivi, utilisateur?.id]);
 
     useEffect(() => {
         fetchAll();
@@ -70,8 +70,8 @@ export default function JoueurDetail() {
     useEffect(() => {
         if (suivi) {
             setNewSuivi({
-                axe_travail: suivi.axe_travail || '',
-                point_fort: suivi.point_fort || '',
+                axe_travail: suivi.suivis_personnalises[0]?.axe_travail || '',
+                point_fort: suivi.suivis_personnalises[0]?.point_fort || '',
             });
         }
     }, [suivi]);
@@ -86,7 +86,7 @@ export default function JoueurDetail() {
             return;
         }
 
-        if (!utilisateur?.id || !suivi?.utilisateurs?.id) {
+        if (!utilisateur?.id || !suivi?.id) {
             return;
         }
 
@@ -94,7 +94,7 @@ export default function JoueurDetail() {
 
         try {
             const dataToUpdate: Database['public']['Tables']['suivis_personnalises']['Update'] = {
-                joueur_id: suivi.utilisateurs.id,
+                joueur_id: suivi.id,
                 coach_id: utilisateur.id,
                 point_fort: newSuivi.point_fort,
                 axe_travail: newSuivi.axe_travail,
@@ -112,13 +112,7 @@ export default function JoueurDetail() {
             Alert.alert('Erreur', 'Une erreur inattendue est survenue');
             setSaving(false);
         }
-    }, [
-        newSuivi.axe_travail,
-        newSuivi.point_fort,
-        suivi?.id,
-        suivi?.utilisateurs?.id,
-        utilisateur?.id,
-    ]);
+    }, [newSuivi.axe_travail, newSuivi.point_fort, suivi?.id, utilisateur?.id]);
 
     // 🔧 CORRECTION : Fonction de suppression du suivi
     const supprimerSuivi = async () => {
@@ -148,7 +142,7 @@ export default function JoueurDetail() {
         );
     };
 
-    if (loading || !suivi?.utilisateurs?.joueurs) {
+    if (loading) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />
@@ -157,13 +151,19 @@ export default function JoueurDetail() {
         );
     }
 
+    if (!suivi?.joueurs) {
+        return (
+            <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Joueur inconnu</Text>
+            </View>
+        );
+    }
+
     return (
         <ScrollView contentContainerStyle={styles.container}>
             <Image source={require('../../../assets/logo-v2.png')} style={styles.avatar} />
-            <Text style={styles.title}>
-                {suivi.utilisateurs.prenom + ' ' + suivi.utilisateurs.nom}
-            </Text>
-            <Text style={styles.subtitle}>Poste : {suivi.utilisateurs.joueurs.poste}</Text>
+            <Text style={styles.title}>{suivi.prenom + ' ' + suivi.nom}</Text>
+            <Text style={styles.subtitle}>Poste : {suivi.joueurs.poste}</Text>
 
             <View style={styles.statsBlock}>
                 <Text style={styles.statsTitle}>📊 Statistiques</Text>
@@ -221,20 +221,24 @@ export default function JoueurDetail() {
                     <View style={styles.suiviCard}>
                         <Text style={styles.suiviText}>
                             📅 Dernière mise à jour :{' '}
-                            {suivi.updated_at
-                                ? formatDateForDisplay({ date: suivi.updated_at })
-                                : suivi.created_at
-                                  ? formatDateForDisplay({ date: suivi.created_at })
+                            {suivi.suivis_personnalises[0]?.updated_at
+                                ? formatDateForDisplay({
+                                      date: suivi.suivis_personnalises[0]?.updated_at,
+                                  })
+                                : suivi.suivis_personnalises[0]?.created_at
+                                  ? formatDateForDisplay({
+                                        date: suivi.suivis_personnalises[0]?.created_at,
+                                    })
                                   : 'Date inconnue'}
                         </Text>
-                        {suivi.point_fort ? (
+                        {suivi.suivis_personnalises[0]?.point_fort ? (
                             <Text style={[styles.suiviContenu, { color: '#00ff88' }]}>
-                                🟢 Point fort : {suivi.point_fort}
+                                🟢 Point fort : {suivi.suivis_personnalises[0]?.point_fort}
                             </Text>
                         ) : null}
-                        {suivi.axe_travail ? (
+                        {suivi.suivis_personnalises[0]?.axe_travail ? (
                             <Text style={[styles.suiviContenu, { color: '#ff5555' }]}>
-                                🔴 À travailler : {suivi.axe_travail}
+                                🔴 À travailler : {suivi.suivis_personnalises[0]?.axe_travail}
                             </Text>
                         ) : null}
                     </View>

@@ -44,7 +44,7 @@ const actionsData = [
 ];
 
 export default function CoachDashboard() {
-    const [loading, setLoading] = useState<boolean>(true);
+    const [loading, setLoading] = useState<boolean>(false);
     const [coachClubData, setCoachClubData] = useState<GetCoachClubData | null>(null);
     const [refreshKey, setRefreshKey] = useState<number>(Date.now());
     const [uploadingPhoto, setUploadingPhoto] = useState<boolean>(false);
@@ -69,7 +69,7 @@ export default function CoachDashboard() {
     }); // FIXME: revoir le typage, il combine des champs staff et utilisateur en réalité
 
     const fetchCoachClubData = useCallback(async () => {
-        if (!utilisateur?.club_id || loading) {
+        if (!utilisateur?.club_id || loading || coachClubData) {
             return;
         }
 
@@ -79,7 +79,7 @@ export default function CoachDashboard() {
         setCoachClubData(fetchedCoachClubData);
 
         setLoading(false);
-    }, [utilisateur?.club_id, loading]);
+    }, [utilisateur?.club_id, loading, coachClubData]);
 
     useEffect(() => {
         fetchCoachClubData();

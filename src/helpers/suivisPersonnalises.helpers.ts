@@ -19,12 +19,12 @@ export const getCoachSuivisPersonnalisesByJoueurId = async ({
     joueurId: string;
 }) => {
     const { data, error } = await supabase
-        .from('suivis_personnalises')
+        .from('utilisateurs')
         .select(
-            'id, point_fort, axe_travail, created_at, updated_at, utilisateurs!joueur_id(id, prenom, nom, joueurs:joueur_id(poste))',
+            'id, prenom, nom, joueurs:joueur_id(poste), suivis_personnalises!joueur_id(id, point_fort, axe_travail, created_at, updated_at)',
         )
-        .eq('coach_id', coachId)
-        .eq('utilisateurs.joueur_id', joueurId)
+        .eq('suivis_personnalises.coach_id', coachId)
+        .eq('joueur_id', joueurId)
         .single();
 
     if (error) {

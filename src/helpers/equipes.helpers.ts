@@ -129,7 +129,7 @@ export const getEquipeWithJoueurById = async ({ equipeId }: { equipeId: string }
     const { data, error } = await supabase
         .from('equipes')
         .select(
-            'nom, code_equipe, joueurs(id, poste, numero_licence, visite_medicale_valide, equipement, photo_profil_url, utilisateurs:joueur_id(prenom, nom, date_naissance))',
+            'nom, code_equipe, joueurs!equipe_id(id, poste, numero_licence, visite_medicale_valide, equipement, photo_profil_url, utilisateurs!joueur_id(prenom, nom, date_naissance))',
         )
         .eq('id', equipeId)
         .single();
