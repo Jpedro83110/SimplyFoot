@@ -152,3 +152,11 @@ export const insertEquipe = async ({
         throw error;
     }
 };
+
+export const deleteEquipe = async ({ equipeId }: { equipeId: string }) => {
+    const { error } = await supabase.from('equipes').delete().eq('id', equipeId);
+
+    if (error) {
+        throw error;
+    }
+};
