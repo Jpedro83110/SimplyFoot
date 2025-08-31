@@ -35,6 +35,7 @@ jest.mock('@/lib/supabase', () => ({
 }));
 
 jest.mock('expo-router', () => ({
+    usePathname: () => '/test-path',
     router: {
         replace: jest.fn(),
     },
