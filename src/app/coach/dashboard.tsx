@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -68,22 +68,22 @@ export default function CoachDashboard() {
         experience: '',
     }); // FIXME: revoir le typage, il combine des champs staff et utilisateur en réalité
 
-    const fetchCoachClubData = useCallback(async () => {
+    const fetchCoachClubData = async (clubId: string) => {
+        setLoading(true);
+
+        const fetchedCoachClubData = await getCoachClubData({ clubId });
+        setCoachClubData(fetchedCoachClubData);
+
+        setLoading(false);
+    };
+
+    useEffect(() => {
         if (!utilisateur?.club_id || loading || coachClubData) {
             return;
         }
 
-        setLoading(true);
-
-        const fetchedCoachClubData = await getCoachClubData({ clubId: utilisateur.club_id });
-        setCoachClubData(fetchedCoachClubData);
-
-        setLoading(false);
-    }, [utilisateur?.club_id, loading, coachClubData]);
-
-    useEffect(() => {
-        fetchCoachClubData();
-    }, [fetchCoachClubData]);
+        fetchCoachClubData(utilisateur.club_id);
+    }, [coachClubData, loading, utilisateur?.club_id]);
 
     const presences = useMemo(
         () =>

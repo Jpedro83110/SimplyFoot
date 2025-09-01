@@ -12,9 +12,10 @@ import Toast from 'react-native-toast-message';
 import * as JoueursHelper from '@/helpers/joueurs.helpers';
 import * as UtilisateursHelper from '@/helpers/utilisateurs.helpers';
 import * as StaffHelper from '@/helpers/staff.helpers';
-import { router, usePathname } from 'expo-router';
+import { usePathname } from 'expo-router';
 import * as ClubAdminsHelper from '@/helpers/clubsAdmins.helpers';
 import { Database } from '@/types/database.types';
+import { redirectIfUnauthorized } from '@/utils/router.utils';
 
 interface AuthContextProps {
     signIn: ({ email, password }: { email: string; password: string }) => Promise<void>;
@@ -85,44 +86,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }, [session, utilisateur, isLoading]);
 
     useEffect(() => {
-        if (isLoggedIn && utilisateur) {
-            // utilisateur can't be null here
-            switch (utilisateur.role) {
-                // if (pathname.startsWith('/admin')) {
-                //     return;
-                // }
-                // case 'admin':
-                //     router.replace('/admin/dashboard');
-                //     break;
-                case 'president':
-                    if (pathname.startsWith('/president')) {
-                        return;
-                    }
-                    router.replace('/president/dashboard');
-                    break;
-                case 'coach':
-                    if (pathname.startsWith('/coach')) {
-                        return;
-                    }
-                    router.replace('/coach/dashboard');
-                    break;
-                case 'joueur':
-                    if (pathname.startsWith('/joueur')) {
-                        return;
-                    }
-                    router.replace('/joueur/dashboard');
-                    break;
-                default:
-                    Toast.show({
-                        type: 'error',
-                        text1: 'Rôle inconnu',
-                    });
-                    break;
-            }
-        } else if (isLoggedOut) {
-            router.replace('/');
+        if (!isLoading) {
+            redirectIfUnauthorized(pathname, utilisateur?.role);
         }
-    }, [isLoggedIn, isLoggedOut, pathname, utilisateur]);
+    }, [isLoading, pathname, utilisateur?.role]);
 
     const signOut = useCallback(async () => {
         try {
