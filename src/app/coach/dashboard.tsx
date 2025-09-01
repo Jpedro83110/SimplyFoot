@@ -221,23 +221,41 @@ export default function CoachDashboard() {
         }
     };
 
-    // Supprimer équipe
+    const fetchDeleteEquipe = async (equipeId: string, nomEquipe: string) => {
+        await deleteEquipe({ equipeId });
+        setRefreshKey(Date.now()); // FIXME: a quoi ça sert ?
+        // remove equipe with equipeId from the list without refetching
+        setCoachClubData((prevData) => {
+            const newData = prevData;
+            if (newData?.equipes) {
+                newData.equipes = newData.equipes.filter((equipe) => equipe.id !== equipeId);
+            }
+            return newData;
+        });
+    };
+
     const handleDeleteEquipe = (equipeId: string, nomEquipe: string) => {
-        Alert.alert(
-            'Suppression',
-            `Supprimer l'équipe "${nomEquipe}" ? Cette action est irréversible.`,
-            [
-                { text: 'Annuler', style: 'cancel' },
-                {
-                    text: 'Supprimer',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await deleteEquipe({ equipeId });
-                        setRefreshKey(Date.now()); // FIXME: a quoi ça sert ?
+        // FIXME: revoir la confirmation pour uniformiser web et mobile
+        if (Platform.OS === 'web') {
+            if (confirm(`Supprimer l'équipe "${nomEquipe}" ? Cette action est irréversible.`)) {
+                fetchDeleteEquipe(equipeId, nomEquipe);
+            }
+        } else {
+            Alert.alert(
+                'Suppression',
+                `Supprimer l'équipe "${nomEquipe}" ? Cette action est irréversible.`,
+                [
+                    { text: 'Annuler', style: 'cancel' },
+                    {
+                        text: 'Supprimer',
+                        style: 'destructive',
+                        onPress: () => {
+                            fetchDeleteEquipe(equipeId, nomEquipe);
+                        },
                     },
-                },
-            ],
-        );
+                ],
+            );
+        }
     };
 
     if (loading) {

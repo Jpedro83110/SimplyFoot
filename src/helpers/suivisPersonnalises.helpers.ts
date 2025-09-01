@@ -38,18 +38,20 @@ export const upsertCoachSuiviPersonnalise = async ({
     suiviPersonnaliseId,
     dataToUpdate,
 }: {
-    suiviPersonnaliseId: string;
+    suiviPersonnaliseId?: string;
     dataToUpdate: Database['public']['Tables']['suivis_personnalises']['Update'];
 }) => {
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from('suivis_personnalises')
-        .upsert(dataToUpdate)
-        .eq('id', suiviPersonnaliseId)
+        .upsert({ ...dataToUpdate, id: suiviPersonnaliseId })
+        .select('id, created_at, updated_at')
         .single();
 
     if (error) {
         throw error;
     }
+
+    return data;
 };
 
 export const deleteCoachSuiviPersonnalise = async (args: { suiviPersonnaliseId: string }) => {

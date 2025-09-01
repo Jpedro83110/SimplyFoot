@@ -9,6 +9,7 @@ import {
     TextInput,
     Alert,
     ActivityIndicator,
+    Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -53,6 +54,7 @@ export default function JoueurDetail() {
                 coachId: utilisateur.id,
                 joueurId: id,
             });
+            console.log('fetchedSuiviPersonnalises', fetchedSuiviPersonnalises);
 
             setSuivi(fetchedSuiviPersonnalises);
         } catch (error) {
@@ -86,7 +88,7 @@ export default function JoueurDetail() {
             return;
         }
 
-        if (!utilisateur?.id || !suivi?.id) {
+        if (!utilisateur?.id || !suivi?.id || saving) {
             return;
         }
 
@@ -101,9 +103,25 @@ export default function JoueurDetail() {
                 updated_at: new Date().toISOString(),
             };
 
-            await upsertCoachSuiviPersonnalise({
-                suiviPersonnaliseId: suivi.id,
+            const fetchedNewSuivi = await upsertCoachSuiviPersonnalise({
+                suiviPersonnaliseId: suivi.suivis_personnalises[0]?.id,
                 dataToUpdate,
+            });
+
+            // add suivi to state
+            setSuivi((prevData) => {
+                if (prevData) {
+                    const newData = prevData;
+                    newData.suivis_personnalises = [
+                        {
+                            ...fetchedNewSuivi,
+                            ...newSuivi,
+                        },
+                    ];
+                    return newData;
+                } else {
+                    return prevData;
+                }
             });
 
             setSaving(false);
@@ -112,34 +130,44 @@ export default function JoueurDetail() {
             Alert.alert('Erreur', 'Une erreur inattendue est survenue');
             setSaving(false);
         }
-    }, [newSuivi.axe_travail, newSuivi.point_fort, suivi?.id, utilisateur?.id]);
+    }, [newSuivi, saving, suivi?.id, suivi?.suivis_personnalises, utilisateur?.id]);
 
-    // 🔧 CORRECTION : Fonction de suppression du suivi
-    const supprimerSuivi = async () => {
-        Alert.alert(
-            'Confirmer la suppression',
-            'Êtes-vous sûr de vouloir supprimer ce suivi personnalisé ?',
-            [
-                { text: 'Annuler', style: 'cancel' },
-                {
-                    text: 'Supprimer',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteCoachSuiviPersonnalise({
-                                suiviPersonnaliseId: suivi?.id || '',
-                            });
+    const fetchDeleteCoachSuiviPersonnalise = async (suiviPersonnaliseId: string) => {
+        try {
+            await deleteCoachSuiviPersonnalise({
+                suiviPersonnaliseId,
+            });
 
-                            setNewSuivi({ point_fort: '', axe_travail: '' });
-                            setSuivi(null);
-                            Alert.alert('✅ Supprimé', 'Suivi personnalisé supprimé');
-                        } catch (error) {
-                            Alert.alert('Erreur', (error as Error).message);
-                        }
+            setNewSuivi({ point_fort: '', axe_travail: '' });
+            setSuivi(null);
+            Alert.alert('✅ Supprimé', 'Suivi personnalisé supprimé');
+        } catch (error) {
+            Alert.alert('Erreur', (error as Error).message);
+        }
+    };
+
+    const supprimerSuivi = (suiviPersonnaliseId: string) => {
+        // FIXME: revoir la confirmation pour uniformiser web et mobile
+        if (Platform.OS === 'web') {
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce suivi personnalisé ?')) {
+                fetchDeleteCoachSuiviPersonnalise(suiviPersonnaliseId);
+            }
+        } else {
+            Alert.alert(
+                'Confirmer la suppression',
+                'Êtes-vous sûr de vouloir supprimer ce suivi personnalisé ?',
+                [
+                    { text: 'Annuler', style: 'cancel' },
+                    {
+                        text: 'Supprimer',
+                        style: 'destructive',
+                        onPress: () => {
+                            fetchDeleteCoachSuiviPersonnalise(suiviPersonnaliseId);
+                        },
                     },
-                },
-            ],
-        );
+                ],
+            );
+        }
     };
 
     if (loading) {
@@ -202,13 +230,17 @@ export default function JoueurDetail() {
                 <View style={styles.buttonRow}>
                     <Pressable onPress={ajouterOuMajSuivi} style={styles.button} disabled={saving}>
                         <Text style={styles.buttonText}>
-                            {saving ? 'Enregistrement...' : suivi ? 'Mettre à jour' : 'Ajouter'}
+                            {saving
+                                ? 'Enregistrement...'
+                                : suivi.suivis_personnalises[0]
+                                  ? 'Mettre à jour'
+                                  : 'Ajouter'}
                         </Text>
                     </Pressable>
 
-                    {suivi && (
+                    {suivi.suivis_personnalises[0] && (
                         <Pressable
-                            onPress={supprimerSuivi}
+                            onPress={() => supprimerSuivi(suivi.suivis_personnalises[0].id)}
                             style={[styles.button, styles.deleteButton]}
                         >
                             <Text style={[styles.buttonText, { color: '#fff' }]}>🗑️ Supprimer</Text>
