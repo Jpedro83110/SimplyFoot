@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -48,16 +48,12 @@ export default function EvaluationTechnique() {
 
     const { utilisateur } = useSession();
 
-    const fetchEvaluationsTechniques = useCallback(async () => {
-        if (!id || loading) {
-            return;
-        }
-
+    const fetchEvaluationsTechniques = async (joueurId: string) => {
         setLoading(true);
 
         try {
             const fetchedEvaluationsTechniques = await getEvaluationsTechniquesByJoueur({
-                joueurId: id,
+                joueurId,
             });
 
             setEvaluationsTechniques(fetchedEvaluationsTechniques);
@@ -67,11 +63,15 @@ export default function EvaluationTechnique() {
         }
 
         setLoading(false);
-    }, [id, loading]);
+    };
 
     useEffect(() => {
-        fetchEvaluationsTechniques();
-    }, [fetchEvaluationsTechniques]);
+        if (!id || loading || evaluationsTechniques !== undefined) {
+            return;
+        }
+
+        fetchEvaluationsTechniques(id);
+    }, [id, loading, evaluationsTechniques]);
 
     useEffect(() => {
         if (evaluationsTechniques) {
@@ -136,13 +136,13 @@ export default function EvaluationTechnique() {
                 {
                     text: 'OK',
                     onPress: () => {
-                        router.replace(`/coach/joueur/${id}`);
+                        router.back();
                     },
                 },
             ]);
 
             if (Platform.OS === 'web') {
-                router.replace(`/coach/joueur/${id}`);
+                router.back();
             }
         } catch (error) {
             Alert.alert('Erreur', `Erreur inattendue: ${(error as Error).message}`);

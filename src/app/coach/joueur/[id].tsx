@@ -290,7 +290,7 @@ export default function JoueurDetail() {
                     styles.button,
                     { backgroundColor: '#003322', alignSelf: 'stretch', marginBottom: 10 },
                 ]}
-                onPress={() => router.push(`/coach/evaluation-mentale/${id}`)}
+                onPress={() => router.push(`/coach/evaluation-mentale/${suivi.id}`)}
             >
                 <Text style={[styles.buttonText, { color: '#00ff88', textAlign: 'center' }]}>
                     🧠 Évaluer le mental
@@ -302,7 +302,7 @@ export default function JoueurDetail() {
                     styles.button,
                     { backgroundColor: '#220033', alignSelf: 'stretch', marginBottom: 40 },
                 ]}
-                onPress={() => router.push(`/coach/evaluation-technique/${id}`)}
+                onPress={() => router.push(`/coach/evaluation-technique/${suivi.id}`)}
             >
                 <Text style={[styles.buttonText, { color: '#ff00ff', textAlign: 'center' }]}>
                     🎯 Évaluer la technique

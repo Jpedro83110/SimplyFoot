@@ -21,7 +21,7 @@ export const getEvaluationsMentalesByJoueur = async ({ joueurId }: { joueurId: s
             'id, motivation, rigueur, ponctualite, attitude, respect, utilisateurs!joueur_id(id, nom, prenom, role, joueur_id)',
         )
         .eq('joueur_id', joueurId)
-        .single();
+        .maybeSingle();
 
     if (error) {
         throw error;
