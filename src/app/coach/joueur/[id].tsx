@@ -42,19 +42,14 @@ export default function JoueurDetail() {
 
     const { utilisateur } = useSession();
 
-    const fetchAll = useCallback(async () => {
-        if (!utilisateur?.id || loading || suivi) {
-            return;
-        }
-
+    const fetchAll = async (coachId: string, joueurId: string) => {
         setLoading(true);
 
         try {
             const fetchedSuiviPersonnalises = await getCoachSuivisPersonnalisesByJoueurId({
-                coachId: utilisateur.id,
-                joueurId: id,
+                coachId,
+                joueurId,
             });
-            console.log('fetchedSuiviPersonnalises', fetchedSuiviPersonnalises);
 
             setSuivi(fetchedSuiviPersonnalises);
         } catch (error) {
@@ -63,11 +58,15 @@ export default function JoueurDetail() {
         }
 
         setLoading(false);
-    }, [id, loading, suivi, utilisateur?.id]);
+    };
 
     useEffect(() => {
-        fetchAll();
-    }, [fetchAll, id]);
+        if (!id || !utilisateur?.id || loading || suivi) {
+            return;
+        }
+
+        fetchAll(utilisateur.id, id);
+    }, [id, loading, suivi, utilisateur?.id]);
 
     useEffect(() => {
         if (suivi) {
@@ -281,7 +280,7 @@ export default function JoueurDetail() {
 
                 <Pressable
                     style={[styles.button, { backgroundColor: '#222', marginTop: 10 }]}
-                    onPress={fetchAll}
+                    onPress={() => fetchAll(utilisateur?.id || '', id)}
                     disabled={loading}
                 >
                     <Text style={[styles.buttonText, { color: '#00ff88' }]}>
@@ -313,8 +312,6 @@ export default function JoueurDetail() {
                     🎯 Évaluer la technique
                 </Text>
             </Pressable>
-
-            <Text style={styles.idLine}>ID joueur : #{id}</Text>
         </ScrollView>
     );
 }
@@ -388,11 +385,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         marginBottom: 6,
-    },
-    idLine: {
-        color: '#666',
-        fontSize: 14,
-        fontStyle: 'italic',
     },
     input: {
         backgroundColor: '#1e1e1e',
