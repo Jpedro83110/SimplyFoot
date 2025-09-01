@@ -18,7 +18,7 @@ export const getEvaluationsMentalesByJoueur = async ({ joueurId }: { joueurId: s
     const { data, error } = await supabase
         .from('evaluations_mentales')
         .select(
-            'motivation, rigueur, ponctualite, attitude, respect, utilisateurs!joueur_id(id, nom, prenom, role, joueur_id)',
+            'id, motivation, rigueur, ponctualite, attitude, respect, utilisateurs!joueur_id(id, nom, prenom, role, joueur_id)',
         )
         .eq('joueur_id', joueurId)
         .single();
@@ -31,24 +31,17 @@ export const getEvaluationsMentalesByJoueur = async ({ joueurId }: { joueurId: s
 };
 
 export const upsertEvaluationsMentales = async ({
-    joueurId,
-    coachId,
+    evaluationsMentalesId,
     dataToUpdate,
 }: {
-    joueurId: string;
-    coachId: string;
+    evaluationsMentalesId: string | null;
     dataToUpdate: Database['public']['Tables']['evaluations_mentales']['Update'];
 }) => {
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('evaluations_mentales')
-        .upsert(dataToUpdate)
-        .eq('joueur_id', joueurId)
-        .eq('coach_id', coachId)
-        .select();
+        .upsert({ ...dataToUpdate, id: evaluationsMentalesId || undefined });
 
     if (error) {
         throw error;
     }
-
-    return data;
 };

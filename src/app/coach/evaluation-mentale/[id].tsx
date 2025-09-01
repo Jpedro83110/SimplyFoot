@@ -105,10 +105,9 @@ export default function EvaluationMentale() {
                 return;
             }
 
-            // Objet complet avec tous les champs nécessaires
             const updates: Database['public']['Tables']['evaluations_mentales']['Update'] = {
                 joueur_id: id,
-                coach_id: utilisateur?.id,
+                coach_id: utilisateur.id,
                 date: new Date().toISOString().split('T')[0],
                 motivation: valeurs.motivation,
                 rigueur: valeurs.rigueur,
@@ -121,10 +120,8 @@ export default function EvaluationMentale() {
                 created_at: new Date().toISOString(),
             };
 
-            // Stratégie UPDATE puis INSERT
             await upsertEvaluationsMentales({
-                joueurId: id,
-                coachId: utilisateur.id,
+                evaluationsMentalesId: evaluationsMentales?.id || null,
                 dataToUpdate: updates,
             });
 

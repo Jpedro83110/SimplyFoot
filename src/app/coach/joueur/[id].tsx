@@ -103,8 +103,11 @@ export default function JoueurDetail() {
                 updated_at: new Date().toISOString(),
             };
 
-            const fetchedNewSuivi = await upsertCoachSuiviPersonnalise({
-                suiviPersonnaliseId: suivi.suivis_personnalises[0]?.id,
+            const suivisPersonnalisesId =
+                suivi.suivis_personnalises.length > 0 ? suivi.suivis_personnalises[0].id : null;
+
+            const data = await upsertCoachSuiviPersonnalise({
+                suivisPersonnalisesId,
                 dataToUpdate,
             });
 
@@ -114,7 +117,7 @@ export default function JoueurDetail() {
                     const newData = prevData;
                     newData.suivis_personnalises = [
                         {
-                            ...fetchedNewSuivi,
+                            ...data,
                             ...newSuivi,
                         },
                     ];
@@ -132,10 +135,10 @@ export default function JoueurDetail() {
         }
     }, [newSuivi, saving, suivi?.id, suivi?.suivis_personnalises, utilisateur?.id]);
 
-    const fetchDeleteCoachSuiviPersonnalise = async (suiviPersonnaliseId: string) => {
+    const fetchDeleteCoachSuiviPersonnalise = async (suivisPersonnalisesId: string) => {
         try {
             await deleteCoachSuiviPersonnalise({
-                suiviPersonnaliseId,
+                suivisPersonnalisesId,
             });
 
             setNewSuivi({ point_fort: '', axe_travail: '' });

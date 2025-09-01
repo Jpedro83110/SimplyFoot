@@ -127,10 +127,8 @@ export default function EvaluationTechnique() {
                 moyenne: moyenne,
             };
 
-            // Stratégie UPDATE puis INSERT
             await upsertEvaluationsTechniques({
-                joueurId: id,
-                coachId: utilisateur?.id,
+                evaluationsTechniquesId: evaluationsTechniques?.id || null,
                 dataToUpdate: updates,
             });
 

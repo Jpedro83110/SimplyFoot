@@ -35,15 +35,15 @@ export const getCoachSuivisPersonnalisesByJoueurId = async ({
 };
 
 export const upsertCoachSuiviPersonnalise = async ({
-    suiviPersonnaliseId,
+    suivisPersonnalisesId,
     dataToUpdate,
 }: {
-    suiviPersonnaliseId?: string;
+    suivisPersonnalisesId: string | null;
     dataToUpdate: Database['public']['Tables']['suivis_personnalises']['Update'];
 }) => {
     const { data, error } = await supabase
         .from('suivis_personnalises')
-        .upsert({ ...dataToUpdate, id: suiviPersonnaliseId })
+        .upsert({ ...dataToUpdate, id: suivisPersonnalisesId || undefined })
         .select('id, created_at, updated_at')
         .single();
 
@@ -54,13 +54,13 @@ export const upsertCoachSuiviPersonnalise = async ({
     return data;
 };
 
-export const deleteCoachSuiviPersonnalise = async (args: { suiviPersonnaliseId: string }) => {
-    const { suiviPersonnaliseId } = args;
+export const deleteCoachSuiviPersonnalise = async (args: { suivisPersonnalisesId: string }) => {
+    const { suivisPersonnalisesId } = args;
 
     const { error } = await supabase
         .from('suivis_personnalises')
         .delete()
-        .eq('id', suiviPersonnaliseId);
+        .eq('id', suivisPersonnalisesId);
 
     if (error) {
         throw error;
