@@ -106,54 +106,46 @@ export default function EquipeDetail() {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={{ paddingBottom: 32 }}
                 renderItem={({ item }) => (
-                    <View
-                        style={[
-                            styles.playerCard,
-                            isMobile ? styles.playerCardMobile : styles.playerCardWeb,
-                        ]}
-                    >
-                        <Image
-                            source={{
-                                uri:
-                                    item.photo_profil_url && item.photo_profil_url.trim() !== ''
-                                        ? item.photo_profil_url
-                                        : 'https://ui-avatars.com/api/?name=' +
-                                          encodeURIComponent(
-                                              `${item.utilisateurs[0].prenom || ''} ${item.utilisateurs[0].nom || ''}`,
-                                          ) +
-                                          '&background=222&color=fff&rounded=true',
-                            }}
-                            style={styles.avatar}
-                        />
-                        <View style={styles.playerInfoContainer}>
-                            <Text style={styles.playerName}>
-                                {item.utilisateurs[0].prenom} {item.utilisateurs[0].nom}
-                            </Text>
-                            <Text style={styles.playerInfo}>
-                                Date naissance : {item.utilisateurs[0].date_naissance || '—'}
-                            </Text>
-                            <Text style={styles.playerInfo}>Poste : {item.poste || '—'}</Text>
-                            <Text style={styles.playerInfo}>
-                                Licence : {item.numero_licence || '—'}
-                            </Text>
-                            <Text style={styles.playerInfo}>
-                                Visite médicale : {item.visite_medicale_valide ? '✅ OK' : '❌'}
-                            </Text>
-                            <Text style={styles.playerInfo}>
-                                Équipement : {item.equipement ? '✅ OK' : '❌'}
-                            </Text>
-                        </View>
-                        <Pressable
-                            onPress={() => router.push(`/coach/joueur/${item.id}`)}
-                            style={({ pressed }) => [
-                                styles.button,
-                                pressed && { opacity: 0.6 },
-                                isMobile && { alignSelf: 'flex-start', marginLeft: 10 },
+                    <Pressable onPress={() => router.push(`/coach/joueur/${item.id}`)}>
+                        <View
+                            style={[
+                                styles.playerCard,
+                                isMobile ? styles.playerCardMobile : styles.playerCardWeb,
                             ]}
                         >
-                            <Text style={styles.buttonText}>Fiche</Text>
-                        </Pressable>
-                    </View>
+                            <Image
+                                source={{
+                                    uri:
+                                        item.photo_profil_url && item.photo_profil_url.trim() !== ''
+                                            ? item.photo_profil_url
+                                            : 'https://ui-avatars.com/api/?name=' +
+                                              encodeURIComponent(
+                                                  `${item.utilisateurs[0].prenom || ''} ${item.utilisateurs[0].nom || ''}`,
+                                              ) +
+                                              '&background=222&color=fff&rounded=true',
+                                }}
+                                style={styles.avatar}
+                            />
+                            <View style={styles.playerInfoContainer}>
+                                <Text style={styles.playerName}>
+                                    {item.utilisateurs[0].prenom} {item.utilisateurs[0].nom}
+                                </Text>
+                                <Text style={styles.playerInfo}>
+                                    Date naissance : {item.utilisateurs[0].date_naissance || '—'}
+                                </Text>
+                                <Text style={styles.playerInfo}>Poste : {item.poste || '—'}</Text>
+                                <Text style={styles.playerInfo}>
+                                    Licence : {item.numero_licence || '—'}
+                                </Text>
+                                <Text style={styles.playerInfo}>
+                                    Visite médicale : {item.visite_medicale_valide ? '✅ OK' : '❌'}
+                                </Text>
+                                <Text style={styles.playerInfo}>
+                                    Équipement : {item.equipement ? '✅ OK' : '❌'}
+                                </Text>
+                            </View>
+                        </View>
+                    </Pressable>
                 )}
             />
         </ScrollView>
@@ -282,10 +274,5 @@ const styles = StyleSheet.create({
         marginLeft: 5,
         alignSelf: 'center',
         minWidth: 64,
-    },
-    buttonText: {
-        color: '#111',
-        fontWeight: 'bold',
-        textAlign: 'center',
     },
 });
