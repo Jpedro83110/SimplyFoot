@@ -251,20 +251,16 @@ export default function JoueurDetail() {
                 </View>
 
                 {/* 🔧 AFFICHAGE DU SUIVI EXISTANT */}
-                {suivi && (
+                {suivi.suivis_personnalises[0] && (
                     <View style={styles.suiviCard}>
-                        <Text style={styles.suiviText}>
-                            📅 Dernière mise à jour :{' '}
-                            {suivi.suivis_personnalises[0]?.updated_at
-                                ? formatDateForDisplay({
-                                      date: suivi.suivis_personnalises[0]?.updated_at,
-                                  })
-                                : suivi.suivis_personnalises[0]?.created_at
-                                  ? formatDateForDisplay({
-                                        date: suivi.suivis_personnalises[0]?.created_at,
-                                    })
-                                  : 'Date inconnue'}
-                        </Text>
+                        {suivi.suivis_personnalises[0]?.created_at && (
+                            <Text style={styles.suiviText}>
+                                📅 Dernière mise à jour :{' '}
+                                {formatDateForDisplay({
+                                    date: new Date(suivi.suivis_personnalises[0]?.updated_at!),
+                                })}
+                            </Text>
+                        )}
                         {suivi.suivis_personnalises[0]?.point_fort ? (
                             <Text style={[styles.suiviContenu, { color: '#00ff88' }]}>
                                 🟢 Point fort : {suivi.suivis_personnalises[0]?.point_fort}
