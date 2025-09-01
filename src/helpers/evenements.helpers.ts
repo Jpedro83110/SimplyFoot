@@ -18,10 +18,13 @@ export const getCoachEvenementsByEquipes = async ({
         .eq('coach_id', coachId); // id from utilisateurs table
 
     if (since) {
-        request = request.gte('date', since.toISOString().split('T')[0]);
+        request = request.gte('evenements.date', since.toISOString().split('T')[0]);
     }
 
-    const { data, error } = await request.order('date', { ascending: true });
+    const { data, error } = await request.order('date', {
+        referencedTable: 'evenements',
+        ascending: true,
+    });
 
     if (error) {
         throw error;

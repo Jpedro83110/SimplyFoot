@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -23,31 +23,30 @@ dayjs.locale('fr');
 
 export default function ConvocationsList() {
     const [loading, setLoading] = useState(false);
-    const [events, setEvents] = useState<GetCoachEvenements>([]);
+    const [events, setEvents] = useState<GetCoachEvenements | undefined>(undefined);
     const router = useRouter();
 
     const { utilisateur } = useSession();
 
-    const fetchEvents = useCallback(async () => {
-        if (!utilisateur?.id || loading) {
-            setLoading(false);
-            return;
-        }
-
+    const fetchEvents = async (coachId: string) => {
         setLoading(true);
 
         const fetchedEvenementsList = await getCoachEvenements({
-            coachId: utilisateur.id,
+            coachId,
             since: new Date(),
         });
 
         setEvents(fetchedEvenementsList);
         setLoading(false);
-    }, [loading, utilisateur?.id]);
+    };
 
     useEffect(() => {
-        fetchEvents();
-    }, [fetchEvents]);
+        if (!utilisateur?.id || loading || events) {
+            return;
+        }
+
+        fetchEvents(utilisateur.id);
+    }, [events, loading, utilisateur?.id]);
 
     // SUPPRESSION événement + participations
     const handleDelete = (evenementId: string) => {
@@ -69,7 +68,7 @@ export default function ConvocationsList() {
     const doDelete = async (evenementId: string) => {
         setLoading(true);
         await deleteEvenementById({ evenementId });
-        setEvents((prev) => prev.filter((e) => e.id !== evenementId));
+        setEvents((prev) => prev?.filter((e) => e.id !== evenementId));
         setLoading(false);
     };
 
@@ -79,9 +78,9 @@ export default function ConvocationsList() {
 
     return (
         <ScrollView style={styles.container}>
-            <Text style={styles.title}>Convocations à venir ({events.length})</Text>
-            {events.length === 0 && <Text style={styles.noEvents}>Aucun événement à venir.</Text>}
-            {events.map((event) => (
+            <Text style={styles.title}>Convocations à venir ({events?.length})</Text>
+            {events?.length === 0 && <Text style={styles.noEvents}>Aucun événement à venir.</Text>}
+            {events?.map((event) => (
                 <View key={event.id} style={styles.card}>
                     <TouchableOpacity
                         onPress={() => router.push(`/coach/convocation/${event.id}`)}
