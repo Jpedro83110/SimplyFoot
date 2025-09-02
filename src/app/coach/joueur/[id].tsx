@@ -55,9 +55,9 @@ export default function JoueurDetail() {
         } catch (error) {
             console.error('Erreur générale:', error);
             Alert.alert('Erreur', 'Impossible de charger les données');
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     useEffect(() => {

@@ -60,9 +60,9 @@ export default function EvaluationTechnique() {
         } catch (error) {
             console.error('Erreur générale:', error);
             Alert.alert('Erreur', 'Impossible de charger les informations du joueur');
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     useEffect(() => {

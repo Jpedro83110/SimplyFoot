@@ -61,29 +61,29 @@ export default function ConvocationDetail() {
         [event],
     );
 
+    const fetchData = async (evenementId: string) => {
+        setLoading(true);
+
+        try {
+            const fetchedEvenements = await getEvenementInfosById({
+                evenementId,
+            });
+
+            setEvent(fetchedEvenements);
+        } catch (error) {
+            console.error('🏆 COACH: Erreur lors du chargement des données:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        async function fetchData() {
-            if (loading) {
-                return;
-            }
-
-            setLoading(true);
-
-            try {
-                const fetchedEvenements = await getEvenementInfosById({
-                    evenementId: id,
-                });
-
-                setEvent(fetchedEvenements);
-            } catch (error) {
-                console.error('🏆 COACH: Erreur lors du chargement des données:', error);
-            } finally {
-                setLoading(false);
-            }
+        if (!id || loading || event) {
+            return;
         }
 
-        fetchData();
-    }, [id, loading]);
+        fetchData(id);
+    }, [event, id, loading]);
 
     if (loading) {
         return (
