@@ -37,29 +37,29 @@ function downloadCSVWeb(filename: string, csv: string) {
 
 export default function ProgrammeStage() {
     const { width } = useWindowDimensions();
-    const [stages, setStages] = useState<GetStagesByClubId>([]);
+    const [stages, setStages] = useState<GetStagesByClubId | undefined>(undefined);
     const [openedStageId, setOpenedStageId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [confirmation, setConfirmation] = useState('');
 
     const { utilisateur } = useSession();
 
+    const fetchStages = async (clubId: string) => {
+        setLoading(true);
+
+        const stagesList = await getStagesByClubId({ clubId });
+
+        setStages(stagesList);
+        setLoading(false);
+    };
+
     useEffect(() => {
-        const fetchStages = async () => {
-            if (!utilisateur?.club_id || loading) {
-                return;
-            }
+        if (!utilisateur?.club_id || loading || stages) {
+            return;
+        }
 
-            setLoading(true);
-
-            const stagesList = await getStagesByClubId({ clubId: utilisateur.club_id });
-
-            setStages(stagesList);
-            setLoading(false);
-        };
-
-        fetchStages();
-    }, [loading, utilisateur?.club_id]);
+        fetchStages(utilisateur.club_id);
+    }, [loading, stages, utilisateur?.club_id]);
 
     const imprimerStage = async (stage: GetStagesByClubId[number]) => {
         try {
@@ -139,7 +139,7 @@ export default function ProgrammeStage() {
         return <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />;
     }
 
-    if (!stages.length) {
+    if (!stages?.length) {
         return (
             <Text style={{ color: '#ccc', textAlign: 'center', marginTop: 40 }}>
                 Aucun stage trouvé.

@@ -17,6 +17,7 @@ import {
 } from '@/helpers/stages.helpers';
 import { days } from '@/utils/date.utils';
 
+// FIXME: this page isn't used anymore, should be deleted
 export default function LectureStage() {
     const [loading, setLoading] = useState<boolean>(false);
     const [stage, setStage] = useState<GetLastClubStage | null>(null);

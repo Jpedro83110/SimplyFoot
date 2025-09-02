@@ -42,7 +42,7 @@ export default function CreateEvent() {
     const [complement, setComplement] = useState('');
     const [meteo, setMeteo] = useState('');
     const [equipe, setEquipe] = useState('');
-    const [equipes, setEquipes] = useState<GetCoachEquipes>([]);
+    const [equipes, setEquipes] = useState<GetCoachEquipes | undefined>(undefined);
     const [adversaires, setAdversaires] = useState('');
 
     const [joueursEquipe, setJoueursEquipe] = useState<GetJoueursByEquipeId>([]);
@@ -54,21 +54,22 @@ export default function CreateEvent() {
 
     const router = useRouter();
 
-    const fetchEquipes = useCallback(async () => {
-        if (!utilisateur?.club_id) {
+    const fetchEquipes = async (coachId: string, clubId: string) => {
+        const fetchedEquipes = await getCoachEquipes({
+            coachId,
+            clubId,
+        });
+
+        setEquipes(fetchedEquipes);
+    };
+
+    useEffect(() => {
+        if (!utilisateur?.id || !utilisateur.club_id || equipes) {
             return;
         }
 
-        const fetchedEquipes = await getCoachEquipes({
-            coachId: utilisateur.id,
-            clubId: utilisateur.club_id,
-        });
-        setEquipes(fetchedEquipes);
-    }, [utilisateur?.club_id, utilisateur?.id]);
-
-    useEffect(() => {
-        fetchEquipes();
-    }, [fetchEquipes]);
+        fetchEquipes(utilisateur.id, utilisateur.club_id);
+    }, [utilisateur?.id, utilisateur?.club_id, equipes]);
 
     let timerLieu = useRef<NodeJS.Timeout | undefined>(undefined);
     const chercherLieu = (text: string) => {
@@ -126,33 +127,23 @@ export default function CreateEvent() {
         Keyboard.dismiss();
     };
 
-    const fetchJoueursEquipe = useCallback(
-        async (equipeId: string) => {
-            setSelectedJoueursId([]);
+    const fetchJoueursEquipe = async (equipeId: string) => {
+        setSelectedJoueursId([]);
+        setJoueursEquipe([]);
+        setLoadingJoueurs(true);
+
+        try {
+            const fetchedJoueursEquipe = await getJoueursByEquipeId({ equipeId });
+
+            setJoueursEquipe(fetchedJoueursEquipe);
+            setSelectedJoueursId(fetchedJoueursEquipe.map((joueur) => joueur.utilisateurs[0].id));
+        } catch (error) {
+            console.error('Erreur générale fetchJoueursEquipe:', error);
             setJoueursEquipe([]);
-
-            if (loadingJoueurs) {
-                return;
-            }
-
-            setLoadingJoueurs(true);
-
-            try {
-                const fetchedJoueursEquipe = await getJoueursByEquipeId({ equipeId });
-
-                setJoueursEquipe(fetchedJoueursEquipe);
-                setSelectedJoueursId(
-                    fetchedJoueursEquipe.map((joueur) => joueur.utilisateurs[0].id),
-                );
-            } catch (error) {
-                console.error('Erreur générale fetchJoueursEquipe:', error);
-                setJoueursEquipe([]);
-            } finally {
-                setLoadingJoueurs(false);
-            }
-        },
-        [loadingJoueurs],
-    );
+        } finally {
+            setLoadingJoueurs(false);
+        }
+    };
 
     const handleCreate = useCallback(async () => {
         if (!titre || !date || !heure || !lieu || !equipe) {
@@ -274,13 +265,15 @@ export default function CreateEvent() {
                 {/* Équipe */}
                 <Text style={styles.label}>Équipe concernée</Text>
                 <View style={styles.choicesContainer}>
-                    {equipes.map((eq) => (
+                    {equipes?.map((eq) => (
                         <TouchableOpacity
                             key={eq.id}
                             style={[styles.choiceButton, equipe === eq.id && styles.choiceSelected]}
                             onPress={async () => {
                                 setEquipe(eq.id);
-                                await fetchJoueursEquipe(eq.id);
+                                if (!loadingJoueurs) {
+                                    await fetchJoueursEquipe(eq.id);
+                                }
                             }}
                         >
                             <Text
