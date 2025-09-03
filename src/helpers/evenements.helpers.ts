@@ -64,15 +64,18 @@ export const getCoachEvenementsHasComposition = async ({
     let request = supabase
         .from('equipes')
         .select(
-            'evenements!equipe_id(id, titre, date, heure, lieu, utilisateurs:created_by(id), compositions:evenement_id(id))',
+            'evenements!equipe_id(id, titre, date, heure, lieu, utilisateurs:created_by(id), compositions(id))',
         )
         .eq('coach_id', coachId); // id from utilisateurs table
 
     if (since) {
-        request = request.gte('date', since.toISOString().split('T')[0]);
+        request = request.gte('evenements.date', since.toISOString().split('T')[0]);
     }
 
-    const { data, error } = await request.order('date', { ascending: true });
+    const { data, error } = await request.order('date', {
+        ascending: true,
+        referencedTable: 'evenements',
+    });
 
     if (error) {
         throw error;
@@ -197,7 +200,7 @@ export const getTeamList = async ({ evenementId }: { evenementId: string }) => {
     const { data, error } = await supabase
         .from('evenements')
         .select(
-            'date, lieu, adversaires, compositions:evenement_id(id), equipes:equipe_id(nom, categorie, joueurs(id, numero_licence, utilisateurs(nom, prenom, date_naissance)))',
+            'date, lieu, adversaires, compositions(id), equipes:equipe_id(nom, categorie, joueurs(id, numero_licence, utilisateurs(nom, prenom, date_naissance)))',
         )
         .eq('id', evenementId)
         .single();
