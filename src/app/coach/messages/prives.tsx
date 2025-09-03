@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -20,46 +20,51 @@ import { getCoachEquipesWithJoueurs, GetCoachEquipesWithJoueurs } from '@/helper
 import { v4 as uuidv4 } from 'uuid';
 
 export default function MessagesPrivesCoach() {
-    const [equipesWithJoueurs, setEquipesWithJoueurs] = useState<GetCoachEquipesWithJoueurs>([]);
-    const [messagesPrives, setMessagesPrives] = useState<GetCoachMessagesPrivesWithJoueur>([]);
+    const [equipesWithJoueurs, setEquipesWithJoueurs] = useState<
+        GetCoachEquipesWithJoueurs | undefined
+    >(undefined);
+    const [messagesPrives, setMessagesPrives] = useState<
+        GetCoachMessagesPrivesWithJoueur | undefined
+    >(undefined);
     const [selectedEquipe, setSelectedEquipe] = useState<GetCoachEquipesWithJoueurs[number]>();
     const [selectedJoueurId, setSelectedJoueurId] = useState<string>();
     const [message, setMessage] = useState('');
 
     const { utilisateur } = useSession();
 
-    const fetchEquipesWithJoueurs = useCallback(async () => {
-        if (!utilisateur?.club_id) {
-            return;
-        }
-
+    const fetchEquipesWithJoueurs = async (coachId: string, clubId: string) => {
         const fetchedEquipesWithJoueurs = await getCoachEquipesWithJoueurs({
-            coachId: utilisateur.id,
-            clubId: utilisateur.club_id,
+            coachId,
+            clubId,
         });
 
         setEquipesWithJoueurs(fetchedEquipesWithJoueurs);
-    }, [utilisateur?.club_id, utilisateur?.id]);
+    };
 
     useEffect(() => {
-        fetchEquipesWithJoueurs();
-    }, [fetchEquipesWithJoueurs]);
-
-    const fetchMessagesPrives = useCallback(async () => {
-        if (!utilisateur?.id || !selectedJoueurId) {
+        if (!utilisateur?.club_id || equipesWithJoueurs) {
             return;
         }
 
+        fetchEquipesWithJoueurs(utilisateur.id, utilisateur.club_id);
+    }, [utilisateur?.club_id, utilisateur?.id, equipesWithJoueurs]);
+
+    const fetchMessagesPrives = async (coachId: string, joueurId: string) => {
         const fetchedMessagesPrives = await getCoachMessagesPrivesWithJoueur({
-            coachId: utilisateur.id,
-            joueurId: selectedJoueurId,
+            coachId,
+            joueurId,
         });
+
         setMessagesPrives(fetchedMessagesPrives);
-    }, [utilisateur?.id, selectedJoueurId]);
+    };
 
     useEffect(() => {
-        fetchMessagesPrives();
-    }, [fetchMessagesPrives]);
+        if (!utilisateur?.id || !selectedJoueurId || messagesPrives) {
+            return;
+        }
+
+        fetchMessagesPrives(utilisateur.id, selectedJoueurId);
+    }, [utilisateur?.id, selectedJoueurId, messagesPrives]);
 
     const handleEnvoyer = async () => {
         if (!utilisateur?.id || !selectedJoueurId) {
@@ -77,7 +82,7 @@ export default function MessagesPrivesCoach() {
 
         setMessage('');
         setMessagesPrives((prev) => [
-            ...prev,
+            ...(prev ? prev : []),
             {
                 // generate random uuid, we don't need the real id here
                 // we wan't to avoid send request to refresh conversation
@@ -103,7 +108,7 @@ export default function MessagesPrivesCoach() {
 
                     <Text style={styles.label}>Sélectionne une équipe :</Text>
                     <View style={styles.selectWrap}>
-                        {equipesWithJoueurs.map((equipe) => (
+                        {equipesWithJoueurs?.map((equipe) => (
                             <Pressable
                                 key={equipe.id}
                                 onPress={() => {
@@ -151,7 +156,7 @@ export default function MessagesPrivesCoach() {
                     )}
 
                     <View style={styles.filContainer}>
-                        {messagesPrives.map((message) => (
+                        {messagesPrives?.map((message) => (
                             <View
                                 key={message.id}
                                 style={[

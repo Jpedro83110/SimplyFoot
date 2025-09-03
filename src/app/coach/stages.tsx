@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSession } from '@/hooks/useSession';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     getLastClubStage,
     GetLastClubStage,
@@ -24,22 +24,22 @@ export default function LectureStage() {
 
     const { utilisateur } = useSession();
 
-    const fetchStage = useCallback(async () => {
-        if (!utilisateur?.club_id || loading) {
-            return;
-        }
-
+    const fetchStage = async (clubId: string) => {
         setLoading(true);
 
-        const fetchedStage = await getLastClubStage({ clubId: utilisateur.club_id });
+        const fetchedStage = await getLastClubStage({ clubId });
         setStage(fetchedStage);
 
         setLoading(false);
-    }, [loading, utilisateur?.club_id]);
+    };
 
     useEffect(() => {
-        fetchStage();
-    }, [fetchStage]);
+        if (!utilisateur?.club_id || loading || stage) {
+            return;
+        }
+
+        fetchStage(utilisateur.club_id);
+    }, [loading, stage, utilisateur?.club_id]);
 
     if (loading) {
         return <ActivityIndicator style={{ marginTop: 50 }} color="#00ff88" />;
@@ -49,7 +49,11 @@ export default function LectureStage() {
         return (
             <View style={{ marginTop: 50 }}>
                 <Text style={{ color: '#fff', textAlign: 'center' }}>Aucun stage enregistré.</Text>
-                <TouchableOpacity onPress={fetchStage} style={{ marginTop: 20 }}>
+                <TouchableOpacity
+                    onPress={() => utilisateur?.club_id && fetchStage(utilisateur.club_id)}
+                    style={{ marginTop: 20 }}
+                    disabled={loading}
+                >
                     <Text style={{ color: '#00ff88', textAlign: 'center' }}>🔄 Rafraîchir</Text>
                 </TouchableOpacity>
             </View>
@@ -64,7 +68,11 @@ export default function LectureStage() {
                 <Text style={styles.detail}>
                     🗓️ Du {stage.date_debut} au {stage.date_fin}
                 </Text>
-                <TouchableOpacity onPress={fetchStage} style={{ marginVertical: 8 }}>
+                <TouchableOpacity
+                    onPress={() => utilisateur?.club_id && fetchStage(utilisateur.club_id)}
+                    style={{ marginVertical: 8 }}
+                    disabled={loading}
+                >
                     <Text style={{ color: '#00ff88', textAlign: 'center' }}>
                         🔄 Rafraîchir le stage
                     </Text>

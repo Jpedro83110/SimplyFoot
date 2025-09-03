@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -16,40 +16,42 @@ import {
 import { formatDateForDisplay } from '@/utils/date.utils';
 
 export default function ListeFeuillesMatch() {
-    const [evenements, setEvenements] = useState<GetCoachEvenementsHasComposition>([]);
+    const [evenements, setEvenements] = useState<GetCoachEvenementsHasComposition | undefined>(
+        undefined,
+    );
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
     const { utilisateur } = useSession();
 
-    const fetch = useCallback(async () => {
-        if (!utilisateur?.id || loading) {
-            return;
-        }
-
+    const fetch = async (coachId: string) => {
         setLoading(true);
 
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
 
         const fetchedEvents = await getCoachEvenementsHasComposition({
-            coachId: utilisateur.id,
+            coachId,
             since: yesterday,
         });
 
         setEvenements(fetchedEvents);
         setLoading(false);
-    }, [loading, utilisateur?.id]);
+    };
 
     useEffect(() => {
-        fetch();
-    }, [fetch]);
+        if (!utilisateur?.id || loading || evenements) {
+            return;
+        }
+
+        fetch(utilisateur.id);
+    }, [utilisateur?.id, loading, evenements]);
 
     if (loading) {
         return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
     }
 
-    if (!evenements.length) {
+    if (!evenements) {
         return (
             <View style={styles.container}>
                 <Text style={styles.empty}>Aucun événement à venir trouvé.</Text>

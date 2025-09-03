@@ -1,29 +1,25 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/hooks/useSession';
 import { GetCoachEvenements, getCoachEvenements } from '@/helpers/evenements.helpers';
 
 export default function ListeCompositions() {
-    const [evenements, setEvenements] = useState<GetCoachEvenements>([]);
+    const [evenements, setEvenements] = useState<GetCoachEvenements | undefined>(undefined);
     const [loading, setLoading] = useState(false);
 
     const { utilisateur } = useSession();
 
     const router = useRouter();
 
-    const fetchEvenements = useCallback(async () => {
-        if (!utilisateur?.id || loading) {
-            return;
-        }
-
+    const fetchEvenements = async (coachId: string) => {
         setLoading(true);
 
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
 
         const evenementsList = await getCoachEvenements({
-            coachId: utilisateur.id,
+            coachId,
             since: yesterday,
         });
 
@@ -34,22 +30,31 @@ export default function ListeCompositions() {
 
         setEvenements(evenementsList);
         setLoading(false);
-    }, [loading, utilisateur?.id]);
+    };
 
     useEffect(() => {
-        fetchEvenements();
-    }, [fetchEvenements]);
+        if (!utilisateur?.id || loading || evenements) {
+            return;
+        }
+
+        fetchEvenements(utilisateur.id);
+    }, [evenements, loading, utilisateur?.id]);
 
     return (
         <ScrollView
             style={styles.container}
-            refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchEvenements} />}
+            refreshControl={
+                <RefreshControl
+                    refreshing={loading}
+                    onRefresh={() => utilisateur?.id && fetchEvenements(utilisateur.id)}
+                />
+            }
         >
             <View style={styles.header}>
                 <Text style={styles.title}>📋 Sélectionne un événement</Text>
                 <TouchableOpacity
                     style={[styles.refreshBtn, loading && { opacity: 0.5 }]}
-                    onPress={fetchEvenements}
+                    onPress={() => utilisateur?.id && fetchEvenements(utilisateur.id)}
                     disabled={loading}
                 >
                     <Text style={{ color: '#00ff88', fontWeight: 'bold' }}>🔄 Rafraîchir</Text>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -18,7 +18,7 @@ import { useSession } from '@/hooks/useSession';
 
 export default function ListeEquipesCoach() {
     const router = useRouter();
-    const [equipes, setEquipes] = useState<GetCoachEquipes>([]);
+    const [equipes, setEquipes] = useState<GetCoachEquipes | undefined>(undefined);
     const [loading, setLoading] = useState(false);
 
     const { utilisateur } = useSession();
@@ -26,17 +26,13 @@ export default function ListeEquipesCoach() {
     const screenWidth = Dimensions.get('window').width;
     const isMobile = screenWidth < 700 || Platform.OS !== 'web';
 
-    const fetchEquipes = useCallback(async () => {
+    const fetchEquipes = async (coachId: string, clubId: string) => {
         try {
-            if (!utilisateur?.club_id || loading) {
-                return;
-            }
-
             setLoading(true);
 
             const fetchedEquipes = await getCoachEquipes({
-                coachId: utilisateur.id,
-                clubId: utilisateur.club_id,
+                coachId,
+                clubId,
             });
 
             setEquipes(fetchedEquipes);
@@ -48,11 +44,15 @@ export default function ListeEquipesCoach() {
                 'Une erreur est survenue lors du chargement des équipes. Veuillez réessayer plus tard.',
             );
         }
-    }, [loading, utilisateur?.club_id, utilisateur?.id]);
+    };
 
     useEffect(() => {
-        fetchEquipes();
-    }, [fetchEquipes]);
+        if (!utilisateur?.club_id || loading || equipes) {
+            return;
+        }
+
+        fetchEquipes(utilisateur.id, utilisateur.club_id);
+    }, [equipes, loading, utilisateur?.club_id, utilisateur?.id]);
 
     const copierCode = (code: string) => {
         if (!code) {

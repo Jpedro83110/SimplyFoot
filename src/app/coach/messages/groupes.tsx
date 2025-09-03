@@ -23,9 +23,11 @@ import { insertReponsesMessagesJoueur } from '@/helpers/reponsesMessagesJoueur.h
 import { formatDateForDisplay } from '@/utils/date.utils';
 
 export default function MessagesGroupesCoach() {
-    const [equipes, setEquipes] = useState<GetCoachEquipes>([]);
-    const [equipeId, setEquipeId] = useState('');
-    const [messagesGroupeCoach, setMessagesGroupeCoach] = useState<GetMessagesGroupeCoach>([]);
+    const [equipes, setEquipes] = useState<GetCoachEquipes | undefined>(undefined);
+    const [selectedEquipeId, setSelectedEquipeId] = useState<string | undefined>(undefined);
+    const [messagesGroupeCoach, setMessagesGroupeCoach] = useState<
+        GetMessagesGroupeCoach | undefined
+    >(undefined);
     const [message, setMessage] = useState('');
     const [reponseText, setReponseText] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
@@ -36,48 +38,48 @@ export default function MessagesGroupesCoach() {
         deleteMessagesGroupeCoachOneWeekOld();
     });
 
-    const fetchEquipes = useCallback(async () => {
-        if (!utilisateur?.club_id) {
-            return;
-        }
-
+    const fetchEquipes = async (coachId: string, clubId: string) => {
         const fetchedEquipes = await getCoachEquipes({
-            coachId: utilisateur.id,
-            clubId: utilisateur.club_id,
+            coachId,
+            clubId,
         });
 
         setEquipes(fetchedEquipes);
-    }, [utilisateur?.club_id, utilisateur?.id]);
+    };
 
     useEffect(() => {
-        fetchEquipes();
-    }, [fetchEquipes]);
-
-    const fetchMessagesGroupeCoach = useCallback(async () => {
-        if (!equipeId || loading) {
+        if (!utilisateur?.club_id || equipes) {
             return;
         }
 
+        fetchEquipes(utilisateur.id, utilisateur.club_id);
+    }, [equipes, utilisateur?.club_id, utilisateur?.id]);
+
+    const fetchMessagesGroupeCoach = async (equipeId: string) => {
         setLoading(true);
 
         const fetchedMessagesGroupeCoach = await getMessagesGroupeCoach({ equipeId });
 
         setMessagesGroupeCoach(fetchedMessagesGroupeCoach);
         setLoading(false);
-    }, [equipeId, loading]);
+    };
 
     useEffect(() => {
-        fetchMessagesGroupeCoach();
-    }, [fetchMessagesGroupeCoach]);
+        if (!selectedEquipeId || loading || messagesGroupeCoach) {
+            return;
+        }
+
+        fetchMessagesGroupeCoach(selectedEquipeId);
+    }, [selectedEquipeId, loading, messagesGroupeCoach]);
 
     const envoyerMessage = useCallback(async () => {
-        if (!message || !equipeId || !utilisateur?.id) {
+        if (!message || !selectedEquipeId || !utilisateur?.id) {
             return;
         }
 
         await insertMessageGroupeCoach({
             dataToInsert: {
-                equipe_id: equipeId,
+                equipe_id: selectedEquipeId,
                 coach_id: utilisateur.id,
                 titre: 'Message important',
                 contenu: message,
@@ -85,14 +87,15 @@ export default function MessagesGroupesCoach() {
         });
 
         setMessage('');
-        fetchMessagesGroupeCoach();
-    }, [message, equipeId, utilisateur?.id, fetchMessagesGroupeCoach]);
+        setMessagesGroupeCoach(undefined);
+        fetchMessagesGroupeCoach(selectedEquipeId);
+    }, [message, selectedEquipeId, utilisateur?.id]);
 
     const envoyerReponse = useCallback(
         async (msgId: string) => {
             const contenu = reponseText[msgId];
 
-            if (!contenu || !utilisateur?.id) {
+            if (!contenu || !utilisateur?.id || !selectedEquipeId) {
                 return;
             }
 
@@ -104,9 +107,10 @@ export default function MessagesGroupesCoach() {
                 },
             });
 
-            fetchMessagesGroupeCoach();
+            setMessagesGroupeCoach(undefined);
+            fetchMessagesGroupeCoach(selectedEquipeId);
         },
-        [reponseText, utilisateur?.id, fetchMessagesGroupeCoach],
+        [reponseText, selectedEquipeId, utilisateur?.id],
     );
 
     return (
@@ -119,13 +123,16 @@ export default function MessagesGroupesCoach() {
                 <ScrollView contentContainerStyle={styles.scroll}>
                     <Text style={styles.title}>💬 Messagerie de groupe</Text>
                     <View style={styles.selectWrap}>
-                        {equipes.map((eq) => (
+                        {equipes?.map((eq) => (
                             <Pressable
                                 key={eq.id}
-                                onPress={() => setEquipeId(eq.id)}
+                                onPress={() => {
+                                    setSelectedEquipeId(eq.id);
+                                    setMessagesGroupeCoach(undefined);
+                                }}
                                 style={[
                                     styles.equipeButton,
-                                    equipeId === eq.id && styles.equipeButtonSelected,
+                                    selectedEquipeId === eq.id && styles.equipeButtonSelected,
                                 ]}
                             >
                                 <Text style={styles.equipeText}>{eq.nom}</Text>
@@ -144,7 +151,7 @@ export default function MessagesGroupesCoach() {
                         <Text style={styles.boutonText}>Envoyer</Text>
                     </Pressable>
                     <View style={{ marginTop: 30 }}>
-                        {messagesGroupeCoach.map((message) => (
+                        {messagesGroupeCoach?.map((message) => (
                             <View key={message.id} style={styles.card}>
                                 <Text style={styles.messageTitle}>{message.titre}</Text>
                                 <Text style={styles.messageContent}>{message.contenu}</Text>

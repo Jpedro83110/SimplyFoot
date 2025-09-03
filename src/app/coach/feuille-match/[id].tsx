@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import {
     View,
     Text,
@@ -39,25 +39,21 @@ export default function FeuilleMatch() {
 
     const { utilisateur } = useSession();
 
-    const fetchTeamList = useCallback(async () => {
-        if (loading) {
-            return;
-        }
-
+    const fetchTeamList = async (evenementId: string) => {
         setLoading(true);
 
         try {
-            const data = await getTeamList({ evenementId: id });
+            const data = await getTeamList({ evenementId });
             setTeamList(data);
         } catch (error) {
             setError(error as Error);
         }
 
         setLoading(false);
-    }, [id, loading]);
+    };
 
     useEffectOnce(() => {
-        fetchTeamList();
+        fetchTeamList(id);
     });
 
     const isMobile = isMobileUtils(width);
@@ -181,7 +177,7 @@ export default function FeuilleMatch() {
         return (
             <View style={styles.container}>
                 <Text style={styles.empty}>{error?.message}</Text>
-                <TouchableOpacity style={styles.button} onPress={fetchTeamList}>
+                <TouchableOpacity style={styles.button} onPress={() => fetchTeamList(id)}>
                     <Text style={styles.buttonText}>🔄 Réessayer</Text>
                 </TouchableOpacity>
             </View>

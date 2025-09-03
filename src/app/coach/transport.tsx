@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -16,29 +16,29 @@ import {
 } from '@/helpers/participationsEvenement.helpers';
 
 export default function TransportManquant() {
-    const [participants, setParticipants] = useState<GetBesoinTransport>([]);
+    const [participants, setParticipants] = useState<GetBesoinTransport | undefined>(undefined);
     const [loading, setLoading] = useState(false);
 
     const { utilisateur } = useSession();
 
-    const fetchParticipants = useCallback(async () => {
-        if (!utilisateur?.club_id || loading) {
-            return;
-        }
-
+    const fetchParticipants = async (clubId: string) => {
         setLoading(true);
 
         const fetchedParticipants = await getBesoinTransport({
-            clubId: utilisateur.club_id,
+            clubId,
         });
 
         setParticipants(fetchedParticipants);
         setLoading(false);
-    }, [loading, utilisateur?.club_id]);
+    };
 
     useEffect(() => {
-        fetchParticipants();
-    }, [fetchParticipants]);
+        if (!utilisateur?.club_id || loading || participants) {
+            return;
+        }
+
+        fetchParticipants(utilisateur.club_id);
+    }, [loading, participants, utilisateur?.club_id]);
 
     const prendreCharge = async (participationId: string) => {
         try {
@@ -49,7 +49,7 @@ export default function TransportManquant() {
 
             Alert.alert('✅ Confirmé', 'Transport pris en charge.');
             setParticipants((prev) =>
-                prev.filter((participant) => participant.id !== participationId),
+                prev?.filter((participant) => participant.id !== participationId),
             );
         } catch (error) {
             Alert.alert('Erreur', (error as Error).message);
@@ -64,7 +64,7 @@ export default function TransportManquant() {
         <ScrollView style={styles.container}>
             <Text style={styles.title}>🚗 Enfants sans transport</Text>
 
-            {participants.map((participant) => (
+            {participants?.map((participant) => (
                 <View key={participant.id} style={styles.card}>
                     <Text style={styles.cardTitle}>
                         {participant.utilisateurs?.nom} {participant.utilisateurs?.prenom}
@@ -80,7 +80,7 @@ export default function TransportManquant() {
                 </View>
             ))}
 
-            {participants.length === 0 && (
+            {participants?.length === 0 && (
                 <Text style={styles.empty}>Aucun joueur en attente de transport.</Text>
             )}
         </ScrollView>

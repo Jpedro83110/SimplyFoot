@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
     View,
     Text,
@@ -27,29 +27,25 @@ export default function EquipeDetail() {
     const { id } = useLocalSearchParams<EquipeDetailParams>();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [equipeWithJoueurs, setEquipeWithJoueurs] = useState<GetEquipeWithJoueurById | null>(
-        null,
+    const [equipeWithJoueurs, setEquipeWithJoueurs] = useState<GetEquipeWithJoueurById | undefined>(
+        undefined,
     );
 
     // Responsive params
     const screenWidth = Dimensions.get('window').width;
     const isMobile = screenWidth < 700 || Platform.OS !== 'web';
 
-    const fetchEquipeWithJoueurs = useCallback(async () => {
-        if (loading) {
-            return;
-        }
-
+    const fetchEquipeWithJoueurs = async (equipeId: string) => {
         setLoading(true);
 
-        const fetchedEquipeWithJoueur = await getEquipeWithJoueurById({ equipeId: id });
+        const fetchedEquipeWithJoueur = await getEquipeWithJoueurById({ equipeId });
         setEquipeWithJoueurs(fetchedEquipeWithJoueur);
 
         setLoading(false);
-    }, [id, loading]);
+    };
 
     useEffectOnce(() => {
-        fetchEquipeWithJoueurs();
+        fetchEquipeWithJoueurs(id);
     });
 
     // Copier code équipe
@@ -73,7 +69,7 @@ export default function EquipeDetail() {
     return (
         <ScrollView style={styles.container}>
             <TouchableOpacity
-                onPress={fetchEquipeWithJoueurs}
+                onPress={() => fetchEquipeWithJoueurs(id)}
                 style={{ marginBottom: 18, alignSelf: 'flex-end' }}
             >
                 <Text style={{ color: '#00ff88', fontSize: 14 }}>🔄 Rafraîchir</Text>

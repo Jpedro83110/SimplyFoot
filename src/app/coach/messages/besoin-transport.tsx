@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -19,7 +19,7 @@ import {
 
 export default function BesoinTransportCoach() {
     const [loading, setLoading] = useState(true);
-    const [equipes, setEquipes] = useState<GetCoachEquipes>([]);
+    const [equipes, setEquipes] = useState<GetCoachEquipes | undefined>(undefined);
     const [selectedEquipe, setSelectedEquipe] = useState<GetCoachEquipes[number] | null>(null);
     const [besoinsTransport, setBesoinsTransport] = useState<GetEquipeEvenementBesoinsTransport>(
         [],
@@ -28,46 +28,44 @@ export default function BesoinTransportCoach() {
     const router = useRouter();
     const { utilisateur } = useSession();
 
-    const fetchEquipes = useCallback(async () => {
-        if (!utilisateur?.club_id || loading) {
-            return;
-        }
-
+    const fetchEquipes = async (coachId: string, clubId: string) => {
         setLoading(true);
 
         const fetchedEquipes = await getCoachEquipes({
-            coachId: utilisateur.id,
-            clubId: utilisateur.club_id,
+            coachId,
+            clubId,
         });
 
         setEquipes(fetchedEquipes);
         setLoading(false);
-    }, [loading, utilisateur?.club_id, utilisateur?.id]);
+    };
 
     useEffect(() => {
-        fetchEquipes();
-    }, [fetchEquipes]);
-
-    const fetchBesoinTransport = useCallback(async () => {
-        if (!selectedEquipe?.id || loading) {
+        if (!utilisateur?.club_id || loading || equipes) {
             return;
         }
 
+        fetchEquipes(utilisateur.id, utilisateur.club_id);
+    }, [utilisateur?.club_id, utilisateur?.id, loading, equipes]);
+
+    const fetchBesoinTransport = async (equipeId: string) => {
         setLoading(true);
 
         const fetchedBesoinsTransport = await getEquipeEvenementBesoinsTransport({
-            equipeId: selectedEquipe.id,
+            equipeId,
             since: new Date(),
         });
 
         setBesoinsTransport(fetchedBesoinsTransport);
 
         setLoading(false);
-    }, [loading, selectedEquipe?.id]);
+    };
 
     useEffect(() => {
-        fetchBesoinTransport();
-    }, [selectedEquipe, fetchBesoinTransport]);
+        if (selectedEquipe && !loading) {
+            fetchBesoinTransport(selectedEquipe.id);
+        }
+    }, [loading, selectedEquipe]);
 
     if (loading) {
         return (
@@ -81,10 +79,10 @@ export default function BesoinTransportCoach() {
         return (
             <ScrollView contentContainerStyle={styles.choixContainer}>
                 <Text style={styles.title}>Sélectionne une équipe :</Text>
-                {equipes.length === 0 ? (
+                {equipes?.length === 0 ? (
                     <Text style={styles.emptyTitle}>Aucune équipe trouvée pour ce coach</Text>
                 ) : (
-                    equipes.map((equipe) => (
+                    equipes?.map((equipe) => (
                         <TouchableOpacity
                             key={equipe.id}
                             style={styles.equipeBtn}
