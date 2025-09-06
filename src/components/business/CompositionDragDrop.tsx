@@ -109,11 +109,17 @@ export const CompositionDragDrop: FC<CompositionDragDropProps> = ({ evenementId 
     const createPanResponder = (position: Position) =>
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
+            onPanResponderGrant: () => {
+                position.valueXY.setOffset({
+                    x: (position.valueXY.x as any)._value,
+                    y: (position.valueXY.y as any)._value,
+                });
+            },
             onPanResponderMove: Animated.event(
                 [null, { dx: position.valueXY.x, dy: position.valueXY.y }],
-                // {
-                //       useNativeDriver: false,
-                //   },
+                {
+                    useNativeDriver: false,
+                },
             ),
             onPanResponderRelease: () => position.valueXY.flattenOffset(),
         });
@@ -126,7 +132,7 @@ export const CompositionDragDrop: FC<CompositionDragDropProps> = ({ evenementId 
                 joueurs: positions.current
                     .map((position) => ({
                         [position.id]: {
-                            x: (position.valueXY.x as any)._value, // FIXME: test
+                            x: (position.valueXY.x as any)._value,
                             y: (position.valueXY.y as any)._value,
                         },
                     }))
