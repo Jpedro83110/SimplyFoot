@@ -22,8 +22,9 @@ import { getJoueursByEquipeId, GetJoueursByEquipeId } from '@/helpers/joueurs.he
 import Button from '@/components/atoms/Button';
 import { LOCATIONIQ_KEY, OPENWEATHER_KEY } from '@/utils/constants.utils';
 import { createEvenement } from '@/helpers/evenements.helpers';
+import { EvenementType } from '@/types/evenements.types';
 
-const TYPE_LABELS = [
+const TYPE_LABELS: { label: string; value: EvenementType }[] = [
     { label: 'Match', value: 'match' },
     { label: 'Entraînement', value: 'entrainement' },
     { label: 'Tournoi', value: 'tournoi' },
@@ -32,7 +33,7 @@ const TYPE_LABELS = [
 ];
 
 export default function CreateEvent() {
-    const [type, setType] = useState('match');
+    const [type, setType] = useState<EvenementType>('match');
     const [titre, setTitre] = useState('');
     const [date, setDate] = useState(new Date());
     const [heure, setHeure] = useState('');

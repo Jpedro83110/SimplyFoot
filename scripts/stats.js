@@ -8,6 +8,13 @@ const SOURCE_DIRS = ['app', 'components', 'contexts', 'helpers', 'hooks', 'lib',
 const JS_EXTENSIONS = ['.js', '.jsx'];
 const TS_EXTENSIONS = ['.ts', '.tsx'];
 
+// NEW: sous-répertoires à ignorer dans l'affichage hiérarchique
+const IGNORED_SUBDIRS = new Set(['__tests__']);
+
+function isIgnoredSubdir(name) {
+    return IGNORED_SUBDIRS.has(name.toLowerCase());
+}
+
 // Patterns to exclude test files
 const TEST_PATTERNS = [/__tests__/, /\.test\./, /\.spec\./];
 
@@ -358,6 +365,7 @@ function analyzeCodebase(options = {}) {
             suites: 0,
             tests: 0,
             fileDetails: [], // list of files with lines/style/type
+            subdirs: {}, // <--- NEW: aggregation par sous-répertoire 1er niveau
         };
 
         const dirStats = perDirStats[sourceDir];
@@ -370,10 +378,39 @@ function analyzeCodebase(options = {}) {
             styleLines += fileStyleLines;
             jsFiles++;
 
-            // per-dir increments
             dirStats.jsLines += codeLines;
             dirStats.styleLines += fileStyleLines;
             dirStats.jsFiles++;
+
+            // Sous-répertoire (filtré)
+            const relToSourceDir = path.relative(dirPath, file);
+            const firstSeg = relToSourceDir.split(path.sep)[0];
+            if (
+                firstSeg &&
+                firstSeg !== '.' &&
+                firstSeg !== '' &&
+                firstSeg !== relToSourceDir &&
+                !isIgnoredSubdir(firstSeg)
+            ) {
+                if (!dirStats.subdirs[firstSeg]) {
+                    dirStats.subdirs[firstSeg] = {
+                        name: firstSeg,
+                        jsFiles: 0,
+                        tsFiles: 0,
+                        jsLines: 0,
+                        tsLines: 0,
+                        styleLines: 0,
+                        testFiles: 0,
+                        testLines: 0,
+                        suites: 0,
+                        tests: 0,
+                    };
+                }
+                const sd = dirStats.subdirs[firstSeg];
+                sd.jsFiles += 1;
+                sd.jsLines += codeLines;
+                sd.styleLines += fileStyleLines;
+            }
 
             fileLinesArray.push(codeLines);
 
@@ -406,10 +443,38 @@ function analyzeCodebase(options = {}) {
             styleLines += fileStyleLines;
             tsFiles++;
 
-            // per-dir increments
             dirStats.tsLines += codeLines;
             dirStats.styleLines += fileStyleLines;
             dirStats.tsFiles++;
+
+            const relToSourceDir = path.relative(dirPath, file);
+            const firstSeg = relToSourceDir.split(path.sep)[0];
+            if (
+                firstSeg &&
+                firstSeg !== '.' &&
+                firstSeg !== '' &&
+                firstSeg !== relToSourceDir &&
+                !isIgnoredSubdir(firstSeg)
+            ) {
+                if (!dirStats.subdirs[firstSeg]) {
+                    dirStats.subdirs[firstSeg] = {
+                        name: firstSeg,
+                        jsFiles: 0,
+                        tsFiles: 0,
+                        jsLines: 0,
+                        tsLines: 0,
+                        styleLines: 0,
+                        testFiles: 0,
+                        testLines: 0,
+                        suites: 0,
+                        tests: 0,
+                    };
+                }
+                const sd = dirStats.subdirs[firstSeg];
+                sd.tsFiles += 1;
+                sd.tsLines += codeLines;
+                sd.styleLines += fileStyleLines;
+            }
 
             fileLinesArray.push(codeLines);
 
@@ -434,7 +499,7 @@ function analyzeCodebase(options = {}) {
             }
         }
 
-        // Analyze Test files (both JS/TS)
+        // Analyze Test files
         const testFilesInDir = findTestFiles(dirPath, [...JS_EXTENSIONS, ...TS_EXTENSIONS]);
         for (const file of testFilesInDir) {
             const metrics = countTestFileMetrics(file);
@@ -468,6 +533,37 @@ function analyzeCodebase(options = {}) {
             dirStats.testLines += metrics.codeLines;
             dirStats.suites += metrics.suiteCount;
             dirStats.tests += metrics.testCount;
+
+            // Sous-répertoire pour tests (filtré)
+            const relToSourceDir = path.relative(dirPath, file);
+            const firstSeg = relToSourceDir.split(path.sep)[0];
+            if (
+                firstSeg &&
+                firstSeg !== '.' &&
+                firstSeg !== '' &&
+                firstSeg !== relToSourceDir &&
+                !isIgnoredSubdir(firstSeg)
+            ) {
+                if (!dirStats.subdirs[firstSeg]) {
+                    dirStats.subdirs[firstSeg] = {
+                        name: firstSeg,
+                        jsFiles: 0,
+                        tsFiles: 0,
+                        jsLines: 0,
+                        tsLines: 0,
+                        styleLines: 0,
+                        testFiles: 0,
+                        testLines: 0,
+                        suites: 0,
+                        tests: 0,
+                    };
+                }
+                const sd = dirStats.subdirs[firstSeg];
+                sd.testFiles += 1;
+                sd.testLines += metrics.codeLines;
+                sd.suites += metrics.suiteCount;
+                sd.tests += metrics.testCount;
+            }
 
             if (verbose) {
                 console.log(
@@ -525,6 +621,26 @@ function analyzeCodebase(options = {}) {
     const perDirArray = Object.keys(perDirStats).map((dirName) => {
         const s = perDirStats[dirName];
         const codeLines = (s.jsLines || 0) + (s.tsLines || 0);
+
+        const subdirs = Object.values(s.subdirs || {})
+            .filter((sd) => !isIgnoredSubdir(sd.name)) // filet de sécurité
+            .map((sd) => {
+                const sdCodeLines = (sd.jsLines || 0) + (sd.tsLines || 0);
+                return {
+                    name: sd.name,
+                    codeLines: sdCodeLines,
+                    jsLines: sd.jsLines || 0,
+                    tsLines: sd.tsLines || 0,
+                    styleLines: sd.styleLines || 0,
+                    jsFiles: sd.jsFiles || 0,
+                    tsFiles: sd.tsFiles || 0,
+                    testFiles: sd.testFiles || 0,
+                    testLines: sd.testLines || 0,
+                    suites: sd.suites || 0,
+                    tests: sd.tests || 0,
+                };
+            });
+
         return {
             dir: dirName,
             icon: getDirIcon(dirName),
@@ -539,6 +655,7 @@ function analyzeCodebase(options = {}) {
             suites: s.suites || 0,
             tests: s.tests || 0,
             fileDetails: s.fileDetails || [],
+            subdirs,
         };
     });
 
@@ -602,11 +719,25 @@ function analyzeCodebase(options = {}) {
         const totalForPercent = Math.max(1, totalCodeLines); // avoid division by zero
         perDirArray.forEach((d, idx) => {
             const rank = idx + 1;
-            const percent = ((d.codeLines / totalForPercent) * 100).toFixed(02);
-            // Afficher TypeScript avant JavaScript
+            const percent = ((d.codeLines / totalForPercent) * 100).toFixed(2);
             console.log(
                 ` ${rank}. ${d.icon} ${d.dir} — ${d.codeLines} lignes (${percent}%) — TS: ${d.tsLines}, JS: ${d.jsLines}, styles: ${d.styleLines} — source files: ${d.jsFiles + d.tsFiles}`,
             );
+
+            // NEW: afficher sous-répertoires
+            if (d.subdirs && d.subdirs.length > 0) {
+                // Trier par lignes de code desc
+                const parentLines = Math.max(1, d.codeLines);
+                d.subdirs
+                    .sort((a, b) => b.codeLines - a.codeLines)
+                    .forEach((sd, sdIdx) => {
+                        const sdRank = `${rank}.${sdIdx + 1}`;
+                        const sdPercent = ((sd.codeLines / parentLines) * 100).toFixed(2);
+                        console.log(
+                            `   ${sdRank} ${d.dir}/${sd.name} — ${sd.codeLines} lignes (${sdPercent}%) — TS: ${sd.tsLines}, JS: ${sd.jsLines}, styles: ${sd.styleLines} — source files: ${sd.jsFiles + sd.tsFiles}`,
+                        );
+                    });
+            }
         });
     }
 

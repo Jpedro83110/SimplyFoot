@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import CompositionDragDrop from '@/components/business/CompositionDragDrop';
+import { CompositionDragDrop } from '@/components/business/CompositionDragDrop';
 
 type CompositionEvenementParams = {
     evenement_id: string;
