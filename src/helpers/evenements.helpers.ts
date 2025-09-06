@@ -272,7 +272,6 @@ export const createEvenement = async ({
         await createMatchCompositions({
             evenementId: insertedEvenement.id,
             coachId: dataToInsert.created_by,
-            clubId: dataToInsert.club_id,
         });
     }
 };

@@ -182,6 +182,7 @@ export default function CreateEvent() {
                     latitude: coords.lat,
                     longitude: coords.lon,
                     created_by: utilisateur?.id ?? '',
+                    club_id: utilisateur?.club_id ?? '',
                 },
                 joueursId: selectedJoueursId,
             });
@@ -209,6 +210,7 @@ export default function CreateEvent() {
         titre,
         type,
         utilisateur?.id,
+        utilisateur?.club_id,
     ]);
 
     const toggleJoueur = (userId: string) => {

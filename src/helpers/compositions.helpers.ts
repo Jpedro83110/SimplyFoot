@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { CompositionsJoueurs } from '@/types/compositions.types';
+import { Database } from '@/types/database.types';
 
 export const updateMatchCompositions = async ({
     compositionId,
@@ -23,17 +24,17 @@ export const updateMatchCompositions = async ({
 export const createMatchCompositions = async ({
     evenementId,
     coachId,
-    clubId,
 }: {
     evenementId: string;
     coachId: string;
-    clubId: string;
 }) => {
-    const { error } = await supabase.from('compositions').insert({
+    // to ensure that there is all required fields
+    const dataToInsert: Database['public']['Tables']['compositions']['Insert'] = {
         evenement_id: evenementId,
         coach_id: coachId,
-        club_id: clubId,
-    });
+    };
+
+    const { error } = await supabase.from('compositions').insert(dataToInsert);
 
     if (error) {
         throw error;

@@ -115,10 +115,11 @@ export const CompositionDragDrop: FC<CompositionDragDropProps> = ({ evenementId 
                 //       useNativeDriver: false,
                 //   },
             ),
-            onPanResponderRelease: () => position.valueXY.extractOffset(),
+            onPanResponderRelease: () => position.valueXY.flattenOffset(),
         });
 
     const handleValider = async (compositionId: string) => {
+        console.log(positions.current);
         try {
             await updateMatchCompositions({
                 compositionId: matchEvenementInfos!.compositions[0].id,
