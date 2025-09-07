@@ -14,11 +14,11 @@ import {
     Animated,
     Image,
     Dimensions,
-    TouchableOpacity,
     Alert,
     ScrollView,
 } from 'react-native';
 import useEffectOnce from 'react-use/lib/useEffectOnce';
+import Button from '../atoms/Button';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -35,6 +35,7 @@ interface CompositionDragDropProps {
 export const CompositionDragDrop: FC<CompositionDragDropProps> = ({ evenementId }) => {
     const [matchEvenementInfos, setMatchEvenementInfos] =
         useState<GetMatchEvenementInfosById | null>(null);
+    const [savingComposition, setSavingComposition] = useState<boolean>(false);
     const positions = useRef<Position[]>([]);
 
     const presents = useMemo(
@@ -125,10 +126,10 @@ export const CompositionDragDrop: FC<CompositionDragDropProps> = ({ evenementId 
         });
 
     const handleValider = async (compositionId: string) => {
-        console.log(positions.current);
         try {
+            setSavingComposition(true);
             await updateMatchCompositions({
-                compositionId: matchEvenementInfos!.compositions[0].id,
+                compositionId,
                 joueurs: positions.current
                     .map((position) => ({
                         [position.id]: {
@@ -140,6 +141,7 @@ export const CompositionDragDrop: FC<CompositionDragDropProps> = ({ evenementId 
             });
 
             Alert.alert('✅ Composition enregistrée');
+            setSavingComposition(false);
         } catch (error) {
             console.error('🎨 COMPOSITION: Erreur validation:', error);
             Alert.alert('Erreur', 'Erreur lors de la sauvegarde.');
@@ -197,16 +199,18 @@ export const CompositionDragDrop: FC<CompositionDragDropProps> = ({ evenementId 
                 </View>
             </View>
 
-            <TouchableOpacity
+            <Button
                 style={styles.bouton}
+                text="Valider la composition"
                 onPress={() =>
                     matchEvenementInfos &&
                     matchEvenementInfos.compositions.length > 0 &&
                     handleValider(matchEvenementInfos!.compositions[0].id)
                 }
-            >
-                <Text style={styles.boutonText}>Valider la composition</Text>
-            </TouchableOpacity>
+                loading={savingComposition}
+                disabled={savingComposition}
+                color="primary"
+            />
 
             {/* Absents */}
             {absents.length > 0 && (
@@ -291,15 +295,11 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     bouton: {
+        width: 'auto', // FIXME améliorer le bouton générique
+        paddingHorizontal: 20,
         marginBottom: 15,
         alignSelf: 'center',
-        backgroundColor: '#00ff88',
-        paddingVertical: 10,
-        paddingHorizontal: 30,
-        borderRadius: 30,
-        elevation: 6,
     },
-    boutonText: { color: '#000', fontWeight: 'bold', fontSize: 14 },
     listeStatut: {
         marginTop: 15,
         backgroundColor: '#161b20',

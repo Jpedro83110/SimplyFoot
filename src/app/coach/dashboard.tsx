@@ -19,7 +19,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { TeamCard } from '@/components/business/TeamCard';
 import * as ImagePicker from 'expo-image-picker';
 import { useSession } from '@/hooks/useSession';
-import { Database } from '@/types/database.types';
 import { deleteEquipe } from '@/helpers/equipes.helpers';
 import { calculateAgeFromString, formatDateForDisplay } from '@/utils/date.utils';
 import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
@@ -43,6 +42,13 @@ const actionsData = [
     },
 ];
 
+interface EditUserData {
+    telephone: string;
+    email: string;
+    niveau_diplome: string;
+    experience: string;
+}
+
 export default function CoachDashboard() {
     const [loading, setLoading] = useState<boolean>(false);
     const [coachClubData, setCoachClubData] = useState<GetCoachClubData | null>(null);
@@ -61,7 +67,7 @@ export default function CoachDashboard() {
         [utilisateur?.date_naissance],
     );
 
-    const [editData, setEditData] = useState<Database['public']['Tables']['staff']['Update']>({
+    const [editData, setEditData] = useState<EditUserData>({
         telephone: '',
         email: '',
         niveau_diplome: '',

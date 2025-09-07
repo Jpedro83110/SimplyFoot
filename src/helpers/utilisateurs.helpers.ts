@@ -21,9 +21,7 @@ export const getUtilisateurById = async ({ utilisateurId }: { utilisateurId: str
 
 export type GetUtilisateursByClubId = Awaited<ReturnType<typeof getUtilisateursByClubId>>;
 
-export const getUtilisateursByClubId = async (args: { clubId: string }) => {
-    const { clubId } = args;
-
+export const getUtilisateursByClubId = async ({ clubId }: { clubId: string }) => {
     const { data, error } = await supabase
         .from('utilisateurs')
         .select('id, nom, prenom, date_naissance, role')

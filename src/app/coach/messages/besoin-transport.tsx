@@ -18,12 +18,12 @@ import {
 } from '@/helpers/evenements.helpers';
 
 export default function BesoinTransportCoach() {
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [equipes, setEquipes] = useState<GetCoachEquipes | undefined>(undefined);
     const [selectedEquipe, setSelectedEquipe] = useState<GetCoachEquipes[number] | null>(null);
-    const [besoinsTransport, setBesoinsTransport] = useState<GetEquipeEvenementBesoinsTransport>(
-        [],
-    );
+    const [besoinsTransport, setBesoinsTransport] = useState<
+        GetEquipeEvenementBesoinsTransport | undefined
+    >(undefined);
 
     const router = useRouter();
     const { utilisateur } = useSession();
@@ -62,10 +62,10 @@ export default function BesoinTransportCoach() {
     };
 
     useEffect(() => {
-        if (selectedEquipe && !loading) {
+        if (selectedEquipe && !loading && !besoinsTransport) {
             fetchBesoinTransport(selectedEquipe.id);
         }
-    }, [loading, selectedEquipe]);
+    }, [besoinsTransport, loading, selectedEquipe]);
 
     if (loading) {
         return (
@@ -86,7 +86,10 @@ export default function BesoinTransportCoach() {
                         <TouchableOpacity
                             key={equipe.id}
                             style={styles.equipeBtn}
-                            onPress={() => setSelectedEquipe(equipe)}
+                            onPress={() => {
+                                setBesoinsTransport(undefined);
+                                setSelectedEquipe(equipe);
+                            }}
                         >
                             <FontAwesome5
                                 name="users"
@@ -121,7 +124,7 @@ export default function BesoinTransportCoach() {
             <Text style={styles.title}>Demandes de transport — {selectedEquipe.categorie}</Text>
             <Text style={styles.subtitle}>Événements à venir nécessitant un transport</Text>
 
-            {besoinsTransport.length === 0 ? (
+            {!besoinsTransport || besoinsTransport.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <Text style={styles.emptyTitle}>Aucun événement à venir</Text>
                     <Text style={styles.emptySubtitle}>
@@ -203,7 +206,7 @@ export default function BesoinTransportCoach() {
                                             style={styles.detailBtn}
                                             onPress={() =>
                                                 router.push(
-                                                    `/transport/demande/${messageBesoinTransport.id}`,
+                                                    `/coach/demandes-transport/${messageBesoinTransport.id}`,
                                                 )
                                             }
                                         >

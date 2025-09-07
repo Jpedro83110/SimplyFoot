@@ -222,13 +222,6 @@ export default function Statistiques() {
                         </View>
                     </View>
                 ))}
-
-                {/* Photo unique en bas */}
-                <Image
-                    source={require('../../assets/coach-joueur-highfive.png')}
-                    style={styles.highfive}
-                    resizeMode="cover"
-                />
             </ScrollView>
         </LinearGradient>
     );

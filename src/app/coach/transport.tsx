@@ -15,6 +15,7 @@ import {
     updateParticipationsEvenement,
 } from '@/helpers/participationsEvenement.helpers';
 
+// FIXME: this page isn't used anymore, should be deleted
 export default function TransportManquant() {
     const [participants, setParticipants] = useState<GetBesoinTransport | undefined>(undefined);
     const [loading, setLoading] = useState(false);

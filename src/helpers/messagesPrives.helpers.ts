@@ -15,8 +15,8 @@ export const getCoachMessagesPrivesWithJoueur = async ({
     const { data, error } = await supabase
         .from('messages_prives')
         .select('id, emetteur_id, recepteur_id, texte, created_at, auteur')
-        .or(`emetteur_id.eq.${coachId},recepteur_id.eq.${joueurId}`)
-        .or(`emetteur_id.eq.${joueurId},recepteur_id.eq.${coachId}`)
+        .or(`emetteur_id.eq.${coachId},recepteur_id.eq.${coachId}`)
+        .or(`emetteur_id.eq.${joueurId},recepteur_id.eq.${joueurId}`)
         .order('created_at', { ascending: true });
 
     if (error) {

@@ -3,9 +3,7 @@ import { Database } from '@/types/database.types';
 
 export type GetJoueurById = Awaited<ReturnType<typeof getJoueurById>>;
 
-export const getJoueurById = async (args: { joueurId: string }) => {
-    let { joueurId } = args;
-
+export const getJoueurById = async ({ joueurId }: { joueurId: string }) => {
     const { data, error } = await supabase
         .from('joueurs')
         .select(
@@ -38,9 +36,7 @@ export const getJoueursByEquipeId = async ({ equipeId }: { equipeId: string }) =
 
 export type GetEquipeIdByUtilisateurId = Awaited<ReturnType<typeof getEquipeIdByUtilisateurId>>;
 
-export const getEquipeIdByUtilisateurId = async (args: { utilisateurId: string }) => {
-    let { utilisateurId } = args;
-
+export const getEquipeIdByUtilisateurId = async ({ utilisateurId }: { utilisateurId: string }) => {
     const { data, error } = await supabase
         .from('utilisateurs')
         .select(`joueurs:joueur_id(equipe_id)`)
@@ -58,9 +54,11 @@ export type GetAccepteTransportByUtilisateurId = Awaited<
     ReturnType<typeof getAccepteTransportByUtilisateurId>
 >;
 
-export const getAccepteTransportByUtilisateurId = async (args: { utilisateurId: string }) => {
-    let { utilisateurId } = args;
-
+export const getAccepteTransportByUtilisateurId = async ({
+    utilisateurId,
+}: {
+    utilisateurId: string;
+}) => {
     const { data, error } = await supabase
         .from('utilisateurs')
         .select(`joueurs:joueur_id(decharges_generales(accepte_transport))`)
@@ -76,12 +74,13 @@ export const getAccepteTransportByUtilisateurId = async (args: { utilisateurId: 
         : false;
 };
 
-export const updateJoueur = async (args: {
+export const updateJoueur = async ({
+    joueurId,
+    dataToUpdate,
+}: {
     joueurId: string;
     dataToUpdate: Database['public']['Tables']['joueurs']['Update'];
 }) => {
-    const { joueurId, dataToUpdate } = args;
-
     const { error } = await supabase.from('joueurs').update(dataToUpdate).eq('id', joueurId);
 
     if (error) {

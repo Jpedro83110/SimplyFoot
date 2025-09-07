@@ -1,13 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    ImageBackground,
-} from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -17,7 +9,6 @@ import {
 } from '@/helpers/messagesPrives.helpers';
 import { useSession } from '@/hooks/useSession';
 import { getCoachEquipesWithJoueurs, GetCoachEquipesWithJoueurs } from '@/helpers/equipes.helpers';
-import { v4 as uuidv4 } from 'uuid';
 
 export default function MessagesPrivesCoach() {
     const [equipesWithJoueurs, setEquipesWithJoueurs] = useState<
@@ -81,122 +72,105 @@ export default function MessagesPrivesCoach() {
         });
 
         setMessage('');
-        setMessagesPrives((prev) => [
-            ...(prev ? prev : []),
-            {
-                // generate random uuid, we don't need the real id here
-                // we wan't to avoid send request to refresh conversation
-                id: uuidv4(),
-                emetteur_id: utilisateur.id,
-                recepteur_id: selectedJoueurId,
-                auteur: 'coach',
-                texte: message,
-                created_at: new Date().toISOString(),
-            },
-        ]);
+        fetchMessagesPrives(utilisateur.id, selectedJoueurId);
     };
 
     return (
-        <ImageBackground
-            source={require('../../../assets/messagerie-fond.png')}
-            style={{ flex: 1 }}
-            resizeMode="cover"
-        >
-            <LinearGradient colors={['#0a0a0acc', '#0f0f0fcc']} style={styles.container}>
-                <ScrollView contentContainerStyle={styles.scroll}>
-                    <Text style={styles.title}>📩 Message privé à un joueur</Text>
+        <LinearGradient colors={['#0a0a0acc', '#0f0f0fcc']} style={styles.container}>
+            <ScrollView contentContainerStyle={styles.scroll}>
+                <Text style={styles.title}>📩 Message privé à un joueur</Text>
 
-                    <Text style={styles.label}>Sélectionne une équipe :</Text>
-                    <View style={styles.selectWrap}>
-                        {equipesWithJoueurs?.map((equipe) => (
-                            <Pressable
-                                key={equipe.id}
-                                onPress={() => {
-                                    setSelectedEquipe(equipe);
-                                    setSelectedJoueurId(undefined);
-                                }}
-                                style={[
-                                    styles.equipeButton,
-                                    selectedEquipe?.id === equipe.id && styles.equipeButtonSelected,
-                                ]}
-                            >
-                                <Text style={styles.equipeText}>{equipe.nom}</Text>
-                            </Pressable>
-                        ))}
-                    </View>
+                <Text style={styles.label}>Sélectionne une équipe :</Text>
+                <View style={styles.selectWrap}>
+                    {equipesWithJoueurs?.map((equipe) => (
+                        <Pressable
+                            key={equipe.id}
+                            onPress={() => {
+                                setSelectedEquipe(equipe);
+                                setMessagesPrives(undefined);
+                                setSelectedJoueurId(undefined);
+                            }}
+                            style={[
+                                styles.equipeButton,
+                                selectedEquipe?.id === equipe.id && styles.equipeButtonSelected,
+                            ]}
+                        >
+                            <Text style={styles.equipeText}>{equipe.nom}</Text>
+                        </Pressable>
+                    ))}
+                </View>
 
-                    {selectedEquipe && selectedEquipe.joueurs.length === 0 ? (
-                        <>
-                            <Text style={styles.label}>Sélectionne un joueur :</Text>
-                            <View style={styles.selectWrap}>
-                                {selectedEquipe.joueurs.map((joueur) => (
-                                    <Pressable
-                                        key={joueur.utilisateurs[0].id}
-                                        onPress={() => {
-                                            setSelectedJoueurId(joueur.utilisateurs[0].id);
-                                        }}
-                                        style={[
-                                            styles.equipeButton,
-                                            selectedJoueurId === joueur.utilisateurs[0].id &&
-                                                styles.equipeButtonSelected,
-                                        ]}
-                                    >
-                                        <Text style={styles.equipeText}>
-                                            {joueur.utilisateurs[0].prenom}{' '}
-                                            {joueur.utilisateurs[0].nom}
-                                        </Text>
-                                    </Pressable>
-                                ))}
-                            </View>
-                        </>
-                    ) : (
-                        <Text style={styles.label}>
-                            Il n&apos;y a pas de joueurs dans cette équipe.
-                        </Text>
-                    )}
+                {selectedEquipe && selectedEquipe.joueurs.length > 0 ? (
+                    <>
+                        <Text style={styles.label}>Sélectionne un joueur :</Text>
+                        <View style={styles.selectWrap}>
+                            {selectedEquipe.joueurs.map((joueur) => (
+                                <Pressable
+                                    key={joueur.utilisateurs[0].id}
+                                    onPress={() => {
+                                        setMessagesPrives(undefined);
+                                        setSelectedJoueurId(joueur.utilisateurs[0].id);
+                                    }}
+                                    style={[
+                                        styles.equipeButton,
+                                        selectedJoueurId === joueur.utilisateurs[0].id &&
+                                            styles.equipeButtonSelected,
+                                    ]}
+                                >
+                                    <Text style={styles.equipeText}>
+                                        {joueur.utilisateurs[0].prenom} {joueur.utilisateurs[0].nom}
+                                    </Text>
+                                </Pressable>
+                            ))}
+                        </View>
+                    </>
+                ) : (
+                    <Text style={styles.label}>
+                        Il n&apos;y a pas de joueurs dans cette équipe.
+                    </Text>
+                )}
 
-                    <View style={styles.filContainer}>
-                        {messagesPrives?.map((message) => (
-                            <View
-                                key={message.id}
-                                style={[
-                                    styles.bulle,
-                                    message.auteur === 'coach' ? styles.coachMsg : styles.joueurMsg,
-                                ]}
-                            >
-                                <Text style={styles.texte}>{message.texte}</Text>
-                                <Text style={styles.meta}>
-                                    {/* FIXME: ne devrait pas pouvoir être null */}
-                                    {message.created_at &&
-                                        new Date(message.created_at).toLocaleString()}
-                                </Text>
-                            </View>
-                        ))}
-                    </View>
+                <View style={styles.filContainer}>
+                    {messagesPrives?.map((message) => (
+                        <View
+                            key={message.id}
+                            style={[
+                                styles.bulle,
+                                message.auteur === 'coach' ? styles.coachMsg : styles.joueurMsg,
+                            ]}
+                        >
+                            <Text style={styles.texte}>{message.texte}</Text>
+                            <Text style={styles.meta}>
+                                {/* FIXME: ne devrait pas pouvoir être null */}
+                                {message.created_at &&
+                                    new Date(message.created_at).toLocaleString()}
+                            </Text>
+                        </View>
+                    ))}
+                </View>
 
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Ton message..."
-                        placeholderTextColor="#777"
-                        multiline
-                        value={message}
-                        onChangeText={setMessage}
-                    />
-                    <Pressable
-                        onPress={handleEnvoyer}
-                        disabled={selectedJoueurId === undefined || message.trim() === ''}
-                        style={
-                            selectedJoueurId === undefined || message.trim() === ''
-                                ? styles.boutonDisabled
-                                : styles.bouton
-                        }
-                    >
-                        <Ionicons name="send" size={18} color="#111" />
-                        <Text style={styles.boutonText}>Envoyer</Text>
-                    </Pressable>
-                </ScrollView>
-            </LinearGradient>
-        </ImageBackground>
+                <TextInput
+                    style={styles.input}
+                    placeholder="Ton message..."
+                    placeholderTextColor="#777"
+                    multiline
+                    value={message}
+                    onChangeText={setMessage}
+                />
+                <Pressable
+                    onPress={handleEnvoyer}
+                    disabled={selectedJoueurId === undefined || message.trim() === ''}
+                    style={
+                        selectedJoueurId === undefined || message.trim() === ''
+                            ? styles.boutonDisabled
+                            : styles.bouton
+                    }
+                >
+                    <Ionicons name="send" size={18} color="#111" />
+                    <Text style={styles.boutonText}>Envoyer</Text>
+                </Pressable>
+            </ScrollView>
+        </LinearGradient>
     );
 }
 

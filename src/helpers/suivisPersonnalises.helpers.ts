@@ -54,9 +54,11 @@ export const upsertCoachSuiviPersonnalise = async ({
     return data;
 };
 
-export const deleteCoachSuiviPersonnalise = async (args: { suivisPersonnalisesId: string }) => {
-    const { suivisPersonnalisesId } = args;
-
+export const deleteCoachSuiviPersonnalise = async ({
+    suivisPersonnalisesId,
+}: {
+    suivisPersonnalisesId: string;
+}) => {
     const { error } = await supabase
         .from('suivis_personnalises')
         .delete()

@@ -60,7 +60,7 @@ export default function BesoinTransportJoueur() {
     });
 
     return (
-        <View style={styles.bg}>
+        <View>
             <ScrollView style={styles.container}>
                 <Text style={styles.title}>🚘 Demandes de transport - Équipe</Text>
                 {loading && <ActivityIndicator color={COLOR_GREEN_300} style={{ marginTop: 40 }} />}
@@ -117,7 +117,7 @@ export default function BesoinTransportJoueur() {
                         </Text>
                         <TouchableOpacity
                             style={styles.detailBtn}
-                            onPress={() => router.push(`/transport/demande/${demande.id}`)}
+                            onPress={() => router.push(`/joueur/demandes-transport/${demande.id}`)}
                         >
                             <Text style={{ color: '#111', fontWeight: 'bold' }}>
                                 Voir détails & Signer
@@ -131,7 +131,6 @@ export default function BesoinTransportJoueur() {
 }
 
 const styles = StyleSheet.create({
-    bg: { flex: 1, backgroundColor: '#111' },
     container: { padding: 20 },
     title: { fontSize: 20, color: '#fff', marginBottom: 10, textAlign: 'center' },
     debug: {

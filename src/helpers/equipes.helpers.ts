@@ -72,7 +72,7 @@ export const getCoachEquipesWithJoueurs = async ({
 }) => {
     const { data, error } = await supabase
         .from('equipes')
-        .select('id, nom, joueurs(utilisateurs:joueur_id(id, prenom, nom))')
+        .select('id, nom, joueurs(utilisateurs(id, prenom, nom))')
         .eq('coach_id', coachId)
         .eq('club_id', clubId);
 

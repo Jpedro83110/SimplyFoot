@@ -125,12 +125,13 @@ export type GetEvenementInfosByUtilisateurId = Awaited<
     ReturnType<typeof getEvenementInfosByUtilisateurId>
 >;
 
-export const getEvenementInfosByUtilisateurId = async (args: {
+export const getEvenementInfosByUtilisateurId = async ({
+    evenementId,
+    utilisateurId,
+}: {
     evenementId: string;
     utilisateurId: string;
 }) => {
-    let { evenementId, utilisateurId } = args;
-
     const { data, error } = await supabase
         .from('evenements')
         .select(

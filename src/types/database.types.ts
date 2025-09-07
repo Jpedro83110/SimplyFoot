@@ -1543,7 +1543,29 @@ export type Database = {
                     status?: string | null;
                     texte_signature?: string | null;
                 };
-                Relationships: [];
+                Relationships: [
+                    {
+                        foreignKeyName: 'signatures_transport_parent1_id_fkey';
+                        columns: ['parent1_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'utilisateurs';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'signatures_transport_parent2_id_fkey';
+                        columns: ['parent2_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'utilisateurs';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'signatures_transport_proposition_id_fkey';
+                        columns: ['proposition_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'propositions_transport';
+                        referencedColumns: ['id'];
+                    },
+                ];
             };
             staff: {
                 Row: {

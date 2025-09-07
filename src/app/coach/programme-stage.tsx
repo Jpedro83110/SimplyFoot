@@ -19,10 +19,11 @@ import {
     getStagesByClubId,
     GetStagesByClubId,
 } from '@/helpers/stages.helpers';
-
-const GREEN = '#00ff88';
-const DARK = '#101415';
-const DARK_LIGHT = '#161b20';
+import {
+    COLOR_BLACK_900,
+    COLOR_BLACK_LIGHT_900,
+    COLOR_GREEN_300,
+} from '@/utils/styleContants.utils';
 
 function downloadCSVWeb(filename: string, csv: string) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -292,13 +293,13 @@ export default function ProgrammeStage() {
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: DARK,
+        backgroundColor: COLOR_BLACK_900,
         flex: 1,
     },
     scroll: { padding: 20, alignSelf: 'center', maxWidth: 790, width: '92%' },
     title: {
         fontSize: 22,
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontWeight: 'bold',
         marginBottom: 18,
         alignSelf: 'center',
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
     stageDate: { color: '#00ff88', fontSize: 14, marginTop: 6 },
     stageAge: { color: '#facc15', fontSize: 14, marginTop: 4 },
     openCloseBtn: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontWeight: 'bold',
         fontSize: 20,
         textAlign: 'center',
@@ -329,7 +330,7 @@ const styles = StyleSheet.create({
     },
 
     formBlock: {
-        backgroundColor: DARK_LIGHT,
+        backgroundColor: COLOR_BLACK_LIGHT_900,
         borderRadius: 14,
         padding: 14,
         marginBottom: 20,
@@ -346,7 +347,7 @@ const styles = StyleSheet.create({
     dayTitle: {
         fontWeight: '600',
         fontSize: 16,
-        color: GREEN,
+        color: COLOR_GREEN_300,
         marginBottom: 10,
     },
 

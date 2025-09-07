@@ -7,5 +7,6 @@ type CompositionEvenementParams = {
 
 export default function CompositionEvenement() {
     const { evenement_id } = useLocalSearchParams<CompositionEvenementParams>();
+
     return <CompositionDragDrop evenementId={evenement_id} />;
 }

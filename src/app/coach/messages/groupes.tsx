@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    ScrollView,
-    StyleSheet,
-    Pressable,
-    ImageBackground,
-} from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -114,77 +106,71 @@ export default function MessagesGroupesCoach() {
     );
 
     return (
-        <ImageBackground
-            source={require('../../../assets/messagerie-fond.png')}
-            style={{ flex: 1 }}
-            resizeMode="cover"
-        >
-            <LinearGradient colors={['#0a0a0acc', '#0f0f0fcc']} style={styles.container}>
-                <ScrollView contentContainerStyle={styles.scroll}>
-                    <Text style={styles.title}>💬 Messagerie de groupe</Text>
-                    <View style={styles.selectWrap}>
-                        {equipes?.map((eq) => (
-                            <Pressable
-                                key={eq.id}
-                                onPress={() => {
-                                    setSelectedEquipeId(eq.id);
-                                    setMessagesGroupeCoach(undefined);
-                                }}
-                                style={[
-                                    styles.equipeButton,
-                                    selectedEquipeId === eq.id && styles.equipeButtonSelected,
-                                ]}
-                            >
-                                <Text style={styles.equipeText}>{eq.nom}</Text>
-                            </Pressable>
-                        ))}
-                    </View>
-                    <TextInput
-                        placeholder="Ton message pour l'équipe..."
-                        placeholderTextColor="#777"
-                        style={styles.input}
-                        value={message}
-                        onChangeText={setMessage}
-                    />
-                    <Pressable onPress={envoyerMessage} style={styles.bouton}>
-                        <Ionicons name="send" size={18} color="#111" />
-                        <Text style={styles.boutonText}>Envoyer</Text>
-                    </Pressable>
-                    <View style={{ marginTop: 30 }}>
-                        {messagesGroupeCoach?.map((message) => (
-                            <View key={message.id} style={styles.card}>
-                                <Text style={styles.messageTitle}>{message.titre}</Text>
-                                <Text style={styles.messageContent}>{message.contenu}</Text>
-                                <Text style={styles.messageMeta}>
-                                    📅 {formatDateForDisplay({ date: message.created_at })}
+        <LinearGradient colors={['#0a0a0acc', '#0f0f0fcc']} style={styles.container}>
+            <ScrollView contentContainerStyle={styles.scroll}>
+                <Text style={styles.title}>💬 Messagerie de groupe</Text>
+                <View style={styles.selectWrap}>
+                    {equipes?.map((eq) => (
+                        <Pressable
+                            key={eq.id}
+                            onPress={() => {
+                                setSelectedEquipeId(eq.id);
+                                setMessagesGroupeCoach(undefined);
+                            }}
+                            style={[
+                                styles.equipeButton,
+                                selectedEquipeId === eq.id && styles.equipeButtonSelected,
+                            ]}
+                        >
+                            <Text style={styles.equipeText}>{eq.nom}</Text>
+                        </Pressable>
+                    ))}
+                </View>
+                <TextInput
+                    placeholder="Ton message pour l'équipe..."
+                    placeholderTextColor="#777"
+                    style={styles.input}
+                    value={message}
+                    onChangeText={setMessage}
+                />
+                <Pressable onPress={envoyerMessage} style={styles.bouton}>
+                    <Ionicons name="send" size={18} color="#111" />
+                    <Text style={styles.boutonText}>Envoyer</Text>
+                </Pressable>
+                <View style={{ marginTop: 30 }}>
+                    {messagesGroupeCoach?.map((message) => (
+                        <View key={message.id} style={styles.card}>
+                            <Text style={styles.messageTitle}>{message.titre}</Text>
+                            <Text style={styles.messageContent}>{message.contenu}</Text>
+                            <Text style={styles.messageMeta}>
+                                📅 {formatDateForDisplay({ date: message.created_at })}
+                            </Text>
+                            {message.reponses_messages_joueur.map((reponse, i) => (
+                                <Text key={i} style={styles.reponse}>
+                                    🧒 {reponse.texte}
                                 </Text>
-                                {message.reponses_messages_joueur.map((reponse, i) => (
-                                    <Text key={i} style={styles.reponse}>
-                                        🧒 {reponse.texte}
-                                    </Text>
-                                ))}
-                                <TextInput
-                                    placeholder="Répondre à tous..."
-                                    placeholderTextColor="#777"
-                                    value={reponseText[message.id] || ''}
-                                    onChangeText={(txt) =>
-                                        setReponseText((prev) => ({ ...prev, [message.id]: txt }))
-                                    }
-                                    style={styles.input}
-                                />
-                                <Pressable
-                                    onPress={() => envoyerReponse(message.id)}
-                                    style={styles.bouton}
-                                >
-                                    <Ionicons name="send" size={18} color="#111" />
-                                    <Text style={styles.boutonText}>Répondre</Text>
-                                </Pressable>
-                            </View>
-                        ))}
-                    </View>
-                </ScrollView>
-            </LinearGradient>
-        </ImageBackground>
+                            ))}
+                            <TextInput
+                                placeholder="Répondre à tous..."
+                                placeholderTextColor="#777"
+                                value={reponseText[message.id] || ''}
+                                onChangeText={(txt) =>
+                                    setReponseText((prev) => ({ ...prev, [message.id]: txt }))
+                                }
+                                style={styles.input}
+                            />
+                            <Pressable
+                                onPress={() => envoyerReponse(message.id)}
+                                style={styles.bouton}
+                            >
+                                <Ionicons name="send" size={18} color="#111" />
+                                <Text style={styles.boutonText}>Répondre</Text>
+                            </Pressable>
+                        </View>
+                    ))}
+                </View>
+            </ScrollView>
+        </LinearGradient>
     );
 }
 

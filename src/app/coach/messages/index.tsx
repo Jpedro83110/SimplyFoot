@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,60 +24,54 @@ export default function MessagesIndex() {
     }, []);
 
     return (
-        <ImageBackground
-            source={require('../../../assets/messagerie-fond.png')}
-            style={styles.background}
-            resizeMode="cover"
-        >
-            <LinearGradient colors={DARK_GRADIENT} style={styles.container}>
-                <Text style={styles.title}>💬 Messagerie Coach</Text>
+        <LinearGradient colors={DARK_GRADIENT} style={styles.container}>
+            <Text style={styles.title}>💬 Messagerie Coach</Text>
 
-                <TouchableOpacity
-                    style={styles.button}
-                    onPress={() => router.push('/coach/messages/prives')}
-                >
-                    <MaterialCommunityIcons
-                        name="account-box-multiple-outline"
-                        size={30}
-                        color={COLOR_GREEN_300}
-                        style={{ marginRight: 12 }}
-                    />
-                    <Text style={styles.buttonText}>Messagerie privée</Text>
-                </TouchableOpacity>
+            <TouchableOpacity
+                style={styles.button}
+                onPress={() => router.push('/coach/messages/prives')}
+            >
+                <MaterialCommunityIcons
+                    name="account-box-multiple-outline"
+                    size={30}
+                    color={COLOR_GREEN_300}
+                    style={{ marginRight: 12 }}
+                />
+                <Text style={styles.buttonText}>Messagerie privée</Text>
+            </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.button}
-                    onPress={() => router.push('/coach/messages/groupes')}
-                >
-                    <MaterialCommunityIcons
-                        name="account-group-outline"
-                        size={30}
-                        color={COLOR_GREEN_300}
-                        style={{ marginRight: 12 }}
-                    />
-                    <Text style={styles.buttonText}>Messagerie de groupe</Text>
-                </TouchableOpacity>
+            <TouchableOpacity
+                style={styles.button}
+                onPress={() => router.push('/coach/messages/groupes')}
+            >
+                <MaterialCommunityIcons
+                    name="account-group-outline"
+                    size={30}
+                    color={COLOR_GREEN_300}
+                    style={{ marginRight: 12 }}
+                />
+                <Text style={styles.buttonText}>Messagerie de groupe</Text>
+            </TouchableOpacity>
 
-                {/* BOUTON BESOIN DE TRANSPORT */}
-                <TouchableOpacity
-                    style={styles.button}
-                    onPress={() => router.push('/coach/messages/besoin-transport')}
-                >
-                    <MaterialCommunityIcons
-                        name="van-utility"
-                        size={30}
-                        color={COLOR_GREEN_300}
-                        style={{ marginRight: 12 }}
-                    />
-                    <Text style={styles.buttonText}>Besoin de transport</Text>
-                    {hasTransportRequest && (
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>!</Text>
-                        </View>
-                    )}
-                </TouchableOpacity>
-            </LinearGradient>
-        </ImageBackground>
+            {/* BOUTON BESOIN DE TRANSPORT */}
+            <TouchableOpacity
+                style={styles.button}
+                onPress={() => router.push('/coach/messages/besoin-transport')}
+            >
+                <MaterialCommunityIcons
+                    name="van-utility"
+                    size={30}
+                    color={COLOR_GREEN_300}
+                    style={{ marginRight: 12 }}
+                />
+                <Text style={styles.buttonText}>Besoin de transport</Text>
+                {hasTransportRequest && (
+                    <View style={styles.badge}>
+                        <Text style={styles.badgeText}>!</Text>
+                    </View>
+                )}
+            </TouchableOpacity>
+        </LinearGradient>
     );
 }
 
