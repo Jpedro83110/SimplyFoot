@@ -37,7 +37,7 @@ interface TransportDetailProps {
 }
 
 export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [messageBesoinTransport, setMessageBesoinTransport] =
         useState<GetMessagesBesoinTransportById | null>(null);
     const [showPropModal, setShowPropModal] = useState(false);
