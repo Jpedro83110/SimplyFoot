@@ -60,7 +60,7 @@ export default function Statistiques() {
 
             for (let evaluation of evaluations) {
                 const mentales = evaluation.joueurs
-                    .map((joueur) => joueur.utilisateurs.evaluations_mentales)
+                    .map((joueur) => joueur.utilisateurs[0].evaluations_mentales)
                     .flat();
 
                 const moyMentale =
@@ -74,7 +74,7 @@ export default function Statistiques() {
                         : 0;
 
                 const techniques = evaluation.joueurs
-                    .map((joueur) => joueur.utilisateurs.evaluations_techniques)
+                    .map((joueur) => joueur.utilisateurs[0].evaluations_techniques)
                     .filter((evaluation) => evaluation);
 
                 const moyTechnique =
@@ -94,8 +94,8 @@ export default function Statistiques() {
 
                 const nbJoueursEvalues = evaluation.joueurs.filter(
                     (joueur) =>
-                        joueur.utilisateurs.evaluations_mentales.length > 0 ||
-                        joueur.utilisateurs.evaluations_techniques,
+                        joueur.utilisateurs[0].evaluations_mentales.length > 0 ||
+                        joueur.utilisateurs[0].evaluations_techniques,
                 ).length;
 
                 if (moyMentale > 0 || moyTechnique > 0) {
@@ -124,7 +124,7 @@ export default function Statistiques() {
     };
 
     useEffect(() => {
-        if (!utilisateur?.club_id || !loading || stats) {
+        if (!utilisateur?.club_id || loading || stats) {
             return;
         }
 

@@ -95,7 +95,7 @@ export const getCoachEquipesEvaluations = async ({
     const { data, error } = await supabase
         .from('equipes')
         .select(
-            'nom, joueurs:equipe_id(id, utilisateurs(id, evaluations_mentales!joueur_id(note_globale, moyenne), evaluations_techniques!joueur_id(moyenne)))',
+            'nom, joueurs(id, utilisateurs(id, evaluations_mentales!joueur_id(note_globale, moyenne), evaluations_techniques!joueur_id(moyenne)))',
         )
         .eq('club_id', clubId)
         .eq('coach_id', coachId);
