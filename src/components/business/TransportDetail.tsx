@@ -9,12 +9,14 @@ import {
     Modal,
     ActivityIndicator,
     Alert,
+    Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLOR_GREEN_300, YELLOW } from '@/utils/styleContants.utils';
+import { COLOR_BLACK_600, COLOR_GREEN_300, RED, YELLOW } from '@/utils/styleContants.utils';
 import {
     getMessagesBesoinTransportById,
     GetMessagesBesoinTransportById,
+    updateMessageBesoinTransport,
 } from '@/helpers/messagesBesoinTransport.helpers';
 import { getAccepteTransportByUtilisateurId } from '@/helpers/joueurs.helpers';
 import { useSession } from '@/hooks/useSession';
@@ -26,11 +28,6 @@ import {
 import { upsertSignatureTransport } from '@/helpers/signaturesTransport.helpers';
 
 type PropositionTransportRole = 'demandeur' | 'conducteur';
-
-interface SignatureModalState {
-    open: boolean;
-    proposition: GetMessagesBesoinTransportById['propositions_transport'][number] | null;
-}
 
 interface TransportDetailProps {
     demandeId: string;
@@ -44,10 +41,6 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
     const [lieu, setLieu] = useState('');
     const [heure, setHeure] = useState('');
     const [editPropId, setEditPropId] = useState<string | null>(null);
-    const [signatureModal, setSignatureModal] = useState<SignatureModalState>({
-        open: false,
-        proposition: null,
-    });
     const [autorise, setAutorise] = useState(false);
 
     const { utilisateur } = useSession();
@@ -55,35 +48,14 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
     const utitlisateurPropositionTransport = useMemo(
         () =>
             messageBesoinTransport?.propositions_transport?.find(
-                (proposition) => proposition.parent_proposeur_id,
+                (proposition) => proposition.parent_proposeur_id === utilisateur?.id,
             ),
-        [messageBesoinTransport],
+        [messageBesoinTransport, utilisateur?.id],
     );
 
-    const hasDemandeurSigned = useMemo(
-        () =>
-            utitlisateurPropositionTransport?.signatures_transport?.find(
-                (signature) =>
-                    signature.parent1_id === messageBesoinTransport?.utilisateurs?.joueur_id,
-            ),
-        [
-            utitlisateurPropositionTransport?.signatures_transport,
-            messageBesoinTransport?.utilisateurs?.joueur_id,
-        ],
-    );
-
-    const hasConducteurSigned = useMemo(
-        () =>
-            utitlisateurPropositionTransport?.accepte &&
-            utitlisateurPropositionTransport?.signatures_transport?.find(
-                (signature) =>
-                    signature.parent2_id === utitlisateurPropositionTransport?.parent_proposeur_id,
-            ),
-        [
-            utitlisateurPropositionTransport?.accepte,
-            utitlisateurPropositionTransport?.parent_proposeur_id,
-            utitlisateurPropositionTransport?.signatures_transport,
-        ],
+    const isMyDemandeTransport = useMemo(
+        () => messageBesoinTransport?.utilisateur_id === utilisateur?.id,
+        [messageBesoinTransport?.utilisateur_id, utilisateur?.id],
     );
 
     const fetchAll = async (
@@ -123,7 +95,6 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
             if (
                 !autorise ||
                 !utilisateur?.id ||
-                !utitlisateurPropositionTransport?.id ||
                 !messageBesoinTransport?.adresse_demande ||
                 !messageBesoinTransport?.heure_demande
             ) {
@@ -139,17 +110,32 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
                 return;
             }
 
-            await upsertPropositionTransport({
-                propisitionsTransportId: utitlisateurPropositionTransport.id,
-                dataToUpdate: {
-                    demande_id: demandeId,
-                    parent_proposeur_id: utilisateur.id,
-                    lieu_rdv: finalLieu,
-                    heure_rdv: finalHeure,
-                    date_proposition: new Date().toISOString(),
-                    accepte: false,
-                },
-            });
+            const propisitionsTransportId =
+                utitlisateurPropositionTransport?.parent_proposeur_id === utilisateur.id
+                    ? utitlisateurPropositionTransport?.id
+                    : null;
+
+            if (isMyDemandeTransport) {
+                await updateMessageBesoinTransport({
+                    messagesBesoinTransportId: messageBesoinTransport.id,
+                    dataToUpdate: {
+                        adresse_demande: finalLieu,
+                        heure_demande: finalHeure,
+                    },
+                });
+            } else {
+                await upsertPropositionTransport({
+                    propisitionsTransportId,
+                    dataToUpdate: {
+                        demande_id: demandeId,
+                        parent_proposeur_id: utilisateur.id,
+                        lieu_rdv: finalLieu,
+                        heure_rdv: finalHeure,
+                        date_proposition: new Date().toISOString(),
+                        accepte: false,
+                    },
+                });
+            }
 
             setShowPropModal(false);
             setLieu('');
@@ -160,34 +146,60 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
         },
         [
             autorise,
-            lieu,
-            heure,
-            utitlisateurPropositionTransport?.id,
-            demandeId,
             utilisateur?.id,
             utilisateur?.role,
             messageBesoinTransport?.adresse_demande,
             messageBesoinTransport?.heure_demande,
+            messageBesoinTransport?.id,
+            lieu,
+            heure,
+            utitlisateurPropositionTransport?.parent_proposeur_id,
+            utitlisateurPropositionTransport?.id,
+            isMyDemandeTransport,
+            demandeId,
         ],
     );
 
-    async function supprimerProposition(propositionsTransportId: string) {
-        Alert.alert('Supprimer la proposition', 'Tu es sûr ? Cette action est irréversible.', [
-            { text: 'Annuler', style: 'cancel' },
-            {
-                text: 'Supprimer',
-                style: 'destructive',
-                onPress: async () => {
-                    if (utilisateur?.role) {
-                        await deletePropositionTransportById({
-                            propositionsTransportId,
-                        });
-                        fetchAll(demandeId, utilisateur.id, utilisateur.role === 'coach');
-                    }
-                },
-            },
-        ]);
-    }
+    const deletePropositionTransport = useCallback(
+        async (propositionsTransportId: string) => {
+            if (!utilisateur?.role) {
+                return;
+            }
+
+            await deletePropositionTransportById({
+                propositionsTransportId,
+            });
+            fetchAll(demandeId, utilisateur.id, utilisateur.role === 'coach');
+        },
+        [demandeId, utilisateur?.id, utilisateur?.role],
+    );
+
+    const handleDeleteProposition = useCallback(
+        async (propositionsTransportId: string) => {
+            // FIXME: revoir la confirmation pour uniformiser web et mobile
+            if (Platform.OS === 'web') {
+                if (confirm(`Supprimer la proposition ? Cette action est irréversible.`)) {
+                    await deletePropositionTransport(propositionsTransportId);
+                }
+            } else {
+                Alert.alert(
+                    'Supprimer la proposition',
+                    'Tu es sûr ? Cette action est irréversible.',
+                    [
+                        { text: 'Annuler', style: 'cancel' },
+                        {
+                            text: 'Supprimer',
+                            style: 'destructive',
+                            onPress: async () => {
+                                await deletePropositionTransport(propositionsTransportId);
+                            },
+                        },
+                    ],
+                );
+            }
+        },
+        [deletePropositionTransport],
+    );
 
     const signer = useCallback(
         async (
@@ -215,8 +227,8 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
                     proposition_id: propositionTransport.id,
                     date_signature: new Date().toISOString(),
                     status: 'signed', // FIXME: etrange, une seule signature et on met le status signed ?
-                    parent1_id: role === 'demandeur' ? utilisateur.id : undefined,
-                    parent2_id: role === 'conducteur' ? utilisateur.id : undefined,
+                    parent1_id: role === 'demandeur' ? utilisateur.id : null,
+                    parent2_id: role === 'conducteur' ? utilisateur.id : null,
                 },
             });
 
@@ -236,7 +248,6 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
                 messagesBesoinTransportId: demandeId,
             });
 
-            setSignatureModal({ open: true, proposition });
             fetchAll(demandeId, utilisateur.id, utilisateur.role === 'coach');
         },
         [demandeId, utilisateur?.id, utilisateur?.role],
@@ -303,22 +314,24 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
 
             {!loading && messageBesoinTransport && autorise && (
                 <>
-                    <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={() => {
-                            if (utitlisateurPropositionTransport?.id && utilisateur?.id) {
+                    {!isMyDemandeTransport && !utitlisateurPropositionTransport && (
+                        <TouchableOpacity
+                            style={styles.actionBtn}
+                            onPress={() => {
                                 setEditPropId(null);
                                 proposerOuModifierTransport(true);
-                            }
-                        }}
-                    >
-                        <Ionicons name="checkmark-circle" size={15} color="#111" />
-                        <Text style={styles.actionText}>Je le prends (lieu/heure demandés)</Text>
-                    </TouchableOpacity>
+                            }}
+                        >
+                            <Ionicons name="checkmark-circle" size={15} color="#111" />
+                            <Text style={styles.actionText}>
+                                Je le prends (lieu/heure demandés)
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                     <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: '#666' }]}
+                        style={[styles.actionBtn, { backgroundColor: YELLOW }]}
                         onPress={() => {
-                            setEditPropId(null);
+                            setEditPropId(utitlisateurPropositionTransport?.id ?? null);
                             setShowPropModal(true);
                         }}
                     >
@@ -348,6 +361,17 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
                     )}
                     {messageBesoinTransport.propositions_transport.map((proposition) => {
                         const estAuteur = proposition.parent_proposeur_id === utilisateur?.id;
+
+                        const hasDemandeurSigned =
+                            proposition.signatures_transport?.find(
+                                (signature) => signature.parent1_id,
+                            ) !== undefined;
+
+                        const hasConducteurSigned =
+                            proposition.signatures_transport?.find(
+                                (signature) => signature.parent2_id,
+                            ) !== undefined;
+
                         const signatureOk = hasDemandeurSigned && hasConducteurSigned;
 
                         return (
@@ -372,19 +396,8 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
                                         style={{ flexDirection: 'row', gap: 10, marginVertical: 7 }}
                                     >
                                         <TouchableOpacity
-                                            style={[styles.acceptBtn, { backgroundColor: '#444' }]}
-                                            onPress={() => {
-                                                setLieu(proposition.lieu_rdv || '');
-                                                setHeure(proposition.heure_rdv || '');
-                                                setEditPropId(proposition.id);
-                                                setShowPropModal(true);
-                                            }}
-                                        >
-                                            <Text style={{ color: '#fff' }}>Modifier</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={[styles.acceptBtn, { backgroundColor: '#d00' }]}
-                                            onPress={() => supprimerProposition(proposition.id)}
+                                            style={[styles.acceptBtn, { backgroundColor: RED }]}
+                                            onPress={() => handleDeleteProposition(proposition.id)}
                                         >
                                             <Text style={{ color: '#fff' }}>Supprimer</Text>
                                         </TouchableOpacity>
@@ -392,62 +405,65 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
                                 )}
 
                                 {/* Validation demandeur (joueur) */}
-                                {messageBesoinTransport.utilisateur_id === utilisateur?.id &&
-                                    utitlisateurPropositionTransport &&
-                                    !utitlisateurPropositionTransport?.accepte && (
-                                        <TouchableOpacity
-                                            style={styles.acceptBtn}
-                                            onPress={() =>
-                                                accepterProposition(
-                                                    utitlisateurPropositionTransport,
-                                                )
-                                            }
-                                        >
-                                            <Text style={styles.acceptText}>
-                                                Valider ce transporteur
-                                            </Text>
-                                        </TouchableOpacity>
-                                    )}
+                                {isMyDemandeTransport && !proposition.accepte && (
+                                    <TouchableOpacity
+                                        style={styles.acceptBtn}
+                                        onPress={() => accepterProposition(proposition)}
+                                    >
+                                        <Text style={styles.acceptText}>
+                                            Valider ce transporteur
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
 
                                 {/* Signatures */}
-                                {utitlisateurPropositionTransport?.accepte && (
+                                {proposition?.accepte && (
                                     <>
-                                        {!hasDemandeurSigned && (
+                                        {!hasDemandeurSigned && isMyDemandeTransport && (
                                             <TouchableOpacity
                                                 style={styles.acceptBtn}
-                                                onPress={() =>
-                                                    signer(
-                                                        utitlisateurPropositionTransport,
-                                                        'demandeur',
-                                                    )
-                                                }
+                                                onPress={() => signer(proposition, 'demandeur')}
                                             >
                                                 <Text style={styles.acceptText}>
-                                                    Je suis le parent du joueur, je signe
+                                                    Je signe en tant que demandeur
                                                 </Text>
                                             </TouchableOpacity>
                                         )}
-                                        {!hasConducteurSigned && (
-                                            <TouchableOpacity
-                                                style={styles.acceptBtn}
-                                                onPress={() =>
-                                                    signer(
-                                                        utitlisateurPropositionTransport,
-                                                        'conducteur',
-                                                    )
-                                                }
-                                            >
-                                                <Text style={styles.acceptText}>
-                                                    Je suis le conducteur, je signe
-                                                </Text>
-                                            </TouchableOpacity>
-                                        )}
+                                        {!hasConducteurSigned &&
+                                            proposition.accepte &&
+                                            proposition.parent_proposeur_id === utilisateur?.id && (
+                                                <>
+                                                    <Text
+                                                        style={{
+                                                            color: '#aaa',
+                                                            fontStyle: 'italic',
+                                                        }}
+                                                    >
+                                                        “Je m&apos;engage à transporter le joueur
+                                                        selon les modalités convenues, sous ma
+                                                        responsabilité.”
+                                                    </Text>
+                                                    <TouchableOpacity
+                                                        style={styles.acceptBtn}
+                                                        onPress={() =>
+                                                            signer(proposition, 'conducteur')
+                                                        }
+                                                    >
+                                                        <Text style={styles.acceptText}>
+                                                            Je signe en tant que conducteur
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                </>
+                                            )}
                                         <Text style={{ color: '#0f0', marginTop: 7 }}>
-                                            {hasDemandeurSigned && '✔️ Parent joueur signé  '}
-                                            {hasConducteurSigned && '✔️ Conducteur signé  '}
+                                            {proposition.accepte &&
+                                                (!hasDemandeurSigned || !hasConducteurSigned) &&
+                                                ' ✔️ Proposition acceptée'}
+                                            {hasDemandeurSigned && '\n ✔️ Parent joueur signé'}
+                                            {hasConducteurSigned && '\n ✔️ Conducteur signé'}
                                             {hasDemandeurSigned &&
                                                 hasConducteurSigned &&
-                                                ' | Validé ✅'}
+                                                '\n Demande validée ✅'}
                                         </Text>
                                     </>
                                 )}
@@ -483,9 +499,7 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
                         <TouchableOpacity
                             style={styles.modalBtn}
                             onPress={() => {
-                                if (utitlisateurPropositionTransport?.id && utilisateur?.id) {
-                                    proposerOuModifierTransport(false);
-                                }
+                                proposerOuModifierTransport(false);
                             }}
                         >
                             <Text style={styles.modalBtnText}>
@@ -493,7 +507,7 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
                             </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.modalBtn, { backgroundColor: '#444' }]}
+                            style={[styles.modalBtn, { backgroundColor: COLOR_BLACK_600 }]}
                             onPress={() => {
                                 setShowPropModal(false);
                                 setEditPropId(null);
@@ -502,55 +516,6 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
                             }}
                         >
                             <Text style={styles.modalBtnText}>Annuler</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* MODAL SIGNATURE */}
-            <Modal visible={signatureModal.open} animationType="slide" transparent>
-                <View style={styles.modalBg}>
-                    <View style={styles.modalBox}>
-                        <Text style={styles.modalTitle}>Décharge de transport</Text>
-                        <Text style={{ color: '#fff', marginBottom: 10 }}>
-                            Les deux parties doivent signer pour valider ce transport.{'\n'}
-                            <Text style={{ color: '#aaa', fontStyle: 'italic' }}>
-                                “Je m&apos;engage à transporter le joueur selon les modalités
-                                convenues, sous ma responsabilité.”
-                            </Text>
-                        </Text>
-                        {!hasDemandeurSigned && signatureModal.proposition && (
-                            <TouchableOpacity
-                                style={styles.modalBtn}
-                                onPress={() => signer(signatureModal.proposition!, 'demandeur')}
-                            >
-                                <Text style={styles.modalBtnText}>
-                                    Je suis le parent DEMANDEUR, je signe
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                        {!hasConducteurSigned && signatureModal.proposition && (
-                            <TouchableOpacity
-                                style={styles.modalBtn}
-                                onPress={() => signer(signatureModal.proposition!, 'conducteur')}
-                            >
-                                <Text style={styles.modalBtnText}>
-                                    Je suis le parent CONDUCTEUR, je signe
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                        {hasDemandeurSigned && hasConducteurSigned && (
-                            <Text
-                                style={{ color: '#00ff88', marginVertical: 10, fontWeight: 'bold' }}
-                            >
-                                ✔️ Double signature enregistrée, transport validé.
-                            </Text>
-                        )}
-                        <TouchableOpacity
-                            style={[styles.modalBtn, { backgroundColor: '#444' }]}
-                            onPress={() => setSignatureModal({ open: false, proposition: null })}
-                        >
-                            <Text style={styles.modalBtnText}>Fermer</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

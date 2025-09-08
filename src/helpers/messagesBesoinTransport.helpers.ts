@@ -16,6 +16,7 @@ export const getMessagesBesoinTransportAndUtilisateurByEquipeId = async ({
             'id, adresse_demande, heure_demande, etat, evenements(equipe_id, id, titre, date, heure, lieu, equipe_id) , utilisateurs(id, prenom, nom)',
         )
         .not('evenements', 'is', null)
+        .gte('evenements.date', new Date().toISOString().split('T')[0])
         .eq('evenements.equipe_id', equipeId);
 
     if (error) {
@@ -37,9 +38,10 @@ export const getMessagesBesoinTransportById = async ({
     const { data, error } = await supabase
         .from('messages_besoin_transport')
         .select(
-            'adresse_demande, heure_demande, etat, utilisateur_id, utilisateurs(joueur_id, nom, prenom, joueurs(decharges_generales(parent_nom, parent_prenom, accepte_transport))), evenements(titre, date, heure, equipes(coach_id)), propositions_transport(id, lieu_rdv, heure_rdv, parent_proposeur_id, accepte, parent_proposeur:parent_proposeur_id(prenom, nom), signatures_transport(id, parent1_id, parent2_id))',
+            'id, adresse_demande, heure_demande, etat, utilisateur_id, utilisateurs(joueur_id, nom, prenom, joueurs(decharges_generales(parent_nom, parent_prenom, accepte_transport))), evenements(titre, date, heure, equipes(coach_id)), propositions_transport(id, lieu_rdv, heure_rdv, parent_proposeur_id, accepte, parent_proposeur:parent_proposeur_id(prenom, nom), signatures_transport(id, parent1_id, parent2_id))',
         )
         .eq('id', messagesBesoinTransportId)
+        .order('accepte', { referencedTable: 'propositions_transport', ascending: false })
         .single();
 
     if (error) {
@@ -58,7 +60,8 @@ export const updateMessageBesoinTransport = async ({
 }) => {
     const { error } = await supabase
         .from('messages_besoin_transport')
-        .update({ ...dataToUpdate, id: messagesBesoinTransportId });
+        .update({ ...dataToUpdate })
+        .eq('id', messagesBesoinTransportId);
 
     if (error) {
         throw error;

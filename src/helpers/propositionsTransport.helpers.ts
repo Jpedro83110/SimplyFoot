@@ -24,15 +24,15 @@ export const acceptPropositionTransport = async ({
     propositionsTransportId: string;
     messagesBesoinTransportId: string;
 }) => {
-    const { error: errorOnAccept } = await supabase
-        .from('propositions_transport')
-        .update({ accepte: true })
-        .eq('id', propositionsTransportId);
-
     const { error: errorOnRefuse } = await supabase
         .from('propositions_transport')
         .update({ accepte: false })
         .eq('demande_id', messagesBesoinTransportId);
+
+    const { error: errorOnAccept } = await supabase
+        .from('propositions_transport')
+        .update({ accepte: true })
+        .eq('id', propositionsTransportId);
 
     if (errorOnAccept || errorOnRefuse) {
         throw errorOnAccept || errorOnRefuse;

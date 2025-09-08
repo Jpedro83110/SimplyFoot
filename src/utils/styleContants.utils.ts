@@ -36,3 +36,4 @@ export const COLOR_BLACK_LIGHT_100: ColorValue = '#ECF3FA';
 export const COLOR_BLACK_LIGHT_50: ColorValue = '#F3FAFF';
 
 export const YELLOW: ColorValue = '#FFE44D';
+export const RED: ColorValue = '#D30000';
