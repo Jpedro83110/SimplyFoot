@@ -75,7 +75,8 @@ export const calculateAgeFromString = (birthdateStr: string) => {
         const [day, month, year] = birthdateStr.split('/').map(Number);
         birthdate = new Date(year, month - 1, day);
     } else {
-        throw new Error('Invalid date format. Use YYYY-MM-DD or DD/MM/YYYY.');
+        console.error('Invalid date format. Use YYYY-MM-DD or DD/MM/YYYY.');
+        return '';
     }
 
     return calculateAge(birthdate);

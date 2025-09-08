@@ -60,78 +60,75 @@ export default function BesoinTransportJoueur() {
     });
 
     return (
-        <View style={styles.bg}>
-            <ScrollView style={styles.container}>
-                <Text style={styles.title}>🚘 Demandes de transport - Équipe</Text>
-                {loading && <ActivityIndicator color={COLOR_GREEN_300} style={{ marginTop: 40 }} />}
+        <ScrollView style={styles.container}>
+            <Text style={styles.title}>🚘 Demandes de transport - Équipe</Text>
+            {loading && <ActivityIndicator color={COLOR_GREEN_300} style={{ marginTop: 40 }} />}
 
-                {!loading && demandes.length === 0 && (
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.empty}>
-                            Aucune demande de transport à venir dans votre équipe.
-                        </Text>
-                        <Text style={styles.emptyInfo}>
-                            Les demandes apparaissent quand :{'\n'}• Vous êtes dans la même équipe
-                            que le demandeur
-                            {'\n'}• L&apos;événement est dans le futur
-                            {'\n'}• Vous avez signé la décharge transport
-                        </Text>
-                    </View>
-                )}
+            {!loading && demandes.length === 0 && (
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.empty}>
+                        Aucune demande de transport à venir dans votre équipe.
+                    </Text>
+                    <Text style={styles.emptyInfo}>
+                        Les demandes apparaissent quand :{'\n'}• Vous êtes dans la même équipe que
+                        le demandeur
+                        {'\n'}• L&apos;événement est dans le futur
+                        {'\n'}• Vous avez signé la décharge transport
+                    </Text>
+                </View>
+            )}
 
-                {demandes.map((demande) => (
-                    <View key={demande.id} style={styles.card}>
-                        <Text style={styles.joueur}>
-                            👤 {demande.utilisateurs?.prenom} {demande.utilisateurs?.nom}
-                        </Text>
+            {demandes.map((demande) => (
+                <View key={demande.id} style={styles.card}>
+                    <Text style={styles.joueur}>
+                        👤 {demande.utilisateurs?.prenom} {demande.utilisateurs?.nom}
+                    </Text>
 
-                        {/* Affichage de l'événement associé */}
-                        {demande.evenements && (
-                            <Text style={styles.evenement}>
-                                🏟️ {demande.evenements.titre} — {demande.evenements.date}
-                                {demande.evenements.heure && ` à ${demande.evenements.heure}`}
-                                {demande.evenements.lieu && ` (${demande.evenements.lieu})`}
-                            </Text>
-                        )}
+                    {/* Affichage de l'événement associé */}
+                    {demande.evenements && (
+                        <Text style={styles.evenement}>
+                            🏟️ {demande.evenements.titre} — {demande.evenements.date}
+                            {demande.evenements.heure && ` à ${demande.evenements.heure}`}
+                            {demande.evenements.lieu && ` (${demande.evenements.lieu})`}
+                        </Text>
+                    )}
 
-                        <Text style={styles.info}>
-                            📍 Adresse : {demande.adresse_demande || 'Non précisée'} | ⏰ Heure :{' '}
-                            {demande.heure_demande || 'Non précisée'}
-                        </Text>
-                        <Text style={styles.statut}>
-                            📊 Statut :{' '}
-                            <Text
-                                style={{
-                                    color:
-                                        demande.etat === 'en_attente'
-                                            ? '#ffe44d'
-                                            : demande.etat === 'proposition_faite'
-                                              ? COLOR_GREEN_300
-                                              : demande.etat === 'signe'
-                                                ? COLOR_GREEN_300
-                                                : '#ffe44d',
-                                }}
-                            >
-                                {demande.etat}
-                            </Text>
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.detailBtn}
-                            onPress={() => router.push(`/transport/demande/${demande.id}`)}
+                    <Text style={styles.info}>
+                        📍 Adresse : {demande.adresse_demande || 'Non précisée'} | ⏰ Heure :{' '}
+                        {demande.heure_demande || 'Non précisée'}
+                    </Text>
+                    <Text style={styles.statut}>
+                        📊 Statut :{' '}
+                        <Text
+                            style={{
+                                color:
+                                    demande.etat === 'en_attente'
+                                        ? '#ffe44d'
+                                        : demande.etat === 'proposition_faite'
+                                          ? COLOR_GREEN_300
+                                          : demande.etat === 'signe'
+                                            ? COLOR_GREEN_300
+                                            : '#ffe44d',
+                            }}
                         >
-                            <Text style={{ color: '#111', fontWeight: 'bold' }}>
-                                Voir détails & Signer
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                ))}
-            </ScrollView>
-        </View>
+                            {demande.etat}
+                        </Text>
+                    </Text>
+                    <TouchableOpacity
+                        style={styles.detailBtn}
+                        onPress={() => router.push(`/joueur/demandes-transport/${demande.id}`)}
+                    >
+                        <Text style={{ color: '#111', fontWeight: 'bold' }}>
+                            Voir détails & Signer
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            ))}
+        </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
-    bg: { flex: 1, backgroundColor: '#111' },
     container: { padding: 20 },
     title: { fontSize: 20, color: '#fff', marginBottom: 10, textAlign: 'center' },
     debug: {

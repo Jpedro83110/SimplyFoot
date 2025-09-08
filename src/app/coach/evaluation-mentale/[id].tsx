@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -11,117 +11,81 @@ import {
     Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
 import Slider from '@react-native-community/slider';
-import useCacheData from '@/lib/cache';
-import { GetUtilisateurById, getUtilisateurById } from '@/helpers/utilisateurs.helpers';
+import {
+    EvaluationsMentale,
+    GetEvaluationsMentalesByJoueur,
+    getEvaluationsMentalesByJoueur,
+    upsertEvaluationsMentales,
+} from '@/helpers/evaluationsMentales.helpers';
+import { useSession } from '@/hooks/useSession';
+import { Database } from '@/types/database.types';
+
+type EvaluationMentaleParams = {
+    id: string;
+};
+
+const evaluationMentaleDefaultValues: EvaluationsMentale = {
+    motivation: 50,
+    rigueur: 50,
+    ponctualite: 50,
+    attitude: 50,
+    respect: 50,
+};
 
 export default function EvaluationMentale() {
-    const { id } = useLocalSearchParams();
+    const { id } = useLocalSearchParams<EvaluationMentaleParams>();
     const router = useRouter();
 
-    const [valeurs, setValeurs] = useState({
-        motivation: 50,
-        rigueur: 50,
-        ponctualite: 50,
-        attitude: 50,
-        respect: 50,
-    });
-
-    const [joueurInfo, setJoueurInfo] = useState<GetUtilisateurById>();
-    const [loading, setLoading] = useState(true);
+    const [valeurs, setValeurs] = useState<EvaluationsMentale>(evaluationMentaleDefaultValues);
+    const [evaluationsMentales, setEvaluationsMentales] =
+        useState<GetEvaluationsMentalesByJoueur>();
+    const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // Récupère les informations du joueur/utilisateur
-    useEffect(() => {
-        async function fetchJoueurInfo() {
-            setLoading(true);
+    const { utilisateur } = useSession();
 
-            try {
-                // Étape 1: Récupérer les infos utilisateur
-                const utilisateur = await getUtilisateurById({
-                    utilisateurId: id as string,
-                });
+    const fetchEvaluationsMentales = async (joueurId: string) => {
+        setLoading(true);
 
-                if (utilisateur) {
-                    setJoueurInfo(utilisateur);
-                } else {
-                    // Étape 2: Essayer de trouver par joueur_id
-                    const { data: userByJoueurId, error: joueurError } = await supabase
-                        .from('utilisateurs')
-                        .select('id, nom, prenom, role, joueur_id')
-                        .eq('joueur_id', id as string)
-                        .maybeSingle();
+        try {
+            const fetchedEvaluationsMentales = await getEvaluationsMentalesByJoueur({
+                joueurId,
+            });
 
-                    if (joueurError && joueurError.code !== 'PGRST116') {
-                        console.error('Erreur joueur:', joueurError);
-                    }
-
-                    if (userByJoueurId) {
-                        setJoueurInfo(userByJoueurId as GetUtilisateurById); // FIXME: fonctionne mais type à corriger
-                    } else {
-                        Alert.alert('Erreur', 'Joueur introuvable dans le système');
-                    }
-                }
-            } catch (error) {
-                console.error('Erreur générale:', error);
-                Alert.alert('Erreur', 'Impossible de charger les informations du joueur');
-            }
-
+            setEvaluationsMentales(fetchedEvaluationsMentales);
+        } catch (error) {
+            console.error('Erreur générale:', error);
+            Alert.alert('Erreur', 'Impossible de charger les informations du joueur');
+        } finally {
             setLoading(false);
         }
+    };
 
-        if (id) {
-            fetchJoueurInfo();
-        }
-    }, [id]);
-
-    // Charge les données d'éval si utilisateurId dispo
-    const [evalData, refresh, loadingEval] = useCacheData(
-        joueurInfo?.id ? `eval-mentale-${joueurInfo?.id}` : null,
-        async () => {
-            if (!joueurInfo?.id) {
-                return null;
-            }
-
-            try {
-                const { data, error } = await supabase
-                    .from('evaluations_mentales')
-                    .select('*')
-                    .eq('joueur_id', joueurInfo?.id)
-                    .maybeSingle(); // Utilise maybeSingle au lieu de single pour éviter les erreurs si pas de résultat
-
-                if (error) {
-                    console.error('Erreur lors du chargement des évaluations:', error);
-                    return null;
-                }
-
-                return data;
-            } catch (error) {
-                console.error('Erreur cache evaluation:', error);
-                return null;
-            }
-        },
-        3600,
-    );
-
-    // Remplit les sliders si data trouvée
     useEffect(() => {
-        if (evalData) {
+        if (!id || loading || evaluationsMentales !== undefined) {
+            return;
+        }
+
+        fetchEvaluationsMentales(id);
+    }, [id, loading, evaluationsMentales]);
+
+    useEffect(() => {
+        if (evaluationsMentales) {
             setValeurs({
-                motivation: evalData.motivation ?? 50,
-                rigueur: evalData.rigueur ?? 50,
-                ponctualite: evalData.ponctualite ?? 50,
-                attitude: evalData.attitude ?? 50,
-                respect: evalData.respect ?? 50,
+                motivation: evaluationsMentales.motivation ?? 50,
+                rigueur: evaluationsMentales.rigueur ?? 50,
+                ponctualite: evaluationsMentales.ponctualite ?? 50,
+                attitude: evaluationsMentales.attitude ?? 50,
+                respect: evaluationsMentales.respect ?? 50,
             });
         }
-    }, [evalData]);
+    }, [evaluationsMentales]);
 
-    const handleSliderChange = (key: string, value: string) => {
+    const handleSliderChange = (key: string, value: number) => {
         setValeurs((prev) => ({
             ...prev,
-            [key]: Math.max(0, Math.min(100, parseInt(value) || 0)),
+            [key]: Math.max(0, Math.min(100, value)),
         }));
     };
 
@@ -130,28 +94,20 @@ export default function EvaluationMentale() {
         return Math.round(total / Object.values(valeurs).length);
     };
 
-    const enregistrerEvaluation = async () => {
+    const handleSave = async () => {
         setSaving(true);
 
         try {
             const moyenne = calculerMoyenne();
-            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-            const session = sessionData?.session;
 
-            if (sessionError || !session?.user?.id) {
-                Alert.alert('Erreur', 'Session invalide - veuillez vous reconnecter');
+            if (!utilisateur?.id) {
+                Alert.alert('Erreur', 'Joueur ou coach introuvable');
                 return;
             }
 
-            if (!joueurInfo?.id) {
-                Alert.alert('Erreur', 'Joueur introuvable');
-                return;
-            }
-
-            // Objet complet avec tous les champs nécessaires
-            const updates = {
-                joueur_id: joueurInfo?.id,
-                coach_id: session.user.id,
+            const updates: Database['public']['Tables']['evaluations_mentales']['Update'] = {
+                joueur_id: id,
+                coach_id: utilisateur.id,
                 date: new Date().toISOString().split('T')[0],
                 motivation: valeurs.motivation,
                 rigueur: valeurs.rigueur,
@@ -162,58 +118,24 @@ export default function EvaluationMentale() {
                 moyenne: moyenne,
                 updated_at: new Date().toISOString(),
                 created_at: new Date().toISOString(),
-                implication: null,
-                commentaire: null,
             };
 
-            // Stratégie UPDATE puis INSERT
-            const { data: updateData, error: updateError } = await supabase
-                .from('evaluations_mentales')
-                .update(updates)
-                .eq('joueur_id', joueurInfo?.id)
-                .eq('coach_id', session.user.id)
-                .select();
-
-            if (updateError) {
-                Alert.alert('Erreur', `Erreur de mise à jour: ${updateError.message}`);
-                return;
-            }
-
-            // Si aucune ligne n'a été mise à jour, on insère
-            if (!updateData || updateData.length === 0) {
-                const { error: insertError } = await supabase
-                    .from('evaluations_mentales')
-                    .insert(updates)
-                    .select();
-
-                if (insertError) {
-                    Alert.alert('Erreur', `Impossible de sauvegarder: ${insertError.message}`);
-                    return;
-                }
-            }
-
-            // Rafraîchit le cache
-            try {
-                if (refresh) {
-                    await refresh();
-                }
-            } catch (cacheError) {
-                console.error('Erreur cache:', cacheError);
-                // Ignore les erreurs de cache
-                // FIXME: bizarre ce commentaire
-            }
+            await upsertEvaluationsMentales({
+                evaluationsMentalesId: evaluationsMentales?.id || null,
+                dataToUpdate: updates,
+            });
 
             Alert.alert('Succès', 'Évaluation mentale enregistrée avec succès!', [
                 {
                     text: 'OK',
                     onPress: () => {
-                        router.replace(`/coach/joueur/${joueurInfo?.joueur_id}`);
+                        router.back();
                     },
                 },
             ]);
 
             if (Platform.OS === 'web') {
-                router.replace(`/coach/joueur/${joueurInfo?.joueur_id}`);
+                router.back();
             }
         } catch (error) {
             Alert.alert('Erreur', `Erreur inattendue: ${(error as Error).message}`);
@@ -224,7 +146,7 @@ export default function EvaluationMentale() {
 
     const moyenne = calculerMoyenne();
 
-    if (loading || loadingEval) {
+    if (loading) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#00ff88" />
@@ -238,16 +160,17 @@ export default function EvaluationMentale() {
             <Text style={styles.title}>🧠 Évaluation mentale</Text>
 
             {/* Affichage des informations du joueur */}
-            {joueurInfo && (
+            {evaluationsMentales && (
                 <View style={styles.playerInfo}>
                     <Text style={styles.playerName}>
-                        {joueurInfo.nom} {joueurInfo.prenom}
+                        {evaluationsMentales.utilisateurs?.nom}{' '}
+                        {evaluationsMentales.utilisateurs?.prenom}
                     </Text>
-                    <Text style={styles.playerRole}>{joueurInfo.role}</Text>
+                    <Text style={styles.playerRole}>{evaluationsMentales.utilisateurs?.role}</Text>
                 </View>
             )}
 
-            {Object.entries(valeurs).map(([key, val]) => (
+            {Object.entries(valeurs).map(([key, val]: [string, number]) => (
                 <View key={key} style={styles.sliderBlock}>
                     <Text style={styles.label}>
                         {key.charAt(0).toUpperCase() + key.slice(1)} : {val}/100
@@ -256,8 +179,8 @@ export default function EvaluationMentale() {
                         <TextInput
                             style={styles.input}
                             keyboardType="numeric"
-                            value={String(val)}
-                            onChangeText={(text) => handleSliderChange(key, text)}
+                            value={`${val}`}
+                            onChangeText={(text) => handleSliderChange(key, parseInt(text) || 0)}
                             placeholder="0 à 100"
                             placeholderTextColor="#555"
                         />
@@ -285,7 +208,7 @@ export default function EvaluationMentale() {
                                 minimumTrackTintColor="#00ff88"
                                 maximumTrackTintColor="#555"
                                 thumbTintColor="#00ff88"
-                                onValueChange={(value) => handleSliderChange(key, value.toString())}
+                                onValueChange={(value) => handleSliderChange(key, value)}
                             />
                             <Text
                                 style={[
@@ -305,9 +228,9 @@ export default function EvaluationMentale() {
             </View>
 
             <Pressable
-                style={[styles.button, (saving || loading || loadingEval) && styles.buttonDisabled]}
-                onPress={enregistrerEvaluation}
-                disabled={saving || loading || loadingEval}
+                style={[styles.button, (saving || loading) && styles.buttonDisabled]}
+                onPress={handleSave}
+                disabled={saving || loading}
             >
                 <Text style={styles.buttonText}>
                     {saving ? 'Enregistrement...' : "Valider l'évaluation"}

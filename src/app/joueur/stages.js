@@ -1,4 +1,3 @@
-// app/coach/stages.js et app/joueur/stages.js (même fichier, adaptatif si besoin)
 import React, { useEffect, useState } from 'react';
 import {
     View,

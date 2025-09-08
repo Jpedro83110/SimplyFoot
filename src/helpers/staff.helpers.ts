@@ -3,9 +3,7 @@ import { Database } from '@/types/database.types';
 
 export type GetStaffByUtilisateurId = Awaited<ReturnType<typeof getStaffByUtilisateurId>>;
 
-export const getStaffByUtilisateurId = async (args: { utilisateurId: string }) => {
-    const { utilisateurId } = args;
-
+export const getStaffByUtilisateurId = async ({ utilisateurId }: { utilisateurId: string }) => {
     const { data, error } = await supabase
         .from('staff')
         .select(
@@ -21,12 +19,13 @@ export const getStaffByUtilisateurId = async (args: { utilisateurId: string }) =
     return data;
 };
 
-export const updateStaff = async (args: {
+export const updateStaff = async ({
+    staffId,
+    dataToUpdate,
+}: {
     staffId: string;
     dataToUpdate: Database['public']['Tables']['staff']['Update'];
 }) => {
-    const { staffId, dataToUpdate } = args;
-
     const { error } = await supabase.from('staff').update(dataToUpdate).eq('id', staffId);
 
     if (error) {

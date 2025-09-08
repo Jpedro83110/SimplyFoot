@@ -8,6 +8,80 @@ export type Database = {
     };
     public: {
         Tables: {
+            banque_lignes: {
+                Row: {
+                    date_op: string | null;
+                    id: string;
+                    libelle: string | null;
+                    montant_cents: number;
+                    rapproche_ecriture_id: string | null;
+                    releve_id: string;
+                };
+                Insert: {
+                    date_op?: string | null;
+                    id?: string;
+                    libelle?: string | null;
+                    montant_cents: number;
+                    rapproche_ecriture_id?: string | null;
+                    releve_id: string;
+                };
+                Update: {
+                    date_op?: string | null;
+                    id?: string;
+                    libelle?: string | null;
+                    montant_cents?: number;
+                    rapproche_ecriture_id?: string | null;
+                    releve_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'banque_lignes_rapproche_ecriture_id_fkey';
+                        columns: ['rapproche_ecriture_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'ecritures';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'banque_lignes_releve_id_fkey';
+                        columns: ['releve_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'banque_releves';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            banque_releves: {
+                Row: {
+                    club_id: string;
+                    created_at: string | null;
+                    file_url: string | null;
+                    id: string;
+                    periode: string | null;
+                };
+                Insert: {
+                    club_id: string;
+                    created_at?: string | null;
+                    file_url?: string | null;
+                    id?: string;
+                    periode?: string | null;
+                };
+                Update: {
+                    club_id?: string;
+                    created_at?: string | null;
+                    file_url?: string | null;
+                    id?: string;
+                    periode?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'banque_releves_club_id_fkey';
+                        columns: ['club_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'clubs';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             budgets: {
                 Row: {
                     categorie: string | null;
@@ -254,6 +328,73 @@ export type Database = {
                     },
                 ];
             };
+            compta_exports: {
+                Row: {
+                    club_id: string;
+                    file_url: string | null;
+                    id: string;
+                    periode: string | null;
+                    statut: string | null;
+                    type: string;
+                };
+                Insert: {
+                    club_id: string;
+                    file_url?: string | null;
+                    id?: string;
+                    periode?: string | null;
+                    statut?: string | null;
+                    type: string;
+                };
+                Update: {
+                    club_id?: string;
+                    file_url?: string | null;
+                    id?: string;
+                    periode?: string | null;
+                    statut?: string | null;
+                    type?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'compta_exports_club_id_fkey';
+                        columns: ['club_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'clubs';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            comptes: {
+                Row: {
+                    club_id: string;
+                    code: string;
+                    id: string;
+                    libelle: string;
+                    nature: string;
+                };
+                Insert: {
+                    club_id: string;
+                    code: string;
+                    id?: string;
+                    libelle: string;
+                    nature: string;
+                };
+                Update: {
+                    club_id?: string;
+                    code?: string;
+                    id?: string;
+                    libelle?: string;
+                    nature?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'comptes_club_id_fkey';
+                        columns: ['club_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'clubs';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             decharges_generales: {
                 Row: {
                     accepte_transport: boolean | null;
@@ -291,6 +432,188 @@ export type Database = {
                         columns: ['joueur_id'];
                         isOneToOne: false;
                         referencedRelation: 'joueurs';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            depenses: {
+                Row: {
+                    categorie: string | null;
+                    club_id: string;
+                    commentaire: string | null;
+                    created_at: string | null;
+                    created_by: string | null;
+                    date_depense: string | null;
+                    fournisseur_id: string | null;
+                    id: string;
+                    montant_ttc_cents: number;
+                    statut: string;
+                };
+                Insert: {
+                    categorie?: string | null;
+                    club_id: string;
+                    commentaire?: string | null;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    date_depense?: string | null;
+                    fournisseur_id?: string | null;
+                    id?: string;
+                    montant_ttc_cents?: number;
+                    statut?: string;
+                };
+                Update: {
+                    categorie?: string | null;
+                    club_id?: string;
+                    commentaire?: string | null;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    date_depense?: string | null;
+                    fournisseur_id?: string | null;
+                    id?: string;
+                    montant_ttc_cents?: number;
+                    statut?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'depenses_club_id_fkey';
+                        columns: ['club_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'clubs';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'depenses_fournisseur_id_fkey';
+                        columns: ['fournisseur_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tiers';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            depenses_pieces: {
+                Row: {
+                    depense_id: string;
+                    file_url: string;
+                    id: string;
+                };
+                Insert: {
+                    depense_id: string;
+                    file_url: string;
+                    id?: string;
+                };
+                Update: {
+                    depense_id?: string;
+                    file_url?: string;
+                    id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'depenses_pieces_depense_id_fkey';
+                        columns: ['depense_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'depenses';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            ecritures: {
+                Row: {
+                    club_id: string;
+                    created_at: string | null;
+                    created_by: string | null;
+                    date_ecriture: string;
+                    hash_prev: string | null;
+                    hash_self: string | null;
+                    id: string;
+                    journal_id: string;
+                    libelle: string;
+                    reference: string | null;
+                    total_credit_cents: number;
+                    total_debit_cents: number;
+                };
+                Insert: {
+                    club_id: string;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    date_ecriture?: string;
+                    hash_prev?: string | null;
+                    hash_self?: string | null;
+                    id?: string;
+                    journal_id: string;
+                    libelle: string;
+                    reference?: string | null;
+                    total_credit_cents?: number;
+                    total_debit_cents?: number;
+                };
+                Update: {
+                    club_id?: string;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    date_ecriture?: string;
+                    hash_prev?: string | null;
+                    hash_self?: string | null;
+                    id?: string;
+                    journal_id?: string;
+                    libelle?: string;
+                    reference?: string | null;
+                    total_credit_cents?: number;
+                    total_debit_cents?: number;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'ecritures_club_id_fkey';
+                        columns: ['club_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'clubs';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'ecritures_journal_id_fkey';
+                        columns: ['journal_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'journaux';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            ecritures_lignes: {
+                Row: {
+                    compte_id: string;
+                    credit_cents: number;
+                    debit_cents: number;
+                    ecriture_id: string;
+                    id: string;
+                    libelle: string | null;
+                };
+                Insert: {
+                    compte_id: string;
+                    credit_cents?: number;
+                    debit_cents?: number;
+                    ecriture_id: string;
+                    id?: string;
+                    libelle?: string | null;
+                };
+                Update: {
+                    compte_id?: string;
+                    credit_cents?: number;
+                    debit_cents?: number;
+                    ecriture_id?: string;
+                    id?: string;
+                    libelle?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'ecritures_lignes_compte_id_fkey';
+                        columns: ['compte_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'comptes';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'ecritures_lignes_ecriture_id_fkey';
+                        columns: ['ecriture_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'ecritures';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -554,6 +877,105 @@ export type Database = {
                     },
                 ];
             };
+            factures: {
+                Row: {
+                    client_id: string | null;
+                    club_id: string;
+                    created_at: string | null;
+                    date_facture: string | null;
+                    due_date: string | null;
+                    id: string;
+                    montant_ht_cents: number;
+                    montant_ttc_cents: number;
+                    montant_tva_cents: number;
+                    numero: string | null;
+                    statut: string;
+                };
+                Insert: {
+                    client_id?: string | null;
+                    club_id: string;
+                    created_at?: string | null;
+                    date_facture?: string | null;
+                    due_date?: string | null;
+                    id?: string;
+                    montant_ht_cents?: number;
+                    montant_ttc_cents?: number;
+                    montant_tva_cents?: number;
+                    numero?: string | null;
+                    statut?: string;
+                };
+                Update: {
+                    client_id?: string | null;
+                    club_id?: string;
+                    created_at?: string | null;
+                    date_facture?: string | null;
+                    due_date?: string | null;
+                    id?: string;
+                    montant_ht_cents?: number;
+                    montant_ttc_cents?: number;
+                    montant_tva_cents?: number;
+                    numero?: string | null;
+                    statut?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'factures_client_id_fkey';
+                        columns: ['client_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tiers';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'factures_club_id_fkey';
+                        columns: ['club_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'clubs';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            factures_lignes: {
+                Row: {
+                    designation: string;
+                    facture_id: string;
+                    id: string;
+                    prix_unitaire_cents: number;
+                    quantite: number;
+                    taxe_id: string | null;
+                };
+                Insert: {
+                    designation: string;
+                    facture_id: string;
+                    id?: string;
+                    prix_unitaire_cents?: number;
+                    quantite?: number;
+                    taxe_id?: string | null;
+                };
+                Update: {
+                    designation?: string;
+                    facture_id?: string;
+                    id?: string;
+                    prix_unitaire_cents?: number;
+                    quantite?: number;
+                    taxe_id?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'factures_lignes_facture_id_fkey';
+                        columns: ['facture_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'factures';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'factures_lignes_taxe_id_fkey';
+                        columns: ['taxe_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'taxes';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             feuilles_de_match: {
                 Row: {
                     coach_id: string | null;
@@ -718,6 +1140,35 @@ export type Database = {
                         columns: ['equipe_id'];
                         isOneToOne: false;
                         referencedRelation: 'equipes';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            journaux: {
+                Row: {
+                    club_id: string;
+                    code: string;
+                    id: string;
+                    libelle: string;
+                };
+                Insert: {
+                    club_id: string;
+                    code: string;
+                    id?: string;
+                    libelle: string;
+                };
+                Update: {
+                    club_id?: string;
+                    code?: string;
+                    id?: string;
+                    libelle?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'journaux_club_id_fkey';
+                        columns: ['club_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'clubs';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -1092,7 +1543,29 @@ export type Database = {
                     status?: string | null;
                     texte_signature?: string | null;
                 };
-                Relationships: [];
+                Relationships: [
+                    {
+                        foreignKeyName: 'signatures_transport_parent1_id_fkey';
+                        columns: ['parent1_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'utilisateurs';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'signatures_transport_parent2_id_fkey';
+                        columns: ['parent2_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'utilisateurs';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'signatures_transport_proposition_id_fkey';
+                        columns: ['proposition_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'propositions_transport';
+                        referencedColumns: ['id'];
+                    },
+                ];
             };
             staff: {
                 Row: {
@@ -1355,6 +1828,76 @@ export type Database = {
                         columns: ['joueur_id'];
                         isOneToOne: false;
                         referencedRelation: 'utilisateurs';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            taxes: {
+                Row: {
+                    club_id: string;
+                    id: string;
+                    nom: string;
+                    taux: number;
+                };
+                Insert: {
+                    club_id: string;
+                    id?: string;
+                    nom: string;
+                    taux?: number;
+                };
+                Update: {
+                    club_id?: string;
+                    id?: string;
+                    nom?: string;
+                    taux?: number;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'taxes_club_id_fkey';
+                        columns: ['club_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'clubs';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            tiers: {
+                Row: {
+                    adresse: string | null;
+                    club_id: string;
+                    created_at: string | null;
+                    email: string | null;
+                    id: string;
+                    nom: string;
+                    telephone: string | null;
+                    type: string;
+                };
+                Insert: {
+                    adresse?: string | null;
+                    club_id: string;
+                    created_at?: string | null;
+                    email?: string | null;
+                    id?: string;
+                    nom: string;
+                    telephone?: string | null;
+                    type: string;
+                };
+                Update: {
+                    adresse?: string | null;
+                    club_id?: string;
+                    created_at?: string | null;
+                    email?: string | null;
+                    id?: string;
+                    nom?: string;
+                    telephone?: string | null;
+                    type?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'tiers_club_id_fkey';
+                        columns: ['club_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'clubs';
                         referencedColumns: ['id'];
                     },
                 ];

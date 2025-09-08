@@ -20,7 +20,7 @@ export const getBesoinTransport = async ({ clubId }: { clubId: string }) => {
     return data;
 };
 
-export const updateBesoinTransport = async ({
+export const updateParticipationsEvenement = async ({
     participationId,
     dataToUpdate,
 }: {
@@ -31,6 +31,25 @@ export const updateBesoinTransport = async ({
         .from('participations_evenement')
         .update(dataToUpdate)
         .eq('id', participationId);
+
+    if (error) {
+        throw error;
+    }
+};
+
+export const bulkCreateParticipationsEvenement = async ({
+    joueursId,
+    dataToInsert,
+}: {
+    joueursId: string[];
+    dataToInsert: Database['public']['Tables']['participations_evenement']['Insert'];
+}) => {
+    const { error } = await supabase.from('participations_evenement').insert(
+        joueursId.map((joueurId) => ({
+            ...dataToInsert,
+            utilisateur_id: joueurId,
+        })),
+    );
 
     if (error) {
         throw error;

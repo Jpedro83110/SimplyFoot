@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -15,27 +15,43 @@ import {
     TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { TeamCard } from '@/components/business/TeamCard';
 import * as ImagePicker from 'expo-image-picker';
-import { decode } from 'base64-arraybuffer';
-import { useCachedApi } from '@/hooks/useCachedApi';
 import { useSession } from '@/hooks/useSession';
-import { Database } from '@/types/database.types';
-import { getCoachEquipesWithJoueursCount } from '@/helpers/equipes.helpers';
+import { deleteEquipe } from '@/helpers/equipes.helpers';
 import { calculateAgeFromString, formatDateForDisplay } from '@/utils/date.utils';
 import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
+import { getCoachClubData, GetCoachClubData } from '@/helpers/clubs.helpers';
+import { COLOR_BLACK_900, COLOR_GREEN_300 } from '@/utils/styleContants.utils';
+import { removePhotosProfilsCoachs, uploadPhotoProfilCoach } from '@/helpers/storage.helpers';
 
 const { width: screenWidth } = Dimensions.get('window');
-const GREEN = '#00ff88';
-const DARK = '#101415';
+const actionsData = [
+    { label: 'Créer équipe', icon: 'people', route: '/coach/creation-equipe' },
+    { label: 'Créer événement', icon: 'calendar', route: '/coach/creation-evenement' },
+    { label: 'Anniversaires', icon: 'gift-outline', route: '/coach/anniversaires' },
+    { label: 'Feuille de match', icon: 'document-text', route: '/coach/feuille-match' },
+    { label: 'Composition', icon: 'grid', route: '/coach/composition' },
+    { label: 'Messagerie', icon: 'chatbox', route: '/coach/messages' },
+    { label: 'Statistiques', icon: 'bar-chart', route: '/coach/statistiques' },
+    {
+        label: 'Programme de stage',
+        icon: 'book',
+        route: '/coach/programme-stage',
+    },
+];
+
+interface EditUserData {
+    telephone: string;
+    email: string;
+    niveau_diplome: string;
+    experience: string;
+}
 
 export default function CoachDashboard() {
-    const [club, setClub] = useState<Pick<
-        Database['public']['Tables']['clubs']['Row'],
-        'id' | 'nom' | 'facebook_url' | 'instagram_url' | 'boutique_url' | 'logo_url'
-    > | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [coachClubData, setCoachClubData] = useState<GetCoachClubData | null>(null);
     const [refreshKey, setRefreshKey] = useState<number>(Date.now());
     const [uploadingPhoto, setUploadingPhoto] = useState<boolean>(false);
     const [showEditModal, setShowEditModal] = useState<boolean>(false);
@@ -51,132 +67,52 @@ export default function CoachDashboard() {
         [utilisateur?.date_naissance],
     );
 
-    const [editData, setEditData] = useState<Database['public']['Tables']['staff']['Update']>({
+    const [editData, setEditData] = useState<EditUserData>({
         telephone: '',
         email: '',
         niveau_diplome: '',
         experience: '',
     }); // FIXME: revoir le typage, il combine des champs staff et utilisateur en réalité
 
-    const [equipes, loadingEquipes, fetchCoachEquipes] = useCachedApi(
-        'fetch_coach_equipes',
-        useCallback(async () => {
-            if (!utilisateur?.id || !staff?.club_id) {
-                return undefined;
-            }
+    const fetchCoachClubData = async (clubId: string) => {
+        setLoading(true);
 
-            const data = await getCoachEquipesWithJoueursCount({
-                coachId: utilisateur.id,
-                clubId: staff.club_id,
-            });
+        const fetchedCoachClubData = await getCoachClubData({ clubId });
+        setCoachClubData(fetchedCoachClubData);
 
-            return data;
-        }, [staff?.club_id, utilisateur?.id]),
-        1,
-    );
+        setLoading(false);
+    };
 
-    const [stage, , fetchClubStage] = useCachedApi(
-        'fetch_club_stage',
-        useCallback(async () => {
-            if (!staff?.club_id) {
-                return null;
-            }
-
-            const { data } = await supabase
-                .from('stages')
-                .select('*')
-                .eq('club_id', staff?.club_id)
-                .maybeSingle();
-            return data;
-        }, [staff?.club_id]),
-    );
-
-    const [evenements, loadingEvenements, fetchCoachEvenements] = useCachedApi(
-        'fetch_coach_evenements',
-        useCallback(async () => {
-            if (!utilisateur?.id) {
-                return null;
-            }
-
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(today.getDate() - 1);
-            const filterDate = yesterday.toISOString().split('T')[0];
-
-            const { data, error } = await supabase
-                .from('evenements')
-                .select('*')
-                .eq('created_by', utilisateur.id)
-                .gte('date', filterDate)
-                .order('date', { ascending: true });
-            if (error) {
-                throw error;
-            }
-            return data || [];
-        }, [utilisateur?.id]),
-    );
-
-    const evenement: Database['public']['Tables']['evenements']['Row'] | null = useMemo(
-        () => (evenements && evenements.length > 0 ? evenements[0] : null),
-        [evenements],
-    );
-
-    const [participations, , fetchEvenementParticipations] = useCachedApi(
-        'fetch_evenement_participations',
-        useCallback(async () => {
-            if (!evenement?.id) {
-                return [];
-            }
-
-            const { data } = await supabase
-                .from('participations_evenement')
-                .select('*')
-                .eq('evenement_id', evenement.id);
-            return data || [];
-        }, [evenement]),
-    );
-
-    const presences = useMemo(() => {
-        return {
-            present: participations?.filter((p) => p.reponse === 'present').length ?? 0,
-            absent: participations?.filter((p) => p.reponse === 'absent').length ?? 0,
-            transport:
-                participations?.filter((participation) => participation.besoin_transport === true)
-                    .length ?? 0,
-        };
-    }, [participations]);
-
-    const loading = useMemo(
-        () => loadingEquipes || loadingEvenements,
-        [loadingEquipes, loadingEvenements],
-    );
-
-    const fetchClub = useCallback(async () => {
-        if (utilisateur?.club_id) {
-            const { data: clubData } = await supabase
-                .from('clubs')
-                .select('id, nom, facebook_url, instagram_url, boutique_url, logo_url')
-                .eq('id', utilisateur.club_id)
-                .single();
-
-            setClub(clubData);
+    useEffect(() => {
+        if (!utilisateur?.club_id || loading || coachClubData) {
+            return;
         }
-    }, [utilisateur?.club_id]);
+
+        fetchCoachClubData(utilisateur.club_id);
+    }, [coachClubData, loading, utilisateur?.club_id]);
+
+    const presences = useMemo(
+        () =>
+            coachClubData && coachClubData.evenements.length > 0
+                ? {
+                      present:
+                          coachClubData.evenements[0].participations_evenement.filter(
+                              (participation) => participation.reponse === 'present',
+                          ).length ?? 0,
+                      absent:
+                          coachClubData.evenements[0].participations_evenement.filter(
+                              (participation) => participation.reponse === 'absent',
+                          ).length ?? 0,
+                      transport: coachClubData.evenements[0].participations_evenement.filter(
+                          (participation) => participation.besoin_transport === true,
+                      ).length,
+                  }
+                : null,
+        [coachClubData],
+    );
 
     useEffect(() => {
-        fetchClub();
-    }, [fetchClub]);
-
-    useEffect(() => {
-        if (utilisateur?.id) {
-            fetchCoachEquipes();
-            fetchCoachEvenements();
-        }
-    }, [fetchCoachEquipes, fetchCoachEvenements, utilisateur?.id]);
-
-    useEffect(() => {
-        if (staff) {
-            fetchClubStage();
+        if (staff || utilisateur) {
             setEditData({
                 telephone: utilisateur?.telephone || '',
                 email: utilisateur?.email || '',
@@ -184,17 +120,15 @@ export default function CoachDashboard() {
                 experience: staff?.experience || '',
             });
         }
-    }, [fetchClubStage, staff, utilisateur?.email, utilisateur?.telephone]);
-
-    useEffect(() => {
-        if (evenement?.id) {
-            fetchEvenementParticipations();
-        }
-    }, [evenement, fetchEvenementParticipations]);
+    }, [staff, utilisateur]);
 
     // Upload photo
     const handleUploadProfilePhoto = async () => {
         try {
+            if (!utilisateur?.id) {
+                return;
+            }
+
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
                 Alert.alert(
@@ -217,110 +151,29 @@ export default function CoachDashboard() {
                 setUploadingPhoto(true);
 
                 try {
-                    // 1. Supprimer l'ancienne photo plus efficacement
                     if (staff?.photo_url) {
                         try {
-                            // Extraire le nom de fichier de l'URL complète
-                            const url = staff.photo_url.split('?')[0]; // Enlever les paramètres de cache
+                            const url = staff.photo_url.split('?')[0];
                             const pathParts = url.split('/');
 
-                            // Chercher l'index de "photos_profils_coachs" dans l'URL
                             const folderIndex = pathParts.findIndex(
                                 (part) => part === 'photos_profils_coachs',
                             );
 
                             if (folderIndex !== -1 && pathParts[folderIndex + 1]) {
                                 const fileName = pathParts[folderIndex + 1];
-                                const oldFilePath = `photos_profils_coachs/${fileName}`;
-
-                                console.log('🗑️ Suppression ancienne photo:', oldFilePath);
-
-                                const { error: deleteError } = await supabase.storage
-                                    .from('fichiers')
-                                    .remove([oldFilePath]);
-
-                                if (deleteError) {
-                                    console.warn('⚠️ Erreur suppression:', deleteError.message);
-                                } else {
-                                    console.log('✅ Ancienne photo supprimée');
-                                }
+                                await removePhotosProfilsCoachs({ fileName });
+                                console.log('✅ Ancienne photo supprimée');
                             }
                         } catch (deleteErr) {
                             console.warn('⚠️ Erreur lors de la suppression:', deleteErr);
                         }
                     }
 
-                    let fileData;
-                    let fileExt = 'jpg';
-
-                    if (Platform.OS === 'web') {
-                        const response = await fetch(image.uri);
-                        fileData = await response.blob();
-
-                        if (image.uri.includes('.png')) {
-                            fileExt = 'png';
-                        } else if (image.uri.includes('.jpeg') || image.uri.includes('.jpg')) {
-                            fileExt = 'jpg';
-                        } else if (image.uri.includes('.gif')) {
-                            fileExt = 'gif';
-                        }
-                    } else {
-                        if (!image.base64) {
-                            throw new Error('Pas de données base64 disponibles');
-                        }
-
-                        fileData = decode(image.base64);
-
-                        if (image.uri.includes('png') || image.type?.includes('png')) {
-                            fileExt = 'png';
-                        } else if (
-                            image.uri.includes('jpeg') ||
-                            image.uri.includes('jpg') ||
-                            image.type?.includes('jpeg')
-                        ) {
-                            fileExt = 'jpg';
-                        } else if (image.uri.includes('gif') || image.type?.includes('gif')) {
-                            fileExt = 'gif';
-                        }
-                    }
-
-                    // 3. Nom de fichier avec timestamp
-                    const fileName = `photos_profils_coachs/${utilisateur?.id}_${Date.now()}.${fileExt}`;
-                    console.log('📁 Tentative upload:', fileName);
-                    console.log(
-                        '📦 Taille fichier:',
-                        (fileData as Blob).size ||
-                            (fileData as ArrayBuffer).byteLength ||
-                            'inconnue',
-                    );
-
-                    // 4. Upload avec gestion d'erreur améliorée
-                    const { data: uploadData, error: uploadError } = await supabase.storage
-                        .from('fichiers')
-                        .upload(fileName, fileData, {
-                            contentType: `image/${fileExt}`,
-                            upsert: true,
-                        });
-
-                    console.log('📤 Résultat upload:', { uploadData, uploadError });
-
-                    if (uploadError) {
-                        console.error('❌ Détail erreur upload:', uploadError);
-                        throw new Error(`Upload échoué: ${uploadError.message}`);
-                    }
-
-                    if (!uploadData || !uploadData.path) {
-                        throw new Error('Upload réussi mais pas de path retourné');
-                    }
-
-                    const { data: urlData } = supabase.storage
-                        .from('fichiers')
-                        .getPublicUrl(fileName);
-
-                    const basePhotoUrl = urlData.publicUrl;
-
-                    // 6. Sauvegarder l'URL PROPRE en base (sans paramètres)
-                    console.log('💾 Sauvegarde en base:', basePhotoUrl);
+                    const basePhotoUrl = await uploadPhotoProfilCoach({
+                        image,
+                        utilisateurId: utilisateur.id,
+                    });
 
                     await updateUserData({
                         staffData: {
@@ -328,26 +181,14 @@ export default function CoachDashboard() {
                         },
                     });
 
-                    console.log('✅ Sauvegarde en base réussie');
-
-                    // IMPORTANT : Forcer un nouveau refreshKey pour synchroniser toutes les plateformes
                     const newRefreshKey = Date.now();
                     setRefreshKey(newRefreshKey);
-
-                    console.log('🔄 RefreshKey updated:', newRefreshKey);
-                    console.log('🎯 Photo finale mise à jour:', basePhotoUrl);
-
-                    // Petit délai pour s'assurer que le cache se met à jour
-                    setTimeout(() => {
-                        console.log('🔄 Forcing complete refresh...');
-                    }, 500);
 
                     Alert.alert(
                         'Succès ! 📸',
                         'Photo de profil mise à jour sur toutes les plateformes !',
                     );
                 } catch (error) {
-                    // FIXME: try catch de l'enfer
                     console.error('❌ Erreur complète:', error);
                     Alert.alert(
                         'Erreur',
@@ -386,23 +227,41 @@ export default function CoachDashboard() {
         }
     };
 
-    // Supprimer équipe
+    const fetchDeleteEquipe = async (equipeId: string, nomEquipe: string) => {
+        await deleteEquipe({ equipeId });
+        setRefreshKey(Date.now()); // FIXME: a quoi ça sert ?
+        // remove equipe with equipeId from the list without refetching
+        setCoachClubData((prevData) => {
+            const newData = prevData;
+            if (newData?.equipes) {
+                newData.equipes = newData.equipes.filter((equipe) => equipe.id !== equipeId);
+            }
+            return newData;
+        });
+    };
+
     const handleDeleteEquipe = (equipeId: string, nomEquipe: string) => {
-        Alert.alert(
-            'Suppression',
-            `Supprimer l'équipe "${nomEquipe}" ? Cette action est irréversible.`,
-            [
-                { text: 'Annuler', style: 'cancel' },
-                {
-                    text: 'Supprimer',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await supabase.from('equipes').delete().eq('id', equipeId);
-                        setRefreshKey(Date.now());
+        // FIXME: revoir la confirmation pour uniformiser web et mobile
+        if (Platform.OS === 'web') {
+            if (confirm(`Supprimer l'équipe "${nomEquipe}" ? Cette action est irréversible.`)) {
+                fetchDeleteEquipe(equipeId, nomEquipe);
+            }
+        } else {
+            Alert.alert(
+                'Suppression',
+                `Supprimer l'équipe "${nomEquipe}" ? Cette action est irréversible.`,
+                [
+                    { text: 'Annuler', style: 'cancel' },
+                    {
+                        text: 'Supprimer',
+                        style: 'destructive',
+                        onPress: () => {
+                            fetchDeleteEquipe(equipeId, nomEquipe);
+                        },
                     },
-                },
-            ],
-        );
+                ],
+            );
+        }
     };
 
     if (loading) {
@@ -414,29 +273,11 @@ export default function CoachDashboard() {
         );
     }
 
-    const actionsData = [
-        { label: 'Créer équipe', icon: 'people', route: '/coach/creation-equipe' },
-        { label: 'Créer événement', icon: 'calendar', route: '/coach/creation-evenement' },
-        { label: 'Anniversaires', icon: 'gift-outline', route: '/coach/anniversaires' },
-        { label: 'Feuille de match', icon: 'document-text', route: '/coach/feuille-match' },
-        { label: 'Composition', icon: 'grid', route: '/coach/composition' },
-        { label: 'Messagerie', icon: 'chatbox', route: '/coach/messages' },
-        { label: 'Statistiques', icon: 'bar-chart', route: '/coach/statistiques' },
-    ];
-
-    if (stage) {
-        actionsData.push({
-            label: 'Programme de stage',
-            icon: 'book',
-            route: '/coach/programme-stage',
-        });
-    }
-
     const isMobile = screenWidth < 768;
 
     return (
         <ScrollView
-            style={{ flex: 1, backgroundColor: DARK }}
+            style={{ flex: 1, backgroundColor: COLOR_BLACK_900 }}
             contentContainerStyle={{ alignItems: 'center', paddingBottom: 48 }}
             showsVerticalScrollIndicator={false}
         >
@@ -448,7 +289,7 @@ export default function CoachDashboard() {
                 >
                     {uploadingPhoto ? (
                         <View style={[styles.profilePhoto, styles.placeholderPhoto]}>
-                            <ActivityIndicator size="small" color={GREEN} />
+                            <ActivityIndicator size="small" color={COLOR_GREEN_300} />
                         </View>
                     ) : staff?.photo_url ? (
                         <Image
@@ -477,7 +318,7 @@ export default function CoachDashboard() {
                         />
                     ) : (
                         <View style={[styles.profilePhoto, styles.placeholderPhoto]}>
-                            <Ionicons name="camera" size={20} color={GREEN} />
+                            <Ionicons name="camera" size={20} color={COLOR_GREEN_300} />
                         </View>
                     )}
                     {!uploadingPhoto && (
@@ -492,11 +333,11 @@ export default function CoachDashboard() {
                 </Text>
 
                 <View style={styles.logoWrapper}>
-                    {club?.logo_url ? (
-                        <Image source={{ uri: club.logo_url }} style={styles.clubLogo} />
+                    {coachClubData?.logo_url ? (
+                        <Image source={{ uri: coachClubData.logo_url }} style={styles.clubLogo} />
                     ) : (
                         <View style={[styles.clubLogo, styles.placeholderLogo]}>
-                            <Ionicons name="shield-outline" size={20} color={GREEN} />
+                            <Ionicons name="shield-outline" size={20} color={COLOR_GREEN_300} />
                         </View>
                     )}
                 </View>
@@ -512,11 +353,11 @@ export default function CoachDashboard() {
                         onPress={() => setShowEditModal(true)}
                         style={styles.editButton}
                     >
-                        <Ionicons name="create-outline" size={20} color={GREEN} />
+                        <Ionicons name="create-outline" size={20} color={COLOR_GREEN_300} />
                     </TouchableOpacity>
                 </View>
 
-                <Text style={styles.headerCat}>Coach · {club?.nom || 'Club'}</Text>
+                <Text style={styles.headerCat}>Coach · {coachClubData?.nom || 'Club'}</Text>
 
                 <View style={isMobile ? styles.infoContainerMobile : styles.infoContainerDesktop}>
                     {utilisateur?.email && (
@@ -524,7 +365,7 @@ export default function CoachDashboard() {
                             <Ionicons
                                 name="mail-outline"
                                 size={isMobile ? 16 : 14}
-                                color={GREEN}
+                                color={COLOR_GREEN_300}
                                 style={styles.infoIcon}
                             />
                             <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
@@ -538,7 +379,7 @@ export default function CoachDashboard() {
                             <Ionicons
                                 name="call-outline"
                                 size={isMobile ? 16 : 14}
-                                color={GREEN}
+                                color={COLOR_GREEN_300}
                                 style={styles.infoIcon}
                             />
                             <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
@@ -552,7 +393,7 @@ export default function CoachDashboard() {
                             <Ionicons
                                 name="calendar-outline"
                                 size={isMobile ? 16 : 14}
-                                color={GREEN}
+                                color={COLOR_GREEN_300}
                                 style={styles.infoIcon}
                             />
                             <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
@@ -566,7 +407,7 @@ export default function CoachDashboard() {
                             <Ionicons
                                 name="school-outline"
                                 size={isMobile ? 16 : 14}
-                                color={GREEN}
+                                color={COLOR_GREEN_300}
                                 style={styles.infoIcon}
                             />
                             <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
@@ -580,7 +421,7 @@ export default function CoachDashboard() {
                             <Ionicons
                                 name="trophy-outline"
                                 size={isMobile ? 16 : 14}
-                                color={GREEN}
+                                color={COLOR_GREEN_300}
                                 style={styles.infoIcon}
                             />
                             <Text style={isMobile ? styles.infoTextMobile : styles.infoTextDesktop}>
@@ -593,8 +434,8 @@ export default function CoachDashboard() {
 
             {/* Équipes */}
             <Text style={styles.subtitle}>📌 Vos équipes</Text>
-            {equipes && equipes.length > 0 ? (
-                equipes.map((equipe) => (
+            {coachClubData?.equipes && coachClubData.equipes.length > 0 ? (
+                coachClubData.equipes.map((equipe) => (
                     <View
                         key={equipe.id}
                         style={{
@@ -640,43 +481,47 @@ export default function CoachDashboard() {
 
             {/* Prochain événement */}
             <Text style={styles.subtitle}>📋 Prochain événement</Text>
-            {evenement ? (
+            {coachClubData && coachClubData.evenements.length > 0 ? (
                 <TouchableOpacity
                     style={styles.cardGreen}
-                    onPress={() => router.push(`/coach/convocation/${evenement.id}`)}
+                    onPress={() =>
+                        router.push(`/coach/convocation/${coachClubData.evenements[0].id}`)
+                    }
                 >
-                    <Text style={styles.eventTitle}>{evenement.titre}</Text>
+                    <Text style={styles.eventTitle}>{coachClubData.evenements[0].titre}</Text>
                     <Text style={styles.eventInfo}>
-                        📅 {formatDateForDisplay({ date: evenement.date })} à {evenement.heure}
+                        📅 {formatDateForDisplay({ date: coachClubData.evenements[0].date })} à{' '}
+                        {coachClubData.evenements[0].heure}
                     </Text>
-                    <Text style={styles.eventInfo}>📍 {evenement.lieu}</Text>
-                    {evenement.lieu_complement && (
+                    <Text style={styles.eventInfo}>📍 {coachClubData.evenements[0].lieu}</Text>
+                    {coachClubData.evenements[0].lieu_complement && (
                         <Text style={[styles.eventInfo, { fontStyle: 'italic', color: '#8fd6ff' }]}>
-                            🏟️ {evenement.lieu_complement}
+                            🏟️ {coachClubData.evenements[0].lieu_complement}
                         </Text>
                     )}
-                    {evenement.meteo && (
+                    {coachClubData.evenements[0].meteo && (
                         <Text style={[styles.eventInfo, { color: '#00ff88' }]}>
                             {/* FIXME meteo est de type JSON, mais semble ne contenir qu'une string */}
-                            🌦️ {evenement.meteo.toString()}
+                            🌦️ {coachClubData.evenements[0].meteo.toString()}
                         </Text>
                     )}
-                    {evenement.latitude && evenement.longitude && (
-                        <TouchableOpacity
-                            onPress={() =>
-                                Linking.openURL(
-                                    `https://www.google.com/maps/search/?api=1&query=${evenement.latitude},${evenement.longitude}`,
-                                )
-                            }
-                            style={{ marginTop: 4, alignSelf: 'flex-start' }}
-                        >
-                            <Text style={styles.mapLink}>🗺️ Voir sur Google Maps</Text>
-                        </TouchableOpacity>
-                    )}
-                    <Text style={styles.eventInfo}>✅ Présents : {presences.present}</Text>
-                    <Text style={styles.eventInfo}>❌ Absents : {presences.absent}</Text>
+                    {coachClubData.evenements[0].latitude &&
+                        coachClubData.evenements[0].longitude && (
+                            <TouchableOpacity
+                                onPress={() =>
+                                    Linking.openURL(
+                                        `https://www.google.com/maps/search/?api=1&query=${coachClubData.evenements[0].latitude},${coachClubData.evenements[0].longitude}`,
+                                    )
+                                }
+                                style={{ marginTop: 4, alignSelf: 'flex-start' }}
+                            >
+                                <Text style={styles.mapLink}>🗺️ Voir sur Google Maps</Text>
+                            </TouchableOpacity>
+                        )}
+                    <Text style={styles.eventInfo}>✅ Présents : {presences?.present}</Text>
+                    <Text style={styles.eventInfo}>❌ Absents : {presences?.absent}</Text>
                     <Text style={styles.eventInfo}>
-                        🚗 À prendre en charge : {presences.transport}
+                        🚗 À prendre en charge : {presences?.transport}
                     </Text>
                 </TouchableOpacity>
             ) : (
@@ -696,23 +541,29 @@ export default function CoachDashboard() {
             {/* Actions rapides */}
             <Text style={styles.subtitle}>⚙️ Actions rapides</Text>
             <View style={styles.actionsContainer}>
-                {actionsData.map((action, index) => (
-                    <ActionButton
-                        key={index}
-                        label={action.label}
-                        icon={action.icon}
-                        onPress={() => router.push(action.route)}
-                    />
-                ))}
+                {actionsData
+                    .filter(
+                        (action) =>
+                            (coachClubData && coachClubData?.stages.length > 0) ||
+                            action.label !== 'Programme de stage',
+                    )
+                    .map((action, index) => (
+                        <ActionButton
+                            key={index}
+                            label={action.label}
+                            icon={action.icon}
+                            onPress={() => router.push(action.route)}
+                        />
+                    ))}
             </View>
 
             {/* Réseaux sociaux */}
-            {club && (
+            {coachClubData && (
                 <View style={styles.socialLinks}>
-                    {club.facebook_url && (
+                    {coachClubData.facebook_url && (
                         <TouchableOpacity
                             onPress={async () => {
-                                const url = club.facebook_url;
+                                const url = coachClubData.facebook_url;
                                 const app = `fb://facewebmodal/f?href=${url}`;
                                 const supported = await Linking.canOpenURL(app);
                                 const urlToOpen = supported ? app : url;
@@ -729,14 +580,14 @@ export default function CoachDashboard() {
                             />
                         </TouchableOpacity>
                     )}
-                    {club.instagram_url && (
+                    {coachClubData.instagram_url && (
                         <TouchableOpacity
                             onPress={async () => {
-                                if (club.instagram_url) {
-                                    const username = club.instagram_url.split('/').pop();
+                                if (coachClubData.instagram_url) {
+                                    const username = coachClubData.instagram_url.split('/').pop();
                                     const app = `instagram://user?username=${username}`;
                                     const supported = await Linking.canOpenURL(app);
-                                    Linking.openURL(supported ? app : club.instagram_url);
+                                    Linking.openURL(supported ? app : coachClubData.instagram_url);
                                 } else {
                                     Alert.alert('Erreur', "Impossible d'ouvrir le lien Instagram."); // FIXME: toast
                                 }
@@ -748,11 +599,11 @@ export default function CoachDashboard() {
                             />
                         </TouchableOpacity>
                     )}
-                    {club.boutique_url && (
+                    {coachClubData.boutique_url && (
                         <TouchableOpacity
                             onPress={() => {
-                                if (club.boutique_url) {
-                                    Linking.openURL(club.boutique_url);
+                                if (coachClubData.boutique_url) {
+                                    Linking.openURL(coachClubData.boutique_url);
                                 } else {
                                     Alert.alert(
                                         'Erreur',
@@ -856,7 +707,7 @@ export default function CoachDashboard() {
                                 <Text style={styles.modalButtonText}>Annuler</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.modalButton, { backgroundColor: GREEN }]}
+                                style={[styles.modalButton, { backgroundColor: COLOR_GREEN_300 }]}
                                 onPress={handleSaveChanges}
                             >
                                 <Text style={[styles.modalButtonText, { color: '#000' }]}>
@@ -889,16 +740,16 @@ function ActionButton({ label, icon, onPress }: ActionButtonProps) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: DARK,
+        backgroundColor: COLOR_BLACK_900,
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: DARK,
+        backgroundColor: COLOR_BLACK_900,
     },
     loadingText: {
-        color: DARK,
+        color: COLOR_BLACK_900,
         marginTop: 10,
         fontSize: 16,
     },
@@ -914,7 +765,7 @@ const styles = StyleSheet.create({
         maxWidth: 790,
     },
     welcomeTitle: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontSize: 22,
         fontWeight: 'bold',
         textAlign: 'center',
@@ -928,10 +779,10 @@ const styles = StyleSheet.create({
         height: 50,
         borderRadius: 25,
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
     },
     placeholderPhoto: {
-        backgroundColor: DARK,
+        backgroundColor: COLOR_BLACK_900,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -943,10 +794,10 @@ const styles = StyleSheet.create({
         height: 50,
         borderRadius: 25,
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
     },
     placeholderLogo: {
-        backgroundColor: DARK,
+        backgroundColor: COLOR_BLACK_900,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -954,14 +805,14 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         right: 0,
-        backgroundColor: GREEN,
+        backgroundColor: COLOR_GREEN_300,
         borderRadius: 10,
         width: 20,
         height: 20,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: DARK,
+        borderColor: COLOR_BLACK_900,
     },
 
     // Encadré infos
@@ -971,8 +822,8 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         padding: 20,
         borderWidth: 2,
-        borderColor: GREEN,
-        shadowColor: GREEN,
+        borderColor: COLOR_GREEN_300,
+        shadowColor: COLOR_GREEN_300,
         shadowOpacity: 0.08,
         shadowRadius: 10,
         elevation: 4,
@@ -995,7 +846,7 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     headerCat: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontSize: 14,
         fontWeight: '700',
         marginBottom: 10,
@@ -1005,7 +856,7 @@ const styles = StyleSheet.create({
         borderRadius: 15,
         padding: 8,
         borderWidth: 1,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
     },
 
     // Infos
@@ -1026,7 +877,7 @@ const styles = StyleSheet.create({
         marginRight: 0,
         marginLeft: 0,
         width: 20,
-        color: GREEN,
+        color: COLOR_GREEN_300,
     },
     infoTextMobile: {
         color: '#fff',
@@ -1055,10 +906,10 @@ const styles = StyleSheet.create({
         width: '100%',
         maxWidth: 400,
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
     },
     modalTitle: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontSize: 20,
         fontWeight: 'bold',
         textAlign: 'center',
@@ -1077,7 +928,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#232b28',
         borderRadius: 12,
         borderWidth: 2,
-        borderColor: GREEN,
+        borderColor: COLOR_GREEN_300,
         padding: 12,
         color: '#fff',
         fontSize: 16,
@@ -1192,7 +1043,7 @@ const styles = StyleSheet.create({
         width: '92%',
     },
     allConvocationsButtonText: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontWeight: 'bold',
         fontSize: 15,
         textAlign: 'center',

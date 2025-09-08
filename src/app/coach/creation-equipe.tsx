@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
     View,
     Text,
@@ -10,9 +10,9 @@ import {
     Platform,
     StatusBar,
 } from 'react-native';
-import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/hooks/useSession';
+import { checkIfCodeEquipeExists, insertEquipe } from '@/helpers/equipes.helpers';
 
 // Fonction utilitaire pour générer un code équipe unique
 function generateCodeEquipe(length = 6) {
@@ -25,18 +25,16 @@ function generateCodeEquipe(length = 6) {
 }
 
 // Génère et vérifie l'unicité du code équipe
-// FIXME: système dangereux
+// FIXME: système très dangereux
 async function generateUniqueCodeEquipe() {
-    let code, exists;
+    let code = '';
+    let exists = true;
+
     do {
         code = generateCodeEquipe();
-        const { data } = await supabase
-            .from('equipes')
-            .select('id')
-            .eq('code_equipe', code)
-            .maybeSingle();
-        exists = !!data;
+        exists = await checkIfCodeEquipeExists(code);
     } while (exists);
+
     return code;
 }
 
@@ -66,31 +64,24 @@ export default function CreationEquipe() {
             // Génère un code équipe unique
             const codeEquipeGen = await generateUniqueCodeEquipe();
 
-            const { error } = await supabase
-                .from('equipes')
-                .insert({
+            await insertEquipe({
+                dataToInsert: {
                     nom,
                     categorie,
                     description: description.trim() !== '' ? description : null,
                     coach_id: utilisateur.id,
                     club_id: utilisateur.club_id,
                     code_equipe: codeEquipeGen, // On ajoute le code ici !
-                })
-                .select()
-                .single();
+                },
+            });
 
-            if (error) {
-                console.error('[EQUIPE] ❌ Erreur création :', error);
-                Alert.alert('Erreur', "Création de l'équipe échouée.");
-            } else {
-                setCodeEquipe(codeEquipeGen);
-                Alert.alert(
-                    'Succès',
-                    `Équipe créée avec succès !\n\nCode équipe : ${codeEquipeGen}\n\nPartage ce code avec les joueurs/parents pour les rattacher à cette équipe.`,
-                    [{ text: 'OK', onPress: () => router.replace('/coach/dashboard') }],
-                );
-                // Tu peux aussi garder le coach sur la page pour copier le code
-            }
+            setCodeEquipe(codeEquipeGen);
+            Alert.alert(
+                'Succès',
+                `Équipe créée avec succès !\n\nCode équipe : ${codeEquipeGen}\n\nPartage ce code avec les joueurs/parents pour les rattacher à cette équipe.`,
+                [{ text: 'OK', onPress: () => router.replace('/coach/dashboard') }],
+            );
+            // FIXME: faire un système avec un bouton "copier code" seulement sur la page et une redirection facile et rapide sur le dashboard
         } catch (error) {
             console.error("Erreur inattendue lors de la création de l'équipe:", error);
             Alert.alert('Erreur', 'Erreur inattendue lors de la création.');

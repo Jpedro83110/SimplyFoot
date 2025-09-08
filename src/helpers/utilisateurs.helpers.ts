@@ -3,9 +3,7 @@ import { Database } from '@/types/database.types';
 
 export type GetUtilisateurById = Awaited<ReturnType<typeof getUtilisateurById>>;
 
-export const getUtilisateurById = async (args: { utilisateurId: string }) => {
-    let { utilisateurId } = args;
-
+export const getUtilisateurById = async ({ utilisateurId }: { utilisateurId: string }) => {
     const { data, error } = await supabase
         .from('utilisateurs')
         .select(
@@ -23,9 +21,7 @@ export const getUtilisateurById = async (args: { utilisateurId: string }) => {
 
 export type GetUtilisateursByClubId = Awaited<ReturnType<typeof getUtilisateursByClubId>>;
 
-export const getUtilisateursByClubId = async (args: { clubId: string }) => {
-    const { clubId } = args;
-
+export const getUtilisateursByClubId = async ({ clubId }: { clubId: string }) => {
     const { data, error } = await supabase
         .from('utilisateurs')
         .select('id, nom, prenom, date_naissance, role')

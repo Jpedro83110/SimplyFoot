@@ -79,3 +79,5 @@ export const updateUser = async (userData: UserAttributes) => {
 
     return data;
 };
+
+export const storage = supabase.storage;

@@ -3,9 +3,7 @@ import { Database } from '@/types/database.types';
 
 export type GetClubAdminByUserId = Awaited<ReturnType<typeof getClubAdminByUserId>>;
 
-export const getClubAdminByUserId = async (args: { userId: string }) => {
-    const { userId } = args;
-
+export const getClubAdminByUserId = async ({ userId }: { userId: string }) => {
     const { data, error } = await supabase
         .from('clubs_admins')
         .select('id, club_id, date_added')
@@ -19,12 +17,13 @@ export const getClubAdminByUserId = async (args: { userId: string }) => {
     return data;
 };
 
-export const updateClubAdmin = async (args: {
+export const updateClubAdmin = async ({
+    clubAdminId,
+    dataToUpdate,
+}: {
     clubAdminId: number;
     dataToUpdate: Partial<Database['public']['Tables']['clubs_admins']['Update']>;
 }) => {
-    const { clubAdminId, dataToUpdate } = args;
-
     const { error } = await supabase
         .from('clubs_admins')
         .update(dataToUpdate)

@@ -1,34 +1,31 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSession } from '@/hooks/useSession';
 import { GetEvenementsByClubId, getEvenementsByClubId } from '@/helpers/evenements.helpers';
 
 export default function EvenementsClub() {
-    const [events, setEvents] = useState<GetEvenementsByClubId>([]);
-    const [loading, setLoading] = useState(true);
+    const [events, setEvents] = useState<GetEvenementsByClubId | undefined>(undefined);
+    const [loading, setLoading] = useState(false);
 
     const { utilisateur } = useSession();
 
-    // Fetch club events (liés au club_id du coach connecté)
-    const fetchClubEvents = useCallback(async () => {
-        if (!utilisateur?.club_id) {
-            return;
-        }
-
+    const fetchClubEvents = async (clubId: string) => {
         setLoading(true);
 
-        // Tous les événements du club (créés par président)
-        const dataEvts = await getEvenementsByClubId({ clubId: utilisateur.club_id });
-
+        const dataEvts = await getEvenementsByClubId({ clubId });
         setEvents(dataEvts);
 
         setLoading(false);
-    }, [utilisateur?.club_id]);
+    };
 
     useEffect(() => {
-        fetchClubEvents();
-    }, [fetchClubEvents]);
+        if (!utilisateur?.club_id || loading || events) {
+            return;
+        }
+
+        fetchClubEvents(utilisateur.club_id);
+    }, [events, loading, utilisateur?.club_id]);
 
     const getEmoji = (type: string | null) => {
         switch (type) {
@@ -54,10 +51,10 @@ export default function EvenementsClub() {
 
                 {loading ? (
                     <ActivityIndicator color="#00ff88" />
-                ) : events.length === 0 ? (
+                ) : events?.length === 0 ? (
                     <Text style={styles.noEvent}>Aucun événement prévu.</Text>
                 ) : (
-                    events.map((event) => (
+                    events?.map((event) => (
                         <View key={event.id} style={styles.card}>
                             <Text style={styles.cardTitle}>
                                 {getEmoji(event.type)} {event.titre}

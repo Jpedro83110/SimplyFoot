@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -36,22 +36,18 @@ function getBadge(note: number) {
 }
 
 export default function Statistiques() {
-    const [stats, setStats] = useState<StatEquipe[]>([]);
+    const [stats, setStats] = useState<StatEquipe[] | undefined>(undefined);
     const [loading, setLoading] = useState(false);
 
     const { utilisateur } = useSession();
 
-    const fetchStats = useCallback(async () => {
+    const fetchStats = async (coachId: string, clubId: string) => {
         try {
-            if (!utilisateur?.club_id || !loading) {
-                return;
-            }
-
             setLoading(true);
 
             const evaluations = await getCoachEquipesEvaluations({
-                coachId: utilisateur.id,
-                clubId: utilisateur.club_id,
+                coachId,
+                clubId,
             });
 
             if (evaluations.length === 0) {
@@ -64,7 +60,7 @@ export default function Statistiques() {
 
             for (let evaluation of evaluations) {
                 const mentales = evaluation.joueurs
-                    .map((joueur) => joueur.utilisateurs.evaluations_mentales)
+                    .map((joueur) => joueur.utilisateurs[0].evaluations_mentales)
                     .flat();
 
                 const moyMentale =
@@ -78,7 +74,7 @@ export default function Statistiques() {
                         : 0;
 
                 const techniques = evaluation.joueurs
-                    .map((joueur) => joueur.utilisateurs.evaluations_techniques)
+                    .map((joueur) => joueur.utilisateurs[0].evaluations_techniques)
                     .filter((evaluation) => evaluation);
 
                 const moyTechnique =
@@ -98,8 +94,8 @@ export default function Statistiques() {
 
                 const nbJoueursEvalues = evaluation.joueurs.filter(
                     (joueur) =>
-                        joueur.utilisateurs.evaluations_mentales.length > 0 ||
-                        joueur.utilisateurs.evaluations_techniques,
+                        joueur.utilisateurs[0].evaluations_mentales.length > 0 ||
+                        joueur.utilisateurs[0].evaluations_techniques,
                 ).length;
 
                 if (moyMentale > 0 || moyTechnique > 0) {
@@ -125,11 +121,15 @@ export default function Statistiques() {
         } finally {
             setLoading(false);
         }
-    }, [loading, utilisateur?.club_id, utilisateur?.id]);
+    };
 
     useEffect(() => {
-        fetchStats();
-    }, [fetchStats]);
+        if (!utilisateur?.club_id || loading || stats) {
+            return;
+        }
+
+        fetchStats(utilisateur.id, utilisateur.club_id);
+    }, [loading, stats, utilisateur?.club_id, utilisateur?.id]);
 
     if (loading) {
         return (
@@ -140,14 +140,22 @@ export default function Statistiques() {
         );
     }
 
-    if (!stats.length) {
+    if (!stats) {
         return (
             <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>Aucune statistique disponible.</Text>
                 <Text style={styles.emptySubtext}>
                     Créez des évaluations pour vos joueurs pour voir les statistiques d&apos;équipe.
                 </Text>
-                <Pressable onPress={() => fetchStats()} style={styles.refreshButton}>
+                <Pressable
+                    onPress={() =>
+                        utilisateur?.club_id &&
+                        !loading &&
+                        fetchStats(utilisateur.id, utilisateur.club_id)
+                    }
+                    style={styles.refreshButton}
+                    disabled={loading}
+                >
                     <Text style={styles.refreshText}>🔄 Actualiser</Text>
                 </Pressable>
             </View>
@@ -160,7 +168,11 @@ export default function Statistiques() {
                 <View style={styles.header}>
                     <Text style={styles.title}>🏆 Statistiques d&apos;équipe</Text>
                     <Pressable
-                        onPress={() => fetchStats()}
+                        onPress={() =>
+                            utilisateur?.club_id &&
+                            !loading &&
+                            fetchStats(utilisateur.id, utilisateur.club_id)
+                        }
                         style={styles.refreshButton}
                         disabled={loading}
                     >
@@ -210,13 +222,6 @@ export default function Statistiques() {
                         </View>
                     </View>
                 ))}
-
-                {/* Photo unique en bas */}
-                <Image
-                    source={require('../../assets/coach-joueur-highfive.png')}
-                    style={styles.highfive}
-                    resizeMode="cover"
-                />
             </ScrollView>
         </LinearGradient>
     );

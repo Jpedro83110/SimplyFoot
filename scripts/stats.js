@@ -2,11 +2,18 @@ const fs = require('fs');
 const path = require('path');
 
 // Directories to analyze
-const SOURCE_DIRS = ['app', 'components', 'context', 'helpers', 'hooks', 'lib', 'utils'];
+const SOURCE_DIRS = ['app', 'components', 'contexts', 'helpers', 'hooks', 'lib', 'utils'];
 
 // File extensions
 const JS_EXTENSIONS = ['.js', '.jsx'];
 const TS_EXTENSIONS = ['.ts', '.tsx'];
+
+// NEW: sous-répertoires à ignorer dans l'affichage hiérarchique
+const IGNORED_SUBDIRS = new Set(['__tests__']);
+
+function isIgnoredSubdir(name) {
+    return IGNORED_SUBDIRS.has(name.toLowerCase());
+}
 
 // Patterns to exclude test files
 const TEST_PATTERNS = [/__tests__/, /\.test\./, /\.spec\./];
@@ -151,7 +158,7 @@ function findFiles(dir, extensions) {
 }
 
 /**
- * New: Recursively traverses a directory and finds all test files
+ * Recursively traverses a directory and finds all test files
  */
 function findTestFiles(dir, extensions) {
     const files = [];
@@ -183,7 +190,7 @@ function findTestFiles(dir, extensions) {
 }
 
 /**
- * New: Infer test kind (unit, integration, e2e, other) from path/filename
+ * Infer test kind (unit, integration, e2e, other) from path/filename
  */
 function inferTestKind(filePath) {
     const p = filePath.replace(/\\/g, '/').toLowerCase();
@@ -207,7 +214,7 @@ function inferTestKind(filePath) {
 }
 
 /**
- * New: Strip simple comments for regex-based counting (best-effort)
+ * Strip simple comments for regex-based counting (best-effort)
  */
 function stripComments(content) {
     // Remove block comments
@@ -218,7 +225,7 @@ function stripComments(content) {
 }
 
 /**
- * New: Count test file metrics (lines, suites, tests, expects, mocks, snapshots, only/skip)
+ * Count test file metrics (lines, suites, tests, expects, mocks, snapshots, only/skip)
  */
 function countTestFileMetrics(filePath) {
     try {
@@ -291,21 +298,21 @@ function countTestFileMetrics(filePath) {
 }
 
 /**
- * Analyzes files in source directories
+ * Analyzes files in source directories and builds per-directory ranking
  */
 function analyzeCodebase(options = {}) {
-    const { verbose = false } = options;
+    const { verbose = false, topCount } = options; // topCount: number | undefined
     let jsLines = 0;
     let jsFiles = 0;
     let tsLines = 0;
     let tsFiles = 0;
     let styleLines = 0;
 
-    // New: array to store line count per file with details
+    // Arrays and details
     const fileLinesArray = [];
-    const fileDetails = []; // New: to store details of each file
+    const fileDetails = [];
 
-    // New: tests aggregation
+    // Tests aggregation
     const testTotals = {
         files: 0,
         lines: 0,
@@ -325,6 +332,9 @@ function analyzeCodebase(options = {}) {
     };
     const testFileDetails = [];
 
+    // Per-directory stats (keyed by SOURCE_DIR name)
+    const perDirStats = {};
+
     if (verbose) {
         console.log('🔍 Analyzing source files (excluding comments and console statements)...\n');
     }
@@ -343,20 +353,78 @@ function analyzeCodebase(options = {}) {
             console.log(`📁 Analyzing directory: ${sourceDir}`);
         }
 
+        // Initialize per-dir counters
+        perDirStats[sourceDir] = {
+            jsFiles: 0,
+            tsFiles: 0,
+            jsLines: 0,
+            tsLines: 0,
+            styleLines: 0,
+            testFiles: 0,
+            testLines: 0,
+            suites: 0,
+            tests: 0,
+            fileDetails: [], // list of files with lines/style/type
+            subdirs: {}, // <--- NEW: aggregation par sous-répertoire 1er niveau
+        };
+
+        const dirStats = perDirStats[sourceDir];
+
         // Analyze JavaScript/JSX files
         const jsFilesInDir = findFiles(dirPath, JS_EXTENSIONS);
         for (const file of jsFilesInDir) {
             const { codeLines, styleLines: fileStyleLines } = countLinesWithStyles(file);
-            const totalFileLines = codeLines + fileStyleLines;
             jsLines += codeLines;
             styleLines += fileStyleLines;
             jsFiles++;
-            fileLinesArray.push(totalFileLines);
 
-            // Add file details
+            dirStats.jsLines += codeLines;
+            dirStats.styleLines += fileStyleLines;
+            dirStats.jsFiles++;
+
+            // Sous-répertoire (filtré)
+            const relToSourceDir = path.relative(dirPath, file);
+            const firstSeg = relToSourceDir.split(path.sep)[0];
+            if (
+                firstSeg &&
+                firstSeg !== '.' &&
+                firstSeg !== '' &&
+                firstSeg !== relToSourceDir &&
+                !isIgnoredSubdir(firstSeg)
+            ) {
+                if (!dirStats.subdirs[firstSeg]) {
+                    dirStats.subdirs[firstSeg] = {
+                        name: firstSeg,
+                        jsFiles: 0,
+                        tsFiles: 0,
+                        jsLines: 0,
+                        tsLines: 0,
+                        styleLines: 0,
+                        testFiles: 0,
+                        testLines: 0,
+                        suites: 0,
+                        tests: 0,
+                    };
+                }
+                const sd = dirStats.subdirs[firstSeg];
+                sd.jsFiles += 1;
+                sd.jsLines += codeLines;
+                sd.styleLines += fileStyleLines;
+            }
+
+            fileLinesArray.push(codeLines);
+
             fileDetails.push({
                 path: path.relative(process.cwd(), file),
-                lines: totalFileLines,
+                lines: codeLines,
+                styleLines: fileStyleLines,
+                type: 'JS',
+            });
+
+            dirStats.fileDetails.push({
+                path: path.relative(process.cwd(), file),
+                lines: codeLines,
+                styleLines: fileStyleLines,
                 type: 'JS',
             });
 
@@ -371,16 +439,56 @@ function analyzeCodebase(options = {}) {
         const tsFilesInDir = findFiles(dirPath, TS_EXTENSIONS);
         for (const file of tsFilesInDir) {
             const { codeLines, styleLines: fileStyleLines } = countLinesWithStyles(file);
-            const totalFileLines = codeLines + fileStyleLines;
             tsLines += codeLines;
             styleLines += fileStyleLines;
             tsFiles++;
-            fileLinesArray.push(totalFileLines);
 
-            // Add file details
+            dirStats.tsLines += codeLines;
+            dirStats.styleLines += fileStyleLines;
+            dirStats.tsFiles++;
+
+            const relToSourceDir = path.relative(dirPath, file);
+            const firstSeg = relToSourceDir.split(path.sep)[0];
+            if (
+                firstSeg &&
+                firstSeg !== '.' &&
+                firstSeg !== '' &&
+                firstSeg !== relToSourceDir &&
+                !isIgnoredSubdir(firstSeg)
+            ) {
+                if (!dirStats.subdirs[firstSeg]) {
+                    dirStats.subdirs[firstSeg] = {
+                        name: firstSeg,
+                        jsFiles: 0,
+                        tsFiles: 0,
+                        jsLines: 0,
+                        tsLines: 0,
+                        styleLines: 0,
+                        testFiles: 0,
+                        testLines: 0,
+                        suites: 0,
+                        tests: 0,
+                    };
+                }
+                const sd = dirStats.subdirs[firstSeg];
+                sd.tsFiles += 1;
+                sd.tsLines += codeLines;
+                sd.styleLines += fileStyleLines;
+            }
+
+            fileLinesArray.push(codeLines);
+
             fileDetails.push({
                 path: path.relative(process.cwd(), file),
-                lines: totalFileLines,
+                lines: codeLines,
+                styleLines: fileStyleLines,
+                type: 'TS',
+            });
+
+            dirStats.fileDetails.push({
+                path: path.relative(process.cwd(), file),
+                lines: codeLines,
+                styleLines: fileStyleLines,
                 type: 'TS',
             });
 
@@ -391,7 +499,7 @@ function analyzeCodebase(options = {}) {
             }
         }
 
-        // New: Analyze Test files (both JS/TS)
+        // Analyze Test files
         const testFilesInDir = findTestFiles(dirPath, [...JS_EXTENSIONS, ...TS_EXTENSIONS]);
         for (const file of testFilesInDir) {
             const metrics = countTestFileMetrics(file);
@@ -420,6 +528,43 @@ function analyzeCodebase(options = {}) {
                 kind,
             });
 
+            // per-dir test increments
+            dirStats.testFiles += 1;
+            dirStats.testLines += metrics.codeLines;
+            dirStats.suites += metrics.suiteCount;
+            dirStats.tests += metrics.testCount;
+
+            // Sous-répertoire pour tests (filtré)
+            const relToSourceDir = path.relative(dirPath, file);
+            const firstSeg = relToSourceDir.split(path.sep)[0];
+            if (
+                firstSeg &&
+                firstSeg !== '.' &&
+                firstSeg !== '' &&
+                firstSeg !== relToSourceDir &&
+                !isIgnoredSubdir(firstSeg)
+            ) {
+                if (!dirStats.subdirs[firstSeg]) {
+                    dirStats.subdirs[firstSeg] = {
+                        name: firstSeg,
+                        jsFiles: 0,
+                        tsFiles: 0,
+                        jsLines: 0,
+                        tsLines: 0,
+                        styleLines: 0,
+                        testFiles: 0,
+                        testLines: 0,
+                        suites: 0,
+                        tests: 0,
+                    };
+                }
+                const sd = dirStats.subdirs[firstSeg];
+                sd.testFiles += 1;
+                sd.testLines += metrics.codeLines;
+                sd.suites += metrics.suiteCount;
+                sd.tests += metrics.testCount;
+            }
+
             if (verbose) {
                 console.log(
                     `   🧪 ${kind.toUpperCase()}: ${path.relative(process.cwd(), file)} (${metrics.codeLines} lines, ${metrics.suiteCount} suites, ${metrics.testCount} tests)`,
@@ -447,18 +592,16 @@ function analyzeCodebase(options = {}) {
     let medianLinesPerFile = 0;
 
     if (totalFiles > 0) {
-        // Average
-        averageLinesPerFile = Math.round(totalLines / totalFiles);
+        // Average (use only code lines, exclude style lines)
+        averageLinesPerFile = Math.round(totalCodeLines / totalFiles);
 
         // Median
         const sortedFileLinesArray = [...fileLinesArray].sort((a, b) => a - b);
         if (sortedFileLinesArray.length % 2 === 0) {
-            // Even number of files
             const mid1 = sortedFileLinesArray[Math.floor(sortedFileLinesArray.length / 2) - 1];
             const mid2 = sortedFileLinesArray[Math.floor(sortedFileLinesArray.length / 2)];
             medianLinesPerFile = Math.round((mid1 + mid2) / 2);
         } else {
-            // Odd number of files
             medianLinesPerFile = sortedFileLinesArray[Math.floor(sortedFileLinesArray.length / 2)];
         }
     }
@@ -468,11 +611,56 @@ function analyzeCodebase(options = {}) {
     const jsBarLength = totalCodeLines > 0 ? Math.round((jsLines / totalCodeLines) * barLength) : 0;
     const tsBarLength = barLength - jsBarLength;
 
-    // Create top 5 largest files
-    const top5Files = fileDetails.sort((a, b) => b.lines - a.lines).slice(0, 5);
+    // Sort all files by code lines (desc) and keep full list
+    const allFilesSorted = fileDetails.sort((a, b) => b.lines - a.lines);
 
-    // New: Top 5 largest test files
+    // Top 5 largest test files
     const top5TestFiles = testFileDetails.sort((a, b) => b.lines - a.lines).slice(0, 5);
+
+    // Prepare per-directory ranking array
+    const perDirArray = Object.keys(perDirStats).map((dirName) => {
+        const s = perDirStats[dirName];
+        const codeLines = (s.jsLines || 0) + (s.tsLines || 0);
+
+        const subdirs = Object.values(s.subdirs || {})
+            .filter((sd) => !isIgnoredSubdir(sd.name)) // filet de sécurité
+            .map((sd) => {
+                const sdCodeLines = (sd.jsLines || 0) + (sd.tsLines || 0);
+                return {
+                    name: sd.name,
+                    codeLines: sdCodeLines,
+                    jsLines: sd.jsLines || 0,
+                    tsLines: sd.tsLines || 0,
+                    styleLines: sd.styleLines || 0,
+                    jsFiles: sd.jsFiles || 0,
+                    tsFiles: sd.tsFiles || 0,
+                    testFiles: sd.testFiles || 0,
+                    testLines: sd.testLines || 0,
+                    suites: sd.suites || 0,
+                    tests: sd.tests || 0,
+                };
+            });
+
+        return {
+            dir: dirName,
+            icon: getDirIcon(dirName),
+            codeLines,
+            jsLines: s.jsLines || 0,
+            tsLines: s.tsLines || 0,
+            styleLines: s.styleLines || 0,
+            jsFiles: s.jsFiles || 0,
+            tsFiles: s.tsFiles || 0,
+            testFiles: s.testFiles || 0,
+            testLines: s.testLines || 0,
+            suites: s.suites || 0,
+            tests: s.tests || 0,
+            fileDetails: s.fileDetails || [],
+            subdirs,
+        };
+    });
+
+    // Sort dirs by codeLines desc
+    perDirArray.sort((a, b) => b.codeLines - a.codeLines);
 
     // Display results
     console.log('📊 CODE LINE STATISTICS (excluding comments and console statements)');
@@ -494,12 +682,64 @@ function analyzeCodebase(options = {}) {
     console.log(`   Median: ${medianLinesPerFile} lines per file`);
     console.log(`   Average: ${averageLinesPerFile} lines per file`);
     console.log('');
-    console.log('🏆 TOP 5 LARGEST FILES:');
-    top5Files.forEach((file, index) => {
-        const rank = index + 1;
-        const typeIcon = file.type === 'TS' ? '🔷' : '🔶';
-        console.log(`   ${rank}. ${typeIcon} ${file.path} (${file.lines} lines)`);
-    });
+
+    if (typeof topCount === 'number' && topCount > 0) {
+        const topFiles = allFilesSorted.slice(0, topCount);
+        console.log(`🏆 TOP ${topCount} LARGEST FILES:`);
+        topFiles.forEach((file, index) => {
+            const rank = index + 1;
+            const typeIcon = file.type === 'TS' ? '🔷' : '🔶';
+            const stylePart =
+                typeof file.styleLines === 'number' ? `, ${file.styleLines} style` : '';
+            console.log(
+                `   ${rank}. ${typeIcon} ${file.path} — ${file.lines} code${stylePart} lines`,
+            );
+        });
+    } else {
+        console.log('🏆 ALL FILES (sorted by code lines):');
+        allFilesSorted.forEach((file, index) => {
+            const rank = index + 1;
+            const typeIcon = file.type === 'TS' ? '🔷' : '🔶';
+            const stylePart =
+                typeof file.styleLines === 'number' ? `, ${file.styleLines} style` : '';
+            console.log(
+                `   ${rank}. ${typeIcon} ${file.path} — ${file.lines} code${stylePart} lines`,
+            );
+        });
+    }
+
+    // Print per-directory ranking
+    console.log('');
+    console.log('📂 DIRECTORIES STATISTICS');
+    console.log('====================================================================');
+
+    if (perDirArray.length === 0) {
+        console.log('Aucun des dossiers SOURCE_DIRS trouvés dans src/');
+    } else {
+        const totalForPercent = Math.max(1, totalCodeLines); // avoid division by zero
+        perDirArray.forEach((d, idx) => {
+            const rank = idx + 1;
+            const percent = ((d.codeLines / totalForPercent) * 100).toFixed(2);
+            console.log(
+                ` ${rank}. ${d.icon} ${d.dir} — ${d.codeLines} lignes (${percent}%) — TS: ${d.tsLines}, JS: ${d.jsLines}, styles: ${d.styleLines} — source files: ${d.jsFiles + d.tsFiles}`,
+            );
+
+            // NEW: afficher sous-répertoires
+            if (d.subdirs && d.subdirs.length > 0) {
+                // Trier par lignes de code desc
+                const parentLines = Math.max(1, d.codeLines);
+                d.subdirs
+                    .sort((a, b) => b.codeLines - a.codeLines)
+                    .forEach((sd, sdIdx) => {
+                        const sdRank = `${rank}.${sdIdx + 1}`;
+                        const sdPercent = ((sd.codeLines / parentLines) * 100).toFixed(2);
+                        console.log(
+                            `   ${sdRank} ${d.dir}/${sd.name} — ${sd.codeLines} lignes (${sdPercent}%) — TS: ${sd.tsLines}, JS: ${sd.jsLines}, styles: ${sd.styleLines} — source files: ${sd.jsFiles + sd.tsFiles}`,
+                        );
+                    });
+            }
+        });
+    }
 
     // New: Print tests statistics
     if (testTotals.files > 0) {
@@ -588,24 +828,64 @@ function analyzeCodebase(options = {}) {
             averageLinesPerFile,
             medianLinesPerFile,
         },
-        // New: top 5 files
-        top5Files,
-        // New: tests summary
+        // all files sorted by code lines
+        allFiles: allFilesSorted,
+        topFiles:
+            typeof topCount === 'number' && topCount > 0
+                ? allFilesSorted.slice(0, topCount)
+                : undefined,
+        // tests summary
         tests: {
             totals: testTotals,
             byKind: testByKind,
             top5Files: top5TestFiles,
         },
+        // New: per-directory stats and ranking
+        perDirectory: perDirArray,
     };
+}
+
+/**
+ * Retourne une icône logique pour un répertoire source donné
+ */
+function getDirIcon(dirName) {
+    const map = {
+        app: '📱',
+        components: '🧩',
+        contexts: '🔗',
+        helpers: '🛠️',
+        hooks: '⚓️',
+        lib: '📚',
+        utils: '🔧',
+    };
+    return map[dirName] || '📁';
 }
 
 // Script execution
 if (require.main === module) {
-    // Check if verbose option is passed as argument
-    const verbose = process.argv.includes('--verbose') || process.argv.includes('-v');
+    // Check CLI options
+    const argv = process.argv;
+    const verbose = argv.includes('--verbose') || argv.includes('-v');
+
+    // parse --top=N or --top N
+    let topCount;
+    for (let i = 2; i < argv.length; i++) {
+        const a = argv[i];
+        if (a.startsWith('--top=')) {
+            const v = parseInt(a.split('=')[1], 10);
+            if (!Number.isNaN(v)) {
+                topCount = v;
+            }
+        } else if (a === '--top' && i + 1 < argv.length) {
+            const v = parseInt(argv[i + 1], 10);
+            if (!Number.isNaN(v)) {
+                topCount = v;
+            }
+        }
+    }
 
     try {
-        analyzeCodebase({ verbose });
+        analyzeCodebase({ verbose, topCount });
     } catch (error) {
         console.error('❌ Error during analysis:', error.message);
         process.exit(1);

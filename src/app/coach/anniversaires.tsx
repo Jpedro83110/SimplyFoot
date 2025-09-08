@@ -1,23 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
-import CalendrierAnniversaires from '../../components/business/CalendrierAnniversaires';
+import { useEffect, useState } from 'react';
+import CalendrierAnniversaires from '@/components/business/CalendrierAnniversaires';
 import { ActivityIndicator, View, ScrollView, Alert } from 'react-native';
 import { useSession } from '@/hooks/useSession';
 import { getUtilisateursByClubId, GetUtilisateursByClubId } from '@/helpers/utilisateurs.helpers';
 
 export default function CoachAnniversaires() {
-    const [membres, setMembres] = useState<GetUtilisateursByClubId>([]);
-    const [loading, setLoading] = useState(true);
+    const [membres, setMembres] = useState<GetUtilisateursByClubId | undefined>(undefined);
+    const [loading, setLoading] = useState(false);
 
-    const { staff } = useSession();
+    const { utilisateur } = useSession();
 
-    const loadData = useCallback(async () => {
-        if (!staff?.club_id) {
-            return;
-        }
-
+    const loadData = async (clubId: string) => {
         setLoading(true);
         try {
-            const membres = await getUtilisateursByClubId({ clubId: staff.club_id });
+            const membres = await getUtilisateursByClubId({ clubId });
             setMembres(membres);
         } catch (error) {
             Alert.alert(
@@ -26,11 +22,15 @@ export default function CoachAnniversaires() {
             );
         }
         setLoading(false);
-    }, [staff]);
+    };
 
     useEffect(() => {
-        loadData();
-    }, [loadData]);
+        if (!utilisateur?.club_id || loading || membres) {
+            return;
+        }
+
+        loadData(utilisateur.club_id);
+    }, [loading, membres, utilisateur?.club_id]);
 
     if (loading) {
         return (
@@ -49,7 +49,7 @@ export default function CoachAnniversaires() {
 
     return (
         <ScrollView style={{ flex: 1, backgroundColor: '#111417' }}>
-            <CalendrierAnniversaires membres={membres} zoneInitiale="B" />
+            <CalendrierAnniversaires membres={membres || []} zoneInitiale="B" />
         </ScrollView>
     );
 }

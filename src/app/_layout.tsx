@@ -8,7 +8,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { deleteMessagesPrivesOneWeekOld } from '@/helpers/messagesPrives.helpers';
-import { AuthProvider } from '@/context/AuthContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 import SplashScreenController from './SplashScreenController';
 import { useSession } from '@/hooks/useSession';
 

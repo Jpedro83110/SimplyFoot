@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -11,123 +11,93 @@ import {
     Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
 import Slider from '@react-native-community/slider';
-import useCacheData from '../../../lib/cache';
-import { getUtilisateurById, GetUtilisateurById } from '@/helpers/utilisateurs.helpers';
+import {
+    EvaluationsTechnique,
+    getEvaluationsTechniquesByJoueur,
+    GetEvaluationsTechniquesByJoueur,
+    upsertEvaluationsTechniques,
+} from '@/helpers/evaluationsTechniques.helpers';
+import { useSession } from '@/hooks/useSession';
+import { Database } from '@/types/database.types';
+
+type EvaluationTechniqueParams = {
+    id: string;
+};
+
+const evaluationTechniqueDefaultValues: EvaluationsTechnique = {
+    tir: 50,
+    passe: 50,
+    centre: 50,
+    tete: 50,
+    vitesse: 50,
+    defense: 50,
+    placement: 50,
+    jeu_sans_ballon: 50,
+};
 
 export default function EvaluationTechnique() {
-    const { id } = useLocalSearchParams();
+    const { id } = useLocalSearchParams<EvaluationTechniqueParams>();
     const router = useRouter();
 
-    const criteres = useMemo(
-        () => [
-            'tir',
-            'passe',
-            'centre',
-            'tete',
-            'vitesse',
-            'defense',
-            'placement',
-            'jeu_sans_ballon',
-        ],
-        [],
-    );
-
-    const [valeurs, setValeurs] = useState(Object.fromEntries(criteres.map((c) => [c, 50])));
-    const [joueurInfo, setJoueurInfo] = useState<GetUtilisateurById>();
-    const [loading, setLoading] = useState(true);
+    const [valeurs, setValeurs] = useState<EvaluationsTechnique>(evaluationTechniqueDefaultValues);
+    const [evaluationsTechniques, setEvaluationsTechniques] =
+        useState<GetEvaluationsTechniquesByJoueur>();
+    const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // Récupère les informations du joueur/utilisateur
-    useEffect(() => {
-        async function fetchJoueurInfo() {
-            setLoading(true);
+    const { utilisateur } = useSession();
 
-            try {
-                // Étape 1: Récupérer les infos utilisateur
-                const utilisateur = await getUtilisateurById({
-                    utilisateurId: id as string,
-                });
+    const fetchEvaluationsTechniques = async (joueurId: string) => {
+        setLoading(true);
 
-                if (utilisateur) {
-                    setJoueurInfo(utilisateur);
-                } else {
-                    // Étape 2: Essayer de trouver par joueur_id
-                    const { data: userByJoueurId, error: joueurError } = await supabase
-                        .from('utilisateurs')
-                        .select('id, nom, prenom, role, joueur_id')
-                        .eq('joueur_id', id as string)
-                        .maybeSingle();
+        try {
+            const fetchedEvaluationsTechniques = await getEvaluationsTechniquesByJoueur({
+                joueurId,
+            });
 
-                    if (joueurError && joueurError.code !== 'PGRST116') {
-                        console.error('Erreur joueur:', joueurError);
-                    }
-
-                    if (userByJoueurId) {
-                        setJoueurInfo(userByJoueurId as GetUtilisateurById); // FIXME: fonctionne mais type à corriger
-                    } else {
-                        Alert.alert('Erreur', 'Joueur introuvable dans le système');
-                    }
-                }
-            } catch (error) {
-                console.error('Erreur générale:', error);
-                Alert.alert('Erreur', 'Impossible de charger les informations du joueur');
-            }
-
+            setEvaluationsTechniques(fetchedEvaluationsTechniques);
+        } catch (error) {
+            console.error('Erreur générale:', error);
+            Alert.alert('Erreur', 'Impossible de charger les informations du joueur');
+        } finally {
             setLoading(false);
         }
+    };
 
-        if (id) {
-            fetchJoueurInfo();
-        }
-    }, [id]);
-
-    // Charge les données d'évaluation si joueurId disponible
-    const [evalData, refresh, loadingEval] = useCacheData(
-        joueurInfo?.id ? `eval-technique-${joueurInfo?.id}` : null,
-        async () => {
-            if (!joueurInfo?.id) {
-                return null;
-            }
-
-            try {
-                const { data, error } = await supabase
-                    .from('evaluations_techniques')
-                    .select('*')
-                    .eq('joueur_id', joueurInfo?.id)
-                    .maybeSingle();
-
-                if (error) {
-                    console.error('Erreur lors du chargement des évaluations:', error);
-                    return null;
-                }
-
-                return data;
-            } catch (error) {
-                console.error('Erreur cache evaluation:', error);
-                return null;
-            }
-        },
-        3600,
-    );
-
-    // Remplit les valeurs si data trouvée
     useEffect(() => {
-        if (evalData) {
-            const newValeurs = Object.fromEntries(criteres.map((c) => [c, 50]));
-            criteres.forEach((critere) => {
-                if (evalData[critere as keyof typeof evalData] !== undefined) {
-                    newValeurs[critere] = evalData[critere as keyof typeof evalData] as number; // FIXME pas ouf
-                }
-            });
-            setValeurs(newValeurs);
+        if (!id || loading || evaluationsTechniques !== undefined) {
+            return;
         }
-    }, [criteres, evalData]);
+
+        fetchEvaluationsTechniques(id);
+    }, [id, loading, evaluationsTechniques]);
+
+    useEffect(() => {
+        if (evaluationsTechniques) {
+            setValeurs({
+                tir: evaluationsTechniques.tir ?? 50,
+                passe: evaluationsTechniques.passe ?? 50,
+                centre: evaluationsTechniques.centre ?? 50,
+                tete: evaluationsTechniques.tete ?? 50,
+                vitesse: evaluationsTechniques.vitesse ?? 50,
+                defense: evaluationsTechniques.defense ?? 50,
+                placement: evaluationsTechniques.placement ?? 50,
+                jeu_sans_ballon: evaluationsTechniques.jeu_sans_ballon ?? 50,
+            });
+        }
+    }, [evaluationsTechniques]);
+
+    const handleSliderChange = (key: string, value: number) => {
+        setValeurs((prev) => ({
+            ...prev,
+            [key]: Math.max(0, Math.min(100, value)),
+        }));
+    };
 
     const calculerMoyenne = () => {
-        const total = criteres.reduce((sum, crit) => sum + (Number(valeurs[crit]) || 0), 0);
-        return Math.round(total / criteres.length);
+        const total = Object.values(valeurs).reduce((a, b) => a + b, 0);
+        return Math.round(total / Object.values(valeurs).length);
     };
 
     const handleSave = async () => {
@@ -135,81 +105,44 @@ export default function EvaluationTechnique() {
 
         try {
             const moyenne = calculerMoyenne();
-            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-            const session = sessionData?.session;
 
-            if (sessionError || !session?.user?.id) {
-                Alert.alert('Erreur', 'Session invalide - veuillez vous reconnecter');
-                return;
-            }
-
-            if (!joueurInfo?.id) {
-                Alert.alert('Erreur', 'Joueur introuvable');
+            if (!utilisateur?.id) {
+                Alert.alert('Erreur', 'Joueur ou coach introuvable');
                 return;
             }
 
             // Objet complet avec tous les champs nécessaires
-            const updates: any = {
-                // FIXME any
-                joueur_id: joueurInfo?.id,
-                coach_id: session.user.id,
-                moyenne: moyenne,
+            const updates: Database['public']['Tables']['evaluations_techniques']['Update'] = {
+                joueur_id: id,
+                coach_id: utilisateur?.id,
                 updated_at: new Date().toISOString(),
+                tir: valeurs.tir,
+                passe: valeurs.passe,
+                centre: valeurs.centre,
+                tete: valeurs.tete,
+                vitesse: valeurs.vitesse,
+                defense: valeurs.defense,
+                placement: valeurs.placement,
+                jeu_sans_ballon: valeurs.jeu_sans_ballon,
+                moyenne: moyenne,
             };
 
-            // Ajouter tous les critères
-            criteres.forEach((critere) => {
-                updates[critere] = Math.round(Number(valeurs[critere]) || 0);
+            await upsertEvaluationsTechniques({
+                evaluationsTechniquesId: evaluationsTechniques?.id || null,
+                dataToUpdate: updates,
             });
-
-            // Stratégie UPDATE puis INSERT
-            const { data: updateData, error: updateError } = await supabase
-                .from('evaluations_techniques')
-                .update(updates)
-                .eq('joueur_id', joueurInfo?.id)
-                .eq('coach_id', session.user.id)
-                .select();
-
-            if (updateError) {
-                Alert.alert('Erreur', `Erreur de mise à jour: ${updateError.message}`);
-                return;
-            }
-
-            // Si aucune ligne n'a été mise à jour, on insère
-            if (!updateData || updateData.length === 0) {
-                const { error: insertError } = await supabase
-                    .from('evaluations_techniques')
-                    .insert(updates)
-                    .select();
-
-                if (insertError) {
-                    Alert.alert('Erreur', `Impossible de sauvegarder: ${insertError.message}`);
-                    return;
-                }
-            }
-
-            // Rafraîchit le cache
-            try {
-                if (refresh) {
-                    await refresh();
-                }
-            } catch (cacheError) {
-                console.error('Erreur cache:', cacheError);
-                // Ignore les erreurs de cache
-                // FIXME: bizarre ce commentaire
-            }
 
             Alert.alert('Succès', 'Évaluation technique enregistrée avec succès!', [
                 {
                     text: 'OK',
                     onPress: () => {
-                        router.replace(`/coach/joueur/${joueurInfo?.joueur_id}`);
+                        router.back();
                     },
                 },
             ]);
 
             if (Platform.OS === 'web') {
-                router.replace(`/coach/joueur/${joueurInfo?.joueur_id}`);
+                router.back();
             }
         } catch (error) {
             Alert.alert('Erreur', `Erreur inattendue: ${(error as Error).message}`);
@@ -220,7 +153,7 @@ export default function EvaluationTechnique() {
 
     const moyenne = calculerMoyenne();
 
-    if (loading || loadingEval) {
+    if (loading) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#00ff88" />
@@ -234,28 +167,28 @@ export default function EvaluationTechnique() {
             <Text style={styles.title}>🎯 Évaluation technique</Text>
 
             {/* Affichage des informations du joueur */}
-            {joueurInfo && (
+            {evaluationsTechniques && (
                 <View style={styles.playerInfo}>
                     <Text style={styles.playerName}>
-                        {joueurInfo.nom} {joueurInfo.prenom}
+                        {evaluationsTechniques.utilisateurs?.nom}{' '}
+                        {evaluationsTechniques.utilisateurs?.prenom}
                     </Text>
-                    <Text style={styles.playerRole}>{joueurInfo.role}</Text>
+                    <Text style={styles.playerRole}>
+                        {evaluationsTechniques.utilisateurs?.role}
+                    </Text>
                 </View>
             )}
 
-            {criteres.map((critere) => (
-                <View key={critere} style={styles.sliderBlock}>
+            {Object.entries(valeurs).map(([key, val]: [string, number]) => (
+                <View key={key} style={styles.sliderBlock}>
                     <Text style={styles.label}>
-                        {critere.replace(/_/g, ' ').toUpperCase()} : {valeurs[critere]}/100
+                        {key.replace(/_/g, ' ').toUpperCase()} : {val}/100
                     </Text>
                     {Platform.OS === 'web' ? (
                         <TextInput
                             keyboardType="numeric"
-                            value={String(valeurs[critere])}
-                            onChangeText={(val) => {
-                                const num = Math.max(0, Math.min(100, parseInt(val) || 0));
-                                setValeurs((prev) => ({ ...prev, [critere]: num }));
-                            }}
+                            value={`${val}`}
+                            onChangeText={(text) => handleSliderChange(key, parseInt(text) || 0)}
                             style={styles.inputWeb}
                             placeholder="0 à 100"
                             placeholderTextColor="#555"
@@ -273,17 +206,15 @@ export default function EvaluationTechnique() {
                                     },
                                 ]}
                             >
-                                {valeurs[critere]}
+                                {val}
                             </Text>
                             <Slider
                                 style={{ flex: 1, marginHorizontal: 12 }}
                                 minimumValue={0}
                                 maximumValue={100}
                                 step={1}
-                                value={Number(valeurs[critere])}
-                                onValueChange={(val) =>
-                                    setValeurs((prev) => ({ ...prev, [critere]: Math.round(val) }))
-                                }
+                                value={val}
+                                onValueChange={(value) => handleSliderChange(key, value)}
                                 minimumTrackTintColor="#00ff88"
                                 maximumTrackTintColor="#555"
                                 thumbTintColor="#00ff88"
@@ -307,8 +238,8 @@ export default function EvaluationTechnique() {
 
             <Pressable
                 onPress={handleSave}
-                style={[styles.button, (saving || loading || loadingEval) && styles.buttonDisabled]}
-                disabled={saving || loading || loadingEval}
+                style={[styles.button, (saving || loading) && styles.buttonDisabled]}
+                disabled={saving || loading}
             >
                 <Text style={styles.buttonText}>
                     {saving ? 'Enregistrement...' : "💾 Enregistrer l'évaluation"}

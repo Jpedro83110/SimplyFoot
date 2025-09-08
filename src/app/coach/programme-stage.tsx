@@ -19,10 +19,11 @@ import {
     getStagesByClubId,
     GetStagesByClubId,
 } from '@/helpers/stages.helpers';
-
-const GREEN = '#00ff88';
-const DARK = '#101415';
-const DARK_LIGHT = '#161b20';
+import {
+    COLOR_BLACK_900,
+    COLOR_BLACK_LIGHT_900,
+    COLOR_GREEN_300,
+} from '@/utils/styleContants.utils';
 
 function downloadCSVWeb(filename: string, csv: string) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -37,29 +38,29 @@ function downloadCSVWeb(filename: string, csv: string) {
 
 export default function ProgrammeStage() {
     const { width } = useWindowDimensions();
-    const [stages, setStages] = useState<GetStagesByClubId>([]);
+    const [stages, setStages] = useState<GetStagesByClubId | undefined>(undefined);
     const [openedStageId, setOpenedStageId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [confirmation, setConfirmation] = useState('');
 
     const { utilisateur } = useSession();
 
+    const fetchStages = async (clubId: string) => {
+        setLoading(true);
+
+        const stagesList = await getStagesByClubId({ clubId });
+
+        setStages(stagesList);
+        setLoading(false);
+    };
+
     useEffect(() => {
-        const fetchStages = async () => {
-            if (!utilisateur?.club_id || loading) {
-                return;
-            }
+        if (!utilisateur?.club_id || loading || stages) {
+            return;
+        }
 
-            setLoading(true);
-
-            const stagesList = await getStagesByClubId({ clubId: utilisateur.club_id });
-
-            setStages(stagesList);
-            setLoading(false);
-        };
-
-        fetchStages();
-    }, [loading, utilisateur?.club_id]);
+        fetchStages(utilisateur.club_id);
+    }, [loading, stages, utilisateur?.club_id]);
 
     const imprimerStage = async (stage: GetStagesByClubId[number]) => {
         try {
@@ -139,7 +140,7 @@ export default function ProgrammeStage() {
         return <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />;
     }
 
-    if (!stages.length) {
+    if (!stages?.length) {
         return (
             <Text style={{ color: '#ccc', textAlign: 'center', marginTop: 40 }}>
                 Aucun stage trouvé.
@@ -292,13 +293,13 @@ export default function ProgrammeStage() {
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: DARK,
+        backgroundColor: COLOR_BLACK_900,
         flex: 1,
     },
     scroll: { padding: 20, alignSelf: 'center', maxWidth: 790, width: '92%' },
     title: {
         fontSize: 22,
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontWeight: 'bold',
         marginBottom: 18,
         alignSelf: 'center',
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
     stageDate: { color: '#00ff88', fontSize: 14, marginTop: 6 },
     stageAge: { color: '#facc15', fontSize: 14, marginTop: 4 },
     openCloseBtn: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontWeight: 'bold',
         fontSize: 20,
         textAlign: 'center',
@@ -329,7 +330,7 @@ const styles = StyleSheet.create({
     },
 
     formBlock: {
-        backgroundColor: DARK_LIGHT,
+        backgroundColor: COLOR_BLACK_LIGHT_900,
         borderRadius: 14,
         padding: 14,
         marginBottom: 20,
@@ -346,7 +347,7 @@ const styles = StyleSheet.create({
     dayTitle: {
         fontWeight: '600',
         fontSize: 16,
-        color: GREEN,
+        color: COLOR_GREEN_300,
         marginBottom: 10,
     },
 
