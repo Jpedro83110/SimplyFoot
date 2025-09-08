@@ -31,7 +31,7 @@ const actionsData = [
     { label: 'Créer équipe', icon: 'people', route: '/coach/creation-equipe' },
     { label: 'Créer événement', icon: 'calendar', route: '/coach/creation-evenement' },
     { label: 'Anniversaires', icon: 'gift-outline', route: '/coach/anniversaires' },
-    { label: 'Feuille de match', icon: 'document-text', route: '/coach/feuille-match' },
+    // { label: 'Feuille de match', icon: 'document-text', route: '/coach/feuille-match' },
     { label: 'Composition', icon: 'grid', route: '/coach/composition' },
     { label: 'Messagerie', icon: 'chatbox', route: '/coach/messages' },
     { label: 'Statistiques', icon: 'bar-chart', route: '/coach/statistiques' },
