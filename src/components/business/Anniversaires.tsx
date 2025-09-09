@@ -48,7 +48,6 @@ export const Anniversaires: FC = () => {
         );
     }
 
-
     return (
         <ScrollView style={{ flex: 1, backgroundColor: '#111417' }}>
             <CalendrierAnniversaires membres={membres || []} zoneInitiale="B" />
