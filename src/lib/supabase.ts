@@ -90,10 +90,12 @@ export const sendNotificationToClubUsers = async ({
 }) => {
     const utilisateurs = await getUtilisateursPushTokenByClubId({ clubId });
 
-    const tokens = utilisateurs?.filter((utilisateur) => utilisateur.expo_push_token);
+    const utilisateursHasPushToken = utilisateurs?.filter(
+        (utilisateur) => utilisateur.expo_push_token,
+    );
 
-    for (const token of tokens) {
-        await fetch('https://exp.host/--/api/v2/push/send', {
+    const requests = utilisateursHasPushToken.map(({ expo_push_token }) =>
+        fetch('https://exp.host/--/api/v2/push/send', {
             method: 'POST',
             headers: {
                 Accept: 'application/json',
@@ -101,12 +103,14 @@ export const sendNotificationToClubUsers = async ({
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                to: token,
-                title: 'Nouvel événement',
+                to: expo_push_token,
+                title: 'Nouvel évènement',
                 body: message,
             }),
-        });
-    }
+        }),
+    );
+
+    await Promise.all(requests);
 };
 
 export const storage = supabase.storage;
