@@ -165,7 +165,7 @@ export const CompositionDragDrop: FC<CompositionDragDropProps> = ({ evenementId 
                         );
 
                         if (!position) {
-                            return <></>;
+                            return null;
                         }
 
                         const panResponder = createPanResponder(position);
