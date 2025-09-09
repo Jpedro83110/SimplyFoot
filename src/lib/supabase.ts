@@ -1,3 +1,4 @@
+import { getUtilisateursPushTokenByClubId } from '@/helpers/utilisateurs.helpers';
 import { Database } from '@/types/database.types';
 import { createClient, UserAttributes } from '@supabase/supabase-js';
 
@@ -78,6 +79,34 @@ export const updateUser = async (userData: UserAttributes) => {
     }
 
     return data;
+};
+
+export const sendNotificationToClubUsers = async ({
+    message,
+    clubId,
+}: {
+    message: string;
+    clubId: string;
+}) => {
+    const utilisateurs = await getUtilisateursPushTokenByClubId({ clubId });
+
+    const tokens = utilisateurs?.filter((utilisateur) => utilisateur.expo_push_token);
+
+    for (const token of tokens) {
+        await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Accept-encoding': 'gzip, deflate',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                to: token,
+                title: 'Nouvel événement',
+                body: message,
+            }),
+        });
+    }
 };
 
 export const storage = supabase.storage;

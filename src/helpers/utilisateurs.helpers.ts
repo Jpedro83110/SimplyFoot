@@ -34,6 +34,23 @@ export const getUtilisateursByClubId = async ({ clubId }: { clubId: string }) =>
     return data;
 };
 
+export type GetUtilisateursPushTokenByClubId = Awaited<
+    ReturnType<typeof getUtilisateursPushTokenByClubId>
+>;
+
+export const getUtilisateursPushTokenByClubId = async ({ clubId }: { clubId: string }) => {
+    const { data, error } = await supabase
+        .from('utilisateurs')
+        .select('expo_push_token')
+        .eq('club_id', clubId);
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 export const insertUtilisateur = async ({
     dataToInsert,
 }: {
