@@ -20,9 +20,7 @@ const emptyProgramme: Programme = {
 
 export type ProgrammeByDay = Record<Day, Programme>;
 
-export const getProgrammeFromStage = (
-    stage: GetStagesByClubId[number] | GetLastClubStage,
-): ProgrammeByDay => {
+export const getProgrammeFromStage = (stage: GetStagesByClubId[number]): ProgrammeByDay => {
     const {
         programme_lundi,
         programme_mardi,
@@ -56,24 +54,4 @@ export const getStagesByClubId = async ({ clubId }: { clubId: string }) => {
     }
 
     return stages;
-};
-
-export type GetLastClubStage = Awaited<ReturnType<typeof getLastClubStage>>;
-
-export const getLastClubStage = async ({ clubId }: { clubId: string }) => {
-    const { data: stage, error } = await supabase
-        .from('stages')
-        .select(
-            'titre, lieu, date_debut, date_fin, programme_lundi, programme_mardi, programme_mercredi, programme_jeudi, programme_vendredi',
-        )
-        .eq('club_id', clubId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-    if (error) {
-        throw error;
-    }
-
-    return stage;
 };

@@ -95,35 +95,27 @@ export default function MessagesGroupesJoueur() {
     }
 
     return (
-        <ImageBackground
-            source={require('../../../assets/messagerie-fond.png')}
-            style={{ flex: 1 }}
-            resizeMode="cover"
-        >
-            <LinearGradient colors={['#0a0a0acc', '#0f0f0fcc']} style={styles.container}>
-                <ScrollView contentContainerStyle={styles.scroll}>
-                    <Text style={styles.title}>💬 Messages de groupe</Text>
-                    <Text style={styles.info}>
-                        La messagerie de groupe permet au coach de communiquer des informations à
-                        toute l&apos;équipe. Les joueurs ne peuvent pas répondre ici.
-                    </Text>
-                    {messages.length === 0 && (
-                        <Text style={styles.noMessages}>
-                            Aucun message de groupe pour ton équipe.
+        <LinearGradient colors={['#0a0a0acc', '#0f0f0fcc']} style={styles.container}>
+            <ScrollView contentContainerStyle={styles.scroll}>
+                <Text style={styles.title}>💬 Messages de groupe</Text>
+                <Text style={styles.info}>
+                    La messagerie de groupe permet au coach de communiquer des informations à toute
+                    l&apos;équipe. Les joueurs ne peuvent pas répondre ici.
+                </Text>
+                {messages.length === 0 && (
+                    <Text style={styles.noMessages}>Aucun message de groupe pour ton équipe.</Text>
+                )}
+                {messages.map((msg) => (
+                    <View key={msg.id} style={styles.card}>
+                        <Text style={styles.messageTitle}>{msg.titre}</Text>
+                        <Text style={styles.messageContent}>{msg.contenu}</Text>
+                        <Text style={styles.messageMeta}>
+                            📅 {new Date(msg.created_at).toLocaleString()}
                         </Text>
-                    )}
-                    {messages.map((msg) => (
-                        <View key={msg.id} style={styles.card}>
-                            <Text style={styles.messageTitle}>{msg.titre}</Text>
-                            <Text style={styles.messageContent}>{msg.contenu}</Text>
-                            <Text style={styles.messageMeta}>
-                                📅 {new Date(msg.created_at).toLocaleString()}
-                            </Text>
-                        </View>
-                    ))}
-                </ScrollView>
-            </LinearGradient>
-        </ImageBackground>
+                    </View>
+                ))}
+            </ScrollView>
+        </LinearGradient>
     );
 }
 

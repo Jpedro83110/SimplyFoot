@@ -36,59 +36,53 @@ export default function MessagesIndex() {
     }
 
     return (
-        <ImageBackground
-            source={require('../../../assets/messagerie-fond.png')}
-            style={styles.background}
-            resizeMode="cover"
-        >
-            <LinearGradient colors={DARK_GRADIENT} style={styles.container}>
-                <Text style={styles.title}>💬 Messagerie Joueur</Text>
+        <LinearGradient colors={DARK_GRADIENT} style={styles.container}>
+            <Text style={styles.title}>💬 Messagerie Joueur</Text>
 
+            <TouchableOpacity
+                style={styles.button}
+                onPress={() => router.push('/joueur/messages/prives')}
+            >
+                <MaterialCommunityIcons
+                    name="account-box-multiple-outline"
+                    size={30}
+                    color={COLOR_GREEN_300}
+                    style={{ marginRight: 12 }}
+                />
+                <Text style={styles.buttonText}>Messagerie privée</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={styles.button}
+                onPress={() => router.push('/joueur/messages/groupes')}
+            >
+                <MaterialCommunityIcons
+                    name="account-group-outline"
+                    size={30}
+                    color={COLOR_GREEN_300}
+                    style={{ marginRight: 12 }}
+                />
+                <Text style={styles.buttonText}>Messagerie de groupe</Text>
+            </TouchableOpacity>
+
+            {/* BOUTON BESOIN DE TRANSPORT */}
+            {canAnswerTransportRequest && (
                 <TouchableOpacity
-                    style={styles.button}
-                    onPress={() => router.push('/joueur/messages/prives')}
+                    style={[styles.button, { borderColor: '#ffd700' }]}
+                    onPress={handleAskTransport}
                 >
                     <MaterialCommunityIcons
-                        name="account-box-multiple-outline"
+                        name="van-utility"
                         size={30}
-                        color={COLOR_GREEN_300}
+                        color="#ffd700"
                         style={{ marginRight: 12 }}
                     />
-                    <Text style={styles.buttonText}>Messagerie privée</Text>
+                    <Text style={[styles.buttonText, { color: '#ffd700' }]}>
+                        Demande de transport
+                    </Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.button}
-                    onPress={() => router.push('/joueur/messages/groupes')}
-                >
-                    <MaterialCommunityIcons
-                        name="account-group-outline"
-                        size={30}
-                        color={COLOR_GREEN_300}
-                        style={{ marginRight: 12 }}
-                    />
-                    <Text style={styles.buttonText}>Messagerie de groupe</Text>
-                </TouchableOpacity>
-
-                {/* BOUTON BESOIN DE TRANSPORT */}
-                {canAnswerTransportRequest && (
-                    <TouchableOpacity
-                        style={[styles.button, { borderColor: '#ffd700' }]}
-                        onPress={handleAskTransport}
-                    >
-                        <MaterialCommunityIcons
-                            name="van-utility"
-                            size={30}
-                            color="#ffd700"
-                            style={{ marginRight: 12 }}
-                        />
-                        <Text style={[styles.buttonText, { color: '#ffd700' }]}>
-                            Demande de transport
-                        </Text>
-                    </TouchableOpacity>
-                )}
-            </LinearGradient>
-        </ImageBackground>
+            )}
+        </LinearGradient>
     );
 }
 

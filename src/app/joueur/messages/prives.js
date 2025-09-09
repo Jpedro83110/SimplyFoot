@@ -94,45 +94,39 @@ export default function MessagesPrivesJoueur() {
     };
 
     return (
-        <ImageBackground
-            source={require('../../../assets/messagerie-fond.png')}
-            style={{ flex: 1 }}
-            resizeMode="cover"
-        >
-            <LinearGradient colors={['#0a0a0acc', '#0f0f0fcc']} style={styles.container}>
-                <ScrollView contentContainerStyle={styles.scroll}>
-                    <Text style={styles.title}>📩 Messages privés avec ton coach</Text>
-                    <View style={styles.filContainer}>
-                        {filMessages.map((msg) => (
-                            <View
-                                key={msg.id}
-                                style={[
-                                    styles.bulle,
-                                    msg.auteur === 'coach' ? styles.coachMsg : styles.joueurMsg,
-                                ]}
-                            >
-                                <Text style={styles.texte}>{msg.texte}</Text>
-                                <Text style={styles.meta}>
-                                    {new Date(msg.created_at).toLocaleString()}
-                                </Text>
-                            </View>
-                        ))}
-                    </View>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Ton message..."
-                        placeholderTextColor="#777"
-                        multiline
-                        value={message}
-                        onChangeText={setMessage}
-                    />
-                    <Pressable onPress={handleEnvoyer} style={styles.bouton}>
-                        <Ionicons name="send" size={18} color="#111" />
-                        <Text style={styles.boutonText}>Envoyer</Text>
-                    </Pressable>
-                </ScrollView>
-            </LinearGradient>
-        </ImageBackground>
+        <LinearGradient colors={['#0a0a0acc', '#0f0f0fcc']} style={styles.container}>
+            <ScrollView contentContainerStyle={styles.scroll}>
+                <Text style={styles.title}>📩 Messages privés avec ton coach</Text>
+                <View style={styles.filContainer}>
+                    {filMessages.map((msg) => (
+                        <View
+                            key={msg.id}
+                            style={[
+                                styles.bulle,
+                                msg.auteur === 'coach' ? styles.coachMsg : styles.joueurMsg,
+                            ]}
+                        >
+                            <Text style={styles.texte}>{msg.texte}</Text>
+                            <Text style={styles.meta}>
+                                {new Date(msg.created_at).toLocaleString()}
+                            </Text>
+                        </View>
+                    ))}
+                </View>
+                <TextInput
+                    style={styles.input}
+                    placeholder="Ton message..."
+                    placeholderTextColor="#777"
+                    multiline
+                    value={message}
+                    onChangeText={setMessage}
+                />
+                <Pressable onPress={handleEnvoyer} style={styles.bouton}>
+                    <Ionicons name="send" size={18} color="#111" />
+                    <Text style={styles.boutonText}>Envoyer</Text>
+                </Pressable>
+            </ScrollView>
+        </LinearGradient>
     );
 }
 
