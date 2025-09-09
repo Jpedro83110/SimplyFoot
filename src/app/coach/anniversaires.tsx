@@ -1,4 +1,4 @@
-import Anniversaires from '../joueur/anniversaires';
+import Anniversaires from '@/components/business/Anniversaires';
 
 export default function CoachAnniversaires() {
     return <Anniversaires />;
