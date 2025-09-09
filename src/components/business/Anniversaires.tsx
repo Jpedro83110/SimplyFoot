@@ -48,20 +48,6 @@ export const Anniversaires: FC = () => {
         );
     }
 
-    if (loading) {
-        return (
-            <View
-                style={{
-                    flex: 1,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    backgroundColor: '#14181b',
-                }}
-            >
-                <ActivityIndicator color={COLOR_GREEN_300} size="large" />
-            </View>
-        );
-    }
 
     return (
         <ScrollView style={{ flex: 1, backgroundColor: '#111417' }}>
