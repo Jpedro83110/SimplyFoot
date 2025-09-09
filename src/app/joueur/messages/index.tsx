@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import useEffectOnce from 'react-use/lib/useEffectOnce';
-import { Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';

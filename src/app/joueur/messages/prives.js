@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    ImageBackground,
-} from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';

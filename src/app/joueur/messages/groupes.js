@@ -1,12 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-    View,
-    Text,
-    ScrollView,
-    StyleSheet,
-    ActivityIndicator,
-    ImageBackground,
-} from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../../lib/supabase';
 
