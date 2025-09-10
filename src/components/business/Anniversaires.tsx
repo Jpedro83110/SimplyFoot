@@ -1,5 +1,5 @@
 import { FC, useEffect, useState } from 'react';
-import CalendrierAnniversaires from '../../components/business/CalendrierAnniversaires';
+import CalendrierAnniversaires from '@/components/business/CalendrierAnniversaires';
 import { ActivityIndicator, View, ScrollView, Alert } from 'react-native';
 import { COLOR_GREEN_300 } from '@/utils/styleContants.utils';
 import { getUtilisateursByClubId, GetUtilisateursByClubId } from '@/helpers/utilisateurs.helpers';
