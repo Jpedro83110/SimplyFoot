@@ -177,10 +177,10 @@ export const getEquipeEvenementBesoinsTransport = async ({
 };
 
 export const createEvenement = async ({
-    joueursId,
+    joueursIds,
     dataToInsert,
 }: {
-    joueursId?: string[];
+    joueursIds?: string[];
     dataToInsert: Database['public']['Tables']['evenements']['Insert'];
 }) => {
     // FIXME: change db schema to make equipe_id, created_by, and club_id not nullable
@@ -200,9 +200,9 @@ export const createEvenement = async ({
         throw new Error('Failed to insert evenement');
     }
 
-    if (joueursId && joueursId.length > 0) {
+    if (joueursIds && joueursIds.length > 0) {
         await bulkCreateParticipationsEvenement({
-            joueursId,
+            joueursIds,
             dataToInsert: {
                 evenement_id: insertedEvenement.id,
                 reponse: null,
