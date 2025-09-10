@@ -25,7 +25,6 @@ const labels: Record<string, string> = {
     email: 'Email',
 };
 
-// FIXME: any, bof
 const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
     nom: 'shield',
     adresse: 'location',
