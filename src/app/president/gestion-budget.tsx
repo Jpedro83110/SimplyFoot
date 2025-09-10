@@ -167,10 +167,10 @@ export default function GestionBudget() {
 
     const totalRecettes = (budgets || [])
         .filter((budget) => budget.type === 'Recette')
-        .reduce((sum, budget) => (budget.montant ? sum + budget.montant : sum), 0);
+        .reduce((sum, budget) => sum + (budget.montant || 0), 0);
     const totalDepenses = (budgets || [])
         .filter((budget) => budget.type === 'Dépense')
-        .reduce((sum, budget) => (budget.montant ? sum + budget.montant : sum), 0);
+        .reduce((sum, budget) => sum + (budget.montant || 0), 0);
 
     const pieData = [
         totalRecettes > 0 && {
