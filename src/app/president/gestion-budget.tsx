@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -11,18 +11,24 @@ import {
     Platform,
     Dimensions,
 } from 'react-native';
-import { supabase } from '../../lib/supabase';
 import * as FileSystem from 'expo-file-system';
 import * as ExpoSharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import { PieChart } from 'react-native-chart-kit';
-import useCacheData from '../../lib/cache';
 import { formatDateForDisplay } from '@/utils/date.utils';
 import { COLOR_BLACK_900 } from '@/utils/styleContants.utils';
+import {
+    createBudget,
+    deleteClubBudgets,
+    getBudgetsByClubId,
+    GetBudgetsByClubId,
+} from '@/helpers/budgets.helpers';
+import { useSession } from '@/hooks/useSession';
 
 export default function GestionBudget() {
     const [filtreMois, setFiltreMois] = useState('');
-    const [clubId, setClubId] = useState(null);
+    const [budgets, setBudgets] = useState<GetBudgetsByClubId | undefined>(undefined);
+    const [loading, setLoading] = useState(false);
     const [nouvelleLigne, setNouvelleLigne] = useState({
         date: '',
         type: 'Recette',
@@ -32,55 +38,34 @@ export default function GestionBudget() {
         commentaire: '',
     });
 
-    // --- On charge clubId (pas en cache car session/user change peu)
-    useEffect(() => {
-        const fetchClubId = async () => {
-            const session = await supabase.auth.getSession();
-            const userId = session.data.session.user.id;
-            const { data, error } = await supabase
-                .from('clubs')
-                .select('id')
-                .eq('created_by', userId)
-                .single();
-            if (!error && data) {
-                setClubId(data.id);
-            }
-        };
-        fetchClubId();
-    }, []);
+    const { utilisateur } = useSession();
 
-    // --- FONCTION DE FETCH AVEC FILTRE MOIS (pour le cache)
-    const fetchLignesBudget = async () => {
-        let query = supabase
-            .from('budgets')
-            .select('*')
-            .eq('club_id', clubId)
-            .order('date', { ascending: false });
-        if (filtreMois) {
-            query = query.filter('date', 'like', `${filtreMois}-%`);
-        }
-        const { data, error } = await query;
-        if (error) {
-            throw new Error(error.message);
-        }
-        return data || [];
+    const fetchBudgets = async (clubId: string) => {
+        setLoading(true);
+
+        const budgets = await getBudgetsByClubId({ clubId });
+        setBudgets(budgets);
+
+        setLoading(false);
     };
 
-    // --- USECACHE (la clé dépend du filtre mois ET club, donc unique pour chaque vue)
-    const cacheKey = clubId ? `budget_${clubId}_${filtreMois || 'all'}` : null;
-    const [lignes, refreshLignes, chargement] = useCacheData(
-        cacheKey,
-        fetchLignesBudget,
-        1800, // 30 minutes
-    );
+    useEffect(() => {
+        if (!utilisateur?.club_id || loading || budgets) {
+            return;
+        }
+
+        fetchBudgets(utilisateur.club_id);
+    }, [budgets, loading, utilisateur?.club_id]);
 
     // --- AJOUT / SUPPRIME / ARCHIVE = On refresh le cache
-    const ajouterLigne = async () => {
+    const ajouterLigne = useCallback(async () => {
         let { date, type, intitule, montant, categorie, commentaire } = nouvelleLigne;
-        if (!clubId) {
+
+        if (!utilisateur?.club_id) {
             Alert.alert('Erreur', "Le club n'a pas encore été chargé.");
             return;
         }
+
         if (!intitule || !montant || isNaN(parseFloat(montant))) {
             Alert.alert(
                 'Erreur',
@@ -88,43 +73,41 @@ export default function GestionBudget() {
             );
             return;
         }
-        // Si pas de date, on met maintenant (ISO avec heure min, utilisée pour le format FR ensuite)
+
         if (!date) {
             date = new Date().toISOString();
         }
 
-        const { error } = await supabase.from('budgets').insert([
-            {
+        await createBudget({
+            budget: {
                 date,
                 type,
                 intitule,
                 montant: parseFloat(montant),
                 categorie,
                 commentaire,
-                club_id: clubId,
+                club_id: utilisateur.club_id,
             },
-        ]);
-        if (error) {
-            Alert.alert("Erreur lors de l'ajout", error.message);
-        } else {
-            setNouvelleLigne({
-                date: '',
-                type: 'Recette',
-                intitule: '',
-                montant: '',
-                categorie: '',
-                commentaire: '',
-            });
-            refreshLignes();
-        }
-    };
+        });
 
-    const exporterCSV = async () => {
+        setNouvelleLigne({
+            date: '',
+            type: 'Recette',
+            intitule: '',
+            montant: '',
+            categorie: '',
+            commentaire: '',
+        });
+
+        await fetchBudgets(utilisateur.club_id);
+    }, [nouvelleLigne, utilisateur?.club_id]);
+
+    const exporterCSV = useCallback(async () => {
         const header = 'Date,Type,Intitulé,Montant,Catégorie,Commentaire\n';
-        const rows = (lignes || [])
+        const rows = (budgets || [])
             .map(
-                (ligne) =>
-                    `${formatDateForDisplay({ date: ligne.date })},${ligne.type},${ligne.intitule},${ligne.montant} € ,${ligne.categorie},${ligne.commentaire}`,
+                (budget) =>
+                    `${formatDateForDisplay({ date: budget.date })},${budget.type},${budget.intitule},${budget.montant} € ,${budget.categorie},${budget.commentaire}`,
             )
             .join('\n');
         const csv = header + rows;
@@ -145,49 +128,50 @@ export default function GestionBudget() {
             });
             await ExpoSharing.shareAsync(path);
         }
-    };
+    }, [budgets]);
 
-    const exporterPDF = async () => {
+    const exporterPDF = useCallback(async () => {
         const html = `
       <html><body><h1>Budget Club</h1><table border='1' style='width:100%; border-collapse:collapse;'>
       <tr><th>Date</th><th>Type</th><th>Intitulé</th><th>Montant</th><th>Catégorie</th><th>Commentaire</th></tr>
-      ${(lignes || [])
+      ${(budgets || [])
           .map(
-              (ligne) =>
+              (budget) =>
                   `<tr>
-          <td>${formatDateForDisplay({ date: ligne.date })}</td>
-          <td>${ligne.type}</td>
-          <td>${ligne.intitule}</td>
-          <td style="color:${ligne.type === 'Recette' ? '#00b85b' : '#e30000'}; font-weight:bold">${ligne.montant} €</td>
-          <td>${ligne.categorie}</td>
-          <td>${ligne.commentaire}</td>
+          <td>${formatDateForDisplay({ date: budget.date })}</td>
+          <td>${budget.type}</td>
+          <td>${budget.intitule}</td>
+          <td style="color:${budget.type === 'Recette' ? '#00b85b' : '#e30000'}; font-weight:bold">${budget.montant} €</td>
+          <td>${budget.categorie}</td>
+          <td>${budget.commentaire}</td>
         </tr>`,
           )
           .join('')}
       </table></body></html>`;
         const { uri } = await Print.printToFileAsync({ html });
         await ExpoSharing.shareAsync(uri);
-    };
+    }, [budgets]);
 
-    const archiverEtVider = async () => {
-        await exporterCSV();
-        const { error } = await supabase.from('budgets').delete().eq('club_id', clubId);
-        if (error) {
-            Alert.alert('Erreur lors de la suppression', error.message);
-        } else {
-            Alert.alert('Archivé', 'Les données ont été exportées et supprimées.');
-            refreshLignes();
+    const archiverEtVider = useCallback(async () => {
+        if (!utilisateur?.club_id) {
+            Alert.alert('Erreur', "Le club n'a pas encore été chargé.");
+            return;
         }
-    };
 
-    const totalRecettes = (lignes || [])
-        .filter((l) => l.type === 'Recette')
-        .reduce((sum, l) => sum + l.montant, 0);
-    const totalDepenses = (lignes || [])
-        .filter((l) => l.type === 'Dépense')
-        .reduce((sum, l) => sum + l.montant, 0);
+        await exporterCSV();
+        await deleteClubBudgets({ clubId: utilisateur.club_id });
 
-    // --- Data pour PieChart ---
+        Alert.alert('Archivé', 'Les données ont été exportées et supprimées.');
+        await fetchBudgets(utilisateur.club_id);
+    }, [exporterCSV, utilisateur?.club_id]);
+
+    const totalRecettes = (budgets || [])
+        .filter((budget) => budget.type === 'Recette')
+        .reduce((sum, budget) => (budget.montant ? sum + budget.montant : sum), 0);
+    const totalDepenses = (budgets || [])
+        .filter((budget) => budget.type === 'Dépense')
+        .reduce((sum, budget) => (budget.montant ? sum + budget.montant : sum), 0);
+
     const pieData = [
         totalRecettes > 0 && {
             name: 'Recettes 💶',
@@ -205,7 +189,7 @@ export default function GestionBudget() {
         },
     ].filter(Boolean);
 
-    const renderItem = ({ item }) => (
+    const renderItem = ({ item }: { item: GetBudgetsByClubId[number] }) => (
         <View style={styles.ligne}>
             <Text style={styles.texteDate}>{formatDateForDisplay({ date: item.date })}</Text>
             <Text style={styles.texte}>
@@ -226,10 +210,7 @@ export default function GestionBudget() {
                     }}
                 >
                     {item.type === 'Recette' ? '+' : '-'}
-                    {parseFloat(item.montant).toLocaleString('fr-FR', {
-                        minimumFractionDigits: 2,
-                    })}{' '}
-                    €
+                    {item.montant ? item.montant.toFixed(2) : '0.00'} €
                 </Text>
             </Text>
             {item.categorie ? <Text style={styles.categorie}>{item.categorie}</Text> : null}
@@ -394,17 +375,17 @@ export default function GestionBudget() {
                     </TouchableOpacity>
                 </View>
 
-                {chargement ? (
+                {loading ? (
                     <Text style={{ color: '#bbb', textAlign: 'center', marginTop: 12 }}>
                         Chargement…
                     </Text>
-                ) : lignes?.length === 0 ? (
+                ) : budgets?.length === 0 ? (
                     <Text style={{ color: '#bbb', textAlign: 'center', marginTop: 12 }}>
                         Aucune ligne de budget trouvée.
                     </Text>
                 ) : (
                     <FlatList
-                        data={lignes}
+                        data={budgets}
                         renderItem={renderItem}
                         keyExtractor={(item) => item.id.toString()}
                         style={{ marginBottom: 40 }}
