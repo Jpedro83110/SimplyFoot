@@ -233,7 +233,7 @@ export default function Stages() {
     const supprimerStage = async (stageId: string, clubId: string) => {
         // FIXME: revoir la confirmation pour uniformiser web et mobile
         if (Platform.OS === 'web') {
-            if (confirm(`'Confirmer la suppression de ce stage ?`)) {
+            if (confirm(`Confirmer la suppression de ce stage ?`)) {
                 await fetchDeleteStage(stageId, clubId);
             }
         } else {
