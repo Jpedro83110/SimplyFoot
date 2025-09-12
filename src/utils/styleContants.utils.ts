@@ -24,7 +24,7 @@ export const COLOR_BLACK_200: ColorValue = '#DFE4E5';
 export const COLOR_BLACK_100: ColorValue = '#EBEFF1';
 export const COLOR_BLACK_50: ColorValue = '#F4F8FA';
 
-export const COLOR_BLACK_LIGHT_900: ColorValue = '#161B20'; // FIXME: replace DARK by this constant
+export const COLOR_BLACK_LIGHT_900: ColorValue = '#161B20'; // FIXME: replace DARK_LIGHT by this constant
 export const COLOR_BLACK_LIGHT_800: ColorValue = '#363B41';
 export const COLOR_BLACK_LIGHT_700: ColorValue = '#545A60';
 export const COLOR_BLACK_LIGHT_600: ColorValue = '#686D74';

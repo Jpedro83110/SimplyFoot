@@ -47,7 +47,7 @@ export default function CreateEvent() {
     const [adversaires, setAdversaires] = useState('');
 
     const [joueursEquipe, setJoueursEquipe] = useState<GetJoueursByEquipeId>([]);
-    const [selectedJoueursId, setSelectedJoueursId] = useState<string[]>([]);
+    const [selectedJoueursIds, setSelectedJoueursIds] = useState<string[]>([]);
     const [loadingJoueurs, setLoadingJoueurs] = useState(false);
 
     const [fetchingLieu, setFetchingLieu] = useState(false);
@@ -129,7 +129,7 @@ export default function CreateEvent() {
     };
 
     const fetchJoueursEquipe = async (equipeId: string) => {
-        setSelectedJoueursId([]);
+        setSelectedJoueursIds([]);
         setJoueursEquipe([]);
         setLoadingJoueurs(true);
 
@@ -137,7 +137,7 @@ export default function CreateEvent() {
             const fetchedJoueursEquipe = await getJoueursByEquipeId({ equipeId });
 
             setJoueursEquipe(fetchedJoueursEquipe);
-            setSelectedJoueursId(fetchedJoueursEquipe.map((joueur) => joueur.utilisateurs[0].id));
+            setSelectedJoueursIds(fetchedJoueursEquipe.map((joueur) => joueur.utilisateurs[0].id));
         } catch (error) {
             console.error('Erreur générale fetchJoueursEquipe:', error);
             setJoueursEquipe([]);
@@ -184,7 +184,7 @@ export default function CreateEvent() {
                     created_by: utilisateur?.id ?? '',
                     club_id: utilisateur?.club_id ?? '',
                 },
-                joueursId: selectedJoueursId,
+                joueursIds: selectedJoueursIds,
             });
 
             Alert.alert('✅ Évènement bien créé !');
@@ -206,7 +206,7 @@ export default function CreateEvent() {
         lieu,
         meteo,
         router,
-        selectedJoueursId,
+        selectedJoueursIds,
         titre,
         type,
         utilisateur?.id,
@@ -214,16 +214,16 @@ export default function CreateEvent() {
     ]);
 
     const toggleJoueur = (userId: string) => {
-        setSelectedJoueursId((prev) =>
+        setSelectedJoueursIds((prev) =>
             prev.includes(userId) ? prev.filter((uid) => uid !== userId) : [...prev, userId],
         );
     };
 
     const toggleAllJoueurs = () => {
-        if (selectedJoueursId.length === joueursEquipe.length) {
-            setSelectedJoueursId([]);
+        if (selectedJoueursIds.length === joueursEquipe.length) {
+            setSelectedJoueursIds([]);
         } else {
-            setSelectedJoueursId(joueursEquipe.map((joueur) => joueur.utilisateurs[0].id));
+            setSelectedJoueursIds(joueursEquipe.map((joueur) => joueur.utilisateurs[0].id));
         }
     };
 
@@ -382,7 +382,7 @@ export default function CreateEvent() {
                                 onPress={toggleAllJoueurs}
                             >
                                 <Text style={styles.selectAllText}>
-                                    {selectedJoueursId.length === joueursEquipe.length
+                                    {selectedJoueursIds.length === joueursEquipe.length
                                         ? 'Tout désélectionner'
                                         : "Sélectionner toute l'équipe"}
                                 </Text>
@@ -398,8 +398,9 @@ export default function CreateEvent() {
                                     <View
                                         style={[
                                             styles.checkbox,
-                                            selectedJoueursId.includes(joueur.utilisateurs[0].id) &&
-                                                styles.checkboxChecked,
+                                            selectedJoueursIds.includes(
+                                                joueur.utilisateurs[0].id,
+                                            ) && styles.checkboxChecked,
                                         ]}
                                     />
                                     <Text style={styles.joueurText}>

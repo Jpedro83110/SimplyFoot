@@ -666,7 +666,7 @@ describe('AuthContext', () => {
             // Assert helper was called with correct params
             expect(StaffHelper.updateStaff).toHaveBeenCalledWith({
                 staffId: 'staff123',
-                dataToUpdate: { niveau_diplome: 'CFF2' },
+                staff: { niveau_diplome: 'CFF2' },
             });
 
             // Check session was updated correctly
@@ -795,7 +795,7 @@ describe('AuthContext', () => {
 
             expect(StaffHelper.updateStaff).toHaveBeenCalledWith({
                 staffId: 'staff123',
-                dataToUpdate: {
+                staff: {
                     niveau_diplome: 'CFF2',
                     experience: '3 ans',
                 },

@@ -1,5 +1,5 @@
 import { Anniversaires } from '@/components/business/Anniversaires';
 
-export default function CoachAnniversaires() {
+export default function PresidentAnniversaires() {
     return <Anniversaires />;
 }

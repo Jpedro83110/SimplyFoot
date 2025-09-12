@@ -21,6 +21,7 @@ import useCacheData from '@/lib/cache';
 import { useSession } from '@/hooks/useSession';
 import { copyToClipboard } from '@/utils/copyToClipboard.utils';
 import Tooltip from 'react-native-walkthrough-tooltip';
+import { COLOR_GREEN_300 } from '@/utils/styleContants.utils';
 
 const GREEN = '#00ff88';
 const DARK = '#101415';
@@ -314,7 +315,7 @@ export default function PresidentDashboard() {
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#00ff88" />
+                <ActivityIndicator size="large" color={COLOR_GREEN_300} />
                 <Text style={styles.loadingText}>
                     {uploading ? 'Mise à jour du logo...' : 'Chargement...'}
                 </Text>
@@ -339,7 +340,7 @@ export default function PresidentDashboard() {
                             <LogoComponent />
                             {uploading ? (
                                 <View style={styles.uploadingOverlay}>
-                                    <ActivityIndicator size="small" color="#00ff88" />
+                                    <ActivityIndicator size="small" color={COLOR_GREEN_300} />
                                 </View>
                             ) : (
                                 <View style={styles.cameraOverlay}>
@@ -420,11 +421,18 @@ export default function PresidentDashboard() {
 
                 {/* Sections */}
                 <Section title="📋 Infos club">
-                    <FullButton
-                        title="Infos club"
-                        icon="information-circle"
+                    <TouchableOpacity
+                        style={styles.fullBtnOutline}
                         onPress={() => router.push('/president/infos')}
-                    />
+                    >
+                        <Ionicons
+                            name="information-circle"
+                            size={20}
+                            color={COLOR_GREEN_300}
+                            style={{ marginRight: 8 }}
+                        />
+                        <Text style={styles.fullBtnText}>Infos club</Text>
+                    </TouchableOpacity>
                 </Section>
 
                 <Section title="🧾 Gestion du club">
@@ -460,11 +468,13 @@ export default function PresidentDashboard() {
                 </Section>
 
                 <Section title="💼 Administration">
-                    <FullFilledButton
-                        title="Gestion Budget"
-                        icon="cash"
+                    <TouchableOpacity
+                        style={styles.fullBtnFilled}
                         onPress={() => router.push('/president/gestion-budget')}
-                    />
+                    >
+                        <Ionicons name="cash" size={20} color="#111" style={{ marginRight: 8 }} />
+                        <Text style={styles.buttonText}>Gestion Budget</Text>
+                    </TouchableOpacity>
                 </Section>
 
                 {/* Réseaux sociaux */}
@@ -525,7 +535,7 @@ export default function PresidentDashboard() {
                     <Ionicons
                         name="log-out-outline"
                         size={20}
-                        color="#00ff88"
+                        color={COLOR_GREEN_300}
                         style={{ marginRight: 8 }}
                     />
                     <Text style={styles.logoutText}>Se déconnecter</Text>
@@ -535,31 +545,17 @@ export default function PresidentDashboard() {
     );
 }
 
-// Composants réutilisables
-function FullButton({ title, icon, onPress }) {
-    return (
-        <TouchableOpacity style={styles.fullBtnOutline} onPress={onPress}>
-            <Ionicons name={icon} size={20} color="#00ff88" style={{ marginRight: 8 }} />
-            <Text style={styles.fullBtnText}>{title}</Text>
-        </TouchableOpacity>
-    );
-}
-
-function FullFilledButton({ title, icon, onPress }) {
-    return (
-        <TouchableOpacity style={styles.fullBtnFilled} onPress={onPress}>
-            <Ionicons name={icon} size={20} color="#111" style={{ marginRight: 8 }} />
-            <Text style={styles.buttonText}>{title}</Text>
-        </TouchableOpacity>
-    );
-}
-
 function HalfButton({ title, icon, onPress, iconFamily = 'Ionicons' }) {
     const IconComponent =
         iconFamily === 'MaterialCommunityIcons' ? MaterialCommunityIcons : Ionicons;
     return (
         <TouchableOpacity style={styles.halfBtn} onPress={onPress}>
-            <IconComponent name={icon} size={20} color="#00ff88" style={{ marginRight: 8 }} />
+            <IconComponent
+                name={icon}
+                size={20}
+                color={COLOR_GREEN_300}
+                style={{ marginRight: 8 }}
+            />
             <Text style={styles.fullBtnText}>{title}</Text>
         </TouchableOpacity>
     );
@@ -577,8 +573,6 @@ function Section({ title, children }) {
 const styles = StyleSheet.create({
     container: {
         alignSelf: 'center',
-        maxWidth: 790,
-        width: '92%',
     },
     headerCard: {
         marginTop: 28,
@@ -592,8 +586,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 10,
         elevation: 4,
-        width: '92%',
-        maxWidth: 790,
     },
     loadingContainer: {
         flex: 1,
@@ -607,7 +599,7 @@ const styles = StyleSheet.create({
     },
     scroll: {
         flexGrow: 1,
-        padding: 24,
+        padding: 12,
     },
     header: {
         flexDirection: 'row',
@@ -700,8 +692,7 @@ const styles = StyleSheet.create({
         backgroundColor: DARK_LIGHT,
         borderRadius: 22,
         padding: 16,
-        width: '92%',
-        maxWidth: 790,
+        width: '100%',
     },
     fullBtnFilled: {
         flexDirection: 'row',
@@ -709,8 +700,7 @@ const styles = StyleSheet.create({
         backgroundColor: GREEN,
         borderRadius: 22,
         padding: 16,
-        width: '92%',
-        maxWidth: 790,
+        width: '100%',
     },
     halfBtn: {
         flexDirection: 'row',
@@ -720,8 +710,7 @@ const styles = StyleSheet.create({
         backgroundColor: DARK_LIGHT,
         borderRadius: 22,
         padding: 16,
-        width: '45.5%',
-        maxWidth: 390,
+        width: '48%',
     },
     fullBtnText: {
         color: '#fff',
@@ -756,9 +745,9 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         flexDirection: 'row',
         justifyContent: 'center',
+        marginHorizontal: 'auto',
+        paddingHorizontal: 32,
         alignItems: 'center',
-        width: '92%',
-        maxWidth: 790,
     },
     logoutText: {
         color: GREEN,
