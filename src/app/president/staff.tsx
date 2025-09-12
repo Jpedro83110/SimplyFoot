@@ -48,7 +48,7 @@ export default function Staff() {
     const handleDeleteCoach = async (staffId: string, clubId: string) => {
         // FIXME: revoir la confirmation pour uniformiser web et mobile
         if (Platform.OS === 'web') {
-            if (confirm(`Confirmer la suppression', 'Es-tu sûr de vouloir supprimer ce coach ?`)) {
+            if (confirm('Es-tu sûr de vouloir supprimer ce coach ?')) {
                 await fetchDeleteStaff(staffId, clubId);
             }
         } else {
