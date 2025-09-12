@@ -39,7 +39,7 @@ export default function Staff() {
         fetchStaff(utilisateur.club_id);
     }, [clubStaffs, loading, utilisateur?.club_id]);
 
-    const fecthDeleteStaff = async (staffId: string, clubId: string) => {
+    const fetchDeleteStaff = async (staffId: string, clubId: string) => {
         await deleteStaff({ staffId });
         await fetchStaff(clubId);
     };
@@ -49,7 +49,7 @@ export default function Staff() {
         // FIXME: revoir la confirmation pour uniformiser web et mobile
         if (Platform.OS === 'web') {
             if (confirm(`Confirmer la suppression', 'Es-tu sûr de vouloir supprimer ce coach ?`)) {
-                await fecthDeleteStaff(staffId, clubId);
+                await fetchDeleteStaff(staffId, clubId);
             }
         } else {
             Alert.alert('Confirmer la suppression', 'Es-tu sûr de vouloir supprimer ce coach ?', [
@@ -58,7 +58,7 @@ export default function Staff() {
                     text: 'Supprimer',
                     style: 'destructive',
                     onPress: async () => {
-                        await fecthDeleteStaff(staffId, clubId);
+                        await fetchDeleteStaff(staffId, clubId);
                     },
                 },
             ]);
