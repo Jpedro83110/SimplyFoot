@@ -59,8 +59,10 @@ export default function Membres() {
 
                 <View style={styles.pickerContainer}>
                     <Picker
-                        selectedValue={selectedEquipe}
-                        onValueChange={(equipe) => setSelectedEquipe(equipe)}
+                        selectedValue={selectedEquipe?.id}
+                        onValueChange={(equipeId) =>
+                            setSelectedEquipe(equipes?.find((equipe) => equipe.id === equipeId))
+                        }
                         style={styles.picker}
                     >
                         <Picker.Item
@@ -77,18 +79,21 @@ export default function Membres() {
                     </Picker>
                 </View>
 
-                <Text style={styles.nbLicencieText}>
-                    {equipes?.length ?? 0} licencié{equipes?.length !== 1 ? 's' : ''}
-                </Text>
+                {selectedEquipe && (
+                    <Text style={styles.nbLicencieText}>
+                        {selectedEquipe.joueurs.length ?? 0} licencié
+                        {selectedEquipe.joueurs.length !== 1 ? 's' : ''}
+                    </Text>
+                )}
 
                 {loading ? (
                     <ActivityIndicator color="#00ff88" size="large" style={{ marginTop: 40 }} />
-                ) : selectedEquipe?.joueurs.length === 0 ? (
+                ) : selectedEquipe?.joueurs?.length === 0 ? (
                     <Text style={{ color: '#888', marginTop: 20, textAlign: 'center' }}>
                         Aucun joueur trouvé.
                     </Text>
                 ) : (
-                    selectedEquipe?.joueurs.map((joueur) => {
+                    selectedEquipe?.joueurs?.map((joueur) => {
                         let photo =
                             joueur.photo_profil_url && joueur.photo_profil_url.trim() !== ''
                                 ? joueur.photo_profil_url
