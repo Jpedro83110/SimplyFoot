@@ -226,7 +226,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
             if (staffData && staff) {
                 await StaffHelper.updateStaff({
                     staffId: staff.id,
-                    dataToUpdate: staffData,
+                    staff: staffData,
                 });
 
                 const updatedStaff = {
