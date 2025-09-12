@@ -22,7 +22,7 @@ import {
     GetEvenementsByClubId,
     getEvenementsByClubId,
 } from '@/helpers/evenements.helpers';
-import { sendNotificationToClubUsers } from '@/lib/supabase';
+import { sendNotificationToClubUsers } from '@/helpers/notification.helpers';
 
 export default function Evenements() {
     const [events, setEvents] = useState<GetEvenementsByClubId | undefined>(undefined);
