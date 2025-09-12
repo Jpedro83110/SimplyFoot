@@ -88,7 +88,7 @@ export default function Membres() {
 
                 {loading ? (
                     <ActivityIndicator color="#00ff88" size="large" style={{ marginTop: 40 }} />
-                ) : selectedEquipe?.joueurs?.length === 0 ? (
+                ) : selectedEquipe && selectedEquipe.joueurs.length === 0 ? (
                     <Text style={{ color: '#888', marginTop: 20, textAlign: 'center' }}>
                         Aucun joueur trouvé.
                     </Text>
