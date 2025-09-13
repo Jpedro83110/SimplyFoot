@@ -126,7 +126,7 @@ export default function Infos() {
                         {editing ? (
                             <TextInput
                                 style={styles.input}
-                                value={form?.[field] ?? ''}
+                                value={(form?.[field] as string) ?? ''}
                                 onChangeText={(text) =>
                                     setForm((prev) =>
                                         prev ? { ...prev, [field]: text } : undefined,
