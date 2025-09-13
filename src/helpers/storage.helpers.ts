@@ -71,7 +71,7 @@ export const uploadImage = async ({
 export const removeImage = async ({ url, name }: { url: string; name: string }) => {
     const pathParts = url.split(`${name}/`);
 
-    if (pathParts.length < 1) {
+    if (pathParts.length < 2) {
         console.warn('removeImage: URL does not contain the specified folder name');
         return;
     }
