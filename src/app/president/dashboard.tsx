@@ -165,7 +165,7 @@ export default function PresidentDashboard() {
         if (urlToOpen) {
             Linking.openURL(urlToOpen);
         } else {
-            Alert.alert('Erreur', "Impossible d'ouvrir le lien Facebook."); // FIXME: toast
+            Alert.alert('Erreur', "Impossible d'ouvrir le lien."); // FIXME: toast
         }
     };
 
