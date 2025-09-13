@@ -3,11 +3,13 @@ import { decode } from 'base64-arraybuffer';
 import { ImagePickerAsset } from 'expo-image-picker';
 import { Platform } from 'react-native';
 
-export const uploadPhotoProfilCoach = async ({
+export const uploadImage = async ({
     image,
+    name,
     utilisateurId,
 }: {
     image: ImagePickerAsset;
+    name: string;
     utilisateurId: string;
 }) => {
     let fileData;
@@ -44,7 +46,7 @@ export const uploadPhotoProfilCoach = async ({
         }
     }
 
-    const fileName = `photos_profils_coachs/${utilisateurId}_${Date.now()}.${fileExt}`;
+    const fileName = `${name}/${utilisateurId}_${Date.now()}.${fileExt}`;
 
     const { data: uploadData, error: uploadError } = await storage
         .from('fichiers')
@@ -66,8 +68,15 @@ export const uploadPhotoProfilCoach = async ({
     return urlData.publicUrl;
 };
 
-export const removePhotosProfilsCoachs = async ({ fileName }: { fileName: string }) => {
-    const { error } = await storage.from('fichiers').remove([`photos_profils_coachs/${fileName}`]);
+export const removeImage = async ({ url, name }: { url: string; name: string }) => {
+    const pathParts = url.split(`${name}/`);
+
+    if (pathParts.length < 1) {
+        console.warn('removeImage: URL does not contain the specified folder name');
+        return;
+    }
+
+    const { error } = await storage.from('fichiers').remove([`${name}/${pathParts[1]}`]);
 
     if (error) {
         throw error;

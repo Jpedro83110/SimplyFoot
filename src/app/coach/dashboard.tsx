@@ -24,7 +24,7 @@ import { calculateAgeFromString, formatDateForDisplay } from '@/utils/date.utils
 import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
 import { getCoachClubData, GetCoachClubData } from '@/helpers/clubs.helpers';
 import { COLOR_BLACK_900, COLOR_GREEN_300 } from '@/utils/styleContants.utils';
-import { removePhotosProfilsCoachs, uploadPhotoProfilCoach } from '@/helpers/storage.helpers';
+import { removeImage, uploadImage } from '@/helpers/storage.helpers';
 
 const { width: screenWidth } = Dimensions.get('window');
 const actionsData = [
@@ -151,26 +151,15 @@ export default function CoachDashboard() {
 
                 try {
                     if (staff?.photo_url) {
-                        try {
-                            const url = staff.photo_url.split('?')[0];
-                            const pathParts = url.split('/');
-
-                            const folderIndex = pathParts.findIndex(
-                                (part) => part === 'photos_profils_coachs',
-                            );
-
-                            if (folderIndex !== -1 && pathParts[folderIndex + 1]) {
-                                const fileName = pathParts[folderIndex + 1];
-                                await removePhotosProfilsCoachs({ fileName });
-                                console.log('✅ Ancienne photo supprimée');
-                            }
-                        } catch (deleteErr) {
-                            console.warn('⚠️ Erreur lors de la suppression:', deleteErr);
-                        }
+                        await removeImage({
+                            url: staff.photo_url,
+                            name: 'photos_profils_coachs',
+                        });
                     }
 
-                    const basePhotoUrl = await uploadPhotoProfilCoach({
+                    const basePhotoUrl = await uploadImage({
                         image,
+                        name: 'photos_profils_coachs',
                         utilisateurId: utilisateur.id,
                     });
 
