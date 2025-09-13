@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -11,116 +11,55 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { supabase } from '../../lib/supabase';
 import { useSession } from '@/hooks/useSession';
-
-const GREEN = '#00ff88';
-const DARK = '#101415';
-const DARK_LIGHT = '#161b20';
+import {
+    COLOR_BLACK_900,
+    COLOR_BLACK_LIGHT_900,
+    COLOR_GREEN_300,
+} from '@/utils/styleContants.utils';
+import {
+    createEvenement,
+    GetEvenementsByClubId,
+    getEvenementsByClubId,
+} from '@/helpers/evenements.helpers';
+import { sendNotificationToClubUsers } from '@/helpers/notification.helpers';
 
 export default function Evenements() {
-    const [events, setEvents] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [events, setEvents] = useState<GetEvenementsByClubId | undefined>(undefined);
+    const [loading, setLoading] = useState(false);
     const [titre, setTitre] = useState('');
     const [categorie, setCategorie] = useState('repas');
     const [lieu, setLieu] = useState('');
     const [description, setDescription] = useState('');
     const [dateStr, setDateStr] = useState('');
     const [heureStr, setHeureStr] = useState('');
-    const [clubId, setClubId] = useState(null);
 
     const { utilisateur } = useSession();
 
-    const fetchClubId = async (userId) => {
-        // 1. Tente par created_by
-        const { data: clubByCreator } = await supabase
-            .from('clubs')
-            .select('id')
-            .eq('created_by', userId)
-            .single();
-        if (clubByCreator) {
-            return clubByCreator.id;
-        }
-
-        // 2. Sinon tente via table utilisateurs (si le président est lié à un club par club_id)
-        const { data: user } = await supabase
-            .from('utilisateurs')
-            .select('club_id')
-            .eq('id', userId)
-            .single();
-        if (user?.club_id) {
-            return user.club_id;
-        }
-
-        // Rien trouvé
-        return null;
-    };
-
-    const fetchEvents = useCallback(async () => {
+    const fetchEvents = async (clubId: string) => {
         setLoading(true);
-        const { data: sessionData } = await supabase.auth.getSession();
-        const userId = sessionData?.session?.user?.id;
 
-        const foundClubId = await fetchClubId(userId);
-        if (!foundClubId) {
-            setClubId(null);
-            setLoading(false);
-            return Alert.alert('Erreur', 'Impossible de trouver le club associé à ce compte.');
-        }
-        setClubId(foundClubId);
-
-        const { data, error } = await supabase
-            .from('evenements')
-            .select('*')
-            .eq('club_id', foundClubId)
-            .order('date', { ascending: true });
-
-        if (error) {
-            Alert.alert('Erreur', error.message);
-        } else {
-            setEvents(data);
-        }
+        const fetchedEvenements = await getEvenementsByClubId({ clubId });
+        setEvents(fetchedEvenements);
 
         setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        fetchEvents();
-    }, [fetchEvents]);
-
-    const envoyerNotifications = async (message, clubId) => {
-        const { data: utilisateurs } = await supabase
-            .from('utilisateurs')
-            .select('token_push')
-            .eq('club_id', clubId)
-            .not('token_push', 'is', null);
-
-        const tokens = utilisateurs.map((u) => u.token_push);
-
-        for (const token of tokens) {
-            await fetch('https://exp.host/--/api/v2/push/send', {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Accept-encoding': 'gzip, deflate',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    to: token,
-                    title: 'Nouvel événement',
-                    body: message,
-                }),
-            });
-        }
     };
 
-    const handleSubmit = async () => {
+    useEffect(() => {
+        if (!utilisateur?.club_id || loading || events) {
+            return;
+        }
+
+        fetchEvents(utilisateur.club_id);
+    }, [events, loading, utilisateur?.club_id]);
+
+    const handleSubmit = useCallback(async () => {
         if (!titre || !lieu || !description || !dateStr || !heureStr) {
             return Alert.alert('Erreur', 'Tous les champs sont requis.');
         }
 
         // Securité : clubId
-        if (!clubId) {
+        if (!utilisateur?.club_id) {
             return Alert.alert('Erreur', "Impossible de créer l'événement : club introuvable.");
         }
 
@@ -129,34 +68,43 @@ export default function Evenements() {
         const date = `${annee}-${mois}-${jour}`;
         const heure = heureStr;
 
-        const { error } = await supabase.from('evenements').insert({
-            titre,
-            type: categorie,
-            date,
-            heure,
-            lieu,
-            description,
-            club_id: clubId,
-            created_by: utilisateur.id,
+        await createEvenement({
+            dataToInsert: {
+                titre,
+                type: categorie,
+                date,
+                heure,
+                lieu,
+                description,
+                club_id: utilisateur.club_id,
+                created_by: utilisateur.id,
+            },
         });
 
-        if (error) {
-            console.error(error);
-            Alert.alert('Erreur Supabase', error.message);
-        } else {
-            await envoyerNotifications(`${titre} prévu le ${dateStr} à ${heureStr}`, clubId);
-            Alert.alert('✅ Créé', 'Événement ajouté avec succès !');
-            setTitre('');
-            setCategorie('repas');
-            setLieu('');
-            setDescription('');
-            setDateStr('');
-            setHeureStr('');
-            fetchEvents();
-        }
-    };
+        await sendNotificationToClubUsers({
+            message: `${titre} prévu le ${dateStr} à ${heureStr}`,
+            clubId: utilisateur.club_id,
+        });
+        Alert.alert('✅ Créé', 'Événement ajouté avec succès !');
+        setTitre('');
+        setCategorie('repas');
+        setLieu('');
+        setDescription('');
+        setDateStr('');
+        setHeureStr('');
+        fetchEvents(utilisateur.club_id);
+    }, [
+        categorie,
+        dateStr,
+        description,
+        heureStr,
+        lieu,
+        titre,
+        utilisateur?.club_id,
+        utilisateur?.id,
+    ]);
 
-    const getEmoji = (type) => {
+    const getEmoji = (type: string) => {
         switch (type) {
             case 'repas':
                 return '🍽️';
@@ -243,10 +191,10 @@ export default function Evenements() {
                 {loading ? (
                     <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />
                 ) : (
-                    events.map((event) => (
+                    events?.map((event) => (
                         <View key={event.id} style={styles.card}>
                             <Text style={styles.cardTitle}>
-                                {getEmoji(event.type)} {event.titre}
+                                {event.type && getEmoji(event.type)} {event.titre}
                             </Text>
                             <Text style={styles.detailText}>📍 {event.lieu}</Text>
                             <Text style={styles.detailText}>
@@ -263,33 +211,33 @@ export default function Evenements() {
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: DARK,
+        backgroundColor: COLOR_BLACK_900,
     },
     scroll: { padding: 20, alignSelf: 'center', maxWidth: 790, width: '92%' },
     title: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: GREEN,
+        color: COLOR_GREEN_300,
         marginBottom: 20,
         textAlign: 'center',
     },
     form: {
-        backgroundColor: DARK,
+        backgroundColor: COLOR_BLACK_900,
         padding: 16,
         borderRadius: 12,
         marginBottom: 30,
         borderLeftWidth: 4,
-        borderLeftColor: '#00ff88',
+        borderLeftColor: COLOR_GREEN_300,
     },
     input: {
-        backgroundColor: DARK_LIGHT,
+        backgroundColor: COLOR_BLACK_LIGHT_900,
         color: '#fff',
         padding: 12,
         borderRadius: 8,
         marginBottom: 12,
     },
     picker: {
-        backgroundColor: DARK_LIGHT,
+        backgroundColor: COLOR_BLACK_LIGHT_900,
         color: '#fff',
         marginBottom: 12,
         paddingVertical: 15,
@@ -297,7 +245,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     createButton: {
-        backgroundColor: '#00ff88',
+        backgroundColor: COLOR_GREEN_300,
         paddingVertical: 12,
         borderRadius: 10,
         flexDirection: 'row',
@@ -311,7 +259,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         marginBottom: 20,
         borderLeftWidth: 4,
-        borderLeftColor: '#00ff88',
+        borderLeftColor: COLOR_GREEN_300,
     },
     cardTitle: {
         color: '#fff',

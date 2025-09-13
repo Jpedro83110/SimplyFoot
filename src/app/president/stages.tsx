@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -15,14 +15,23 @@ import {
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
-import { supabase } from '@/lib/supabase';
-import useCacheData from '@/lib/cache';
 import { days, formatDateForDisplay, normalizeHour } from '@/utils/date.utils';
+import { COLOR_BLACK_900, COLOR_GREEN_300 } from '@/utils/styleContants.utils';
+import { useSession } from '@/hooks/useSession';
+import {
+    createStage,
+    deleteExpiredStages,
+    deleteStage,
+    emptyProgramme,
+    getProgrammeFromStage,
+    getStagesByClubId,
+    GetStagesByClubId,
+    Programme,
+    ProgrammeByDay,
+    updateStage,
+} from '@/helpers/stages.helpers';
 
-const GREEN = '#00ff88';
-const DARK = '#101415';
-
-function downloadCSVWeb(filename, csv) {
+function downloadCSVWeb(filename: string, csv: string) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -37,7 +46,7 @@ export default function Stages() {
     const { width } = useWindowDimensions();
 
     // Formulaires + cache
-    const [openedStageId, setOpenedStageId] = useState(null);
+    const [openedStageId, setOpenedStageId] = useState<string | null>(null);
     const [editMode, setEditMode] = useState(false);
 
     const [titre, setTitre] = useState('');
@@ -47,44 +56,43 @@ export default function Stages() {
     const [ageMax, setAgeMax] = useState('');
     const [heureDebut, setHeureDebut] = useState('09:00');
     const [heureFin, setHeureFin] = useState('17:00');
-    const [programme, setProgramme] = useState(
-        Object.fromEntries(
-            days.map((j) => [
-                j,
-                { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
-            ]),
-        ),
-    );
-    const [clubId, setClubId] = useState(null);
+    const [programme, setProgramme] = useState<ProgrammeByDay>({
+        lundi: { ...emptyProgramme },
+        mardi: { ...emptyProgramme },
+        mercredi: { ...emptyProgramme },
+        jeudi: { ...emptyProgramme },
+        vendredi: { ...emptyProgramme },
+    });
     const [confirmation, setConfirmation] = useState('');
-    const timerRef = useRef();
+    const [stages, setStages] = useState<GetStagesByClubId | undefined>(undefined);
+    const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-    // Supprime automatiquement les stages dépassés (backend = sécurité, ici = UX)
+    const { utilisateur } = useSession();
+
+    async function autoCleanStages(clubId: string) {
+        await deleteExpiredStages({ clubId });
+    }
+
+    const fetchStages = async (clubId: string) => {
+        const fetchedStages = await getStagesByClubId({ clubId, since: new Date() });
+        setStages(fetchedStages);
+    };
+
     useEffect(() => {
-        async function autoCleanStages() {
-            if (!clubId) {
-                return;
-            }
-            const today = new Date().toISOString().slice(0, 10);
-            const { data: expired } = await supabase
-                .from('stages')
-                .select('id')
-                .eq('club_id', clubId)
-                .lt('date_fin', today);
-            if (expired && expired.length) {
-                await supabase
-                    .from('stages')
-                    .delete()
-                    .in(
-                        'id',
-                        expired.map((e) => e.id),
-                    );
-            }
+        if (!utilisateur?.club_id) {
+            return;
         }
-        autoCleanStages();
-    }, [clubId]);
 
-    // Confirmation reset
+        autoCleanStages(utilisateur.club_id);
+    }, [utilisateur?.club_id]);
+
+    useEffect(() => {
+        if (!utilisateur?.club_id) {
+            return;
+        }
+        fetchStages(utilisateur.club_id);
+    }, [utilisateur?.club_id]);
+
     useEffect(() => {
         if (confirmation) {
             if (timerRef.current) {
@@ -99,45 +107,6 @@ export default function Stages() {
         };
     }, [confirmation]);
 
-    useEffect(() => {
-        async function loadData() {
-            const { data: session } = await supabase.auth.getSession();
-            const userId = session?.session?.user?.id;
-            if (!userId) {
-                return;
-            }
-            const { data: user } = await supabase
-                .from('utilisateurs')
-                .select('club_id')
-                .eq('id', userId)
-                .single();
-
-            if (!user?.club_id) {
-                return;
-            }
-            setClubId(user.club_id);
-        }
-        loadData();
-    }, []);
-
-    // Fetch only future/active stages
-    const fetchStages = async () => {
-        if (!clubId) {
-            return [];
-        }
-        const today = new Date().toISOString().slice(0, 10);
-        const { data: stagesList } = await supabase
-            .from('stages')
-            .select('*')
-            .eq('club_id', clubId)
-            .gte('date_fin', today)
-            .order('date_debut', { ascending: false });
-        return stagesList || [];
-    };
-
-    const cacheKey = clubId ? `stages_club_${clubId}` : null;
-    const [stages, refreshStages] = useCacheData(cacheKey, fetchStages, 3600);
-
     const resetForm = () => {
         setTitre('');
         setDateDebut('');
@@ -146,19 +115,18 @@ export default function Stages() {
         setAgeMax('');
         setHeureDebut('09:00');
         setHeureFin('17:00');
-        setProgramme(
-            Object.fromEntries(
-                days.map((j) => [
-                    j,
-                    { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
-                ]),
-            ),
-        );
+        setProgramme({
+            lundi: { ...emptyProgramme },
+            mardi: { ...emptyProgramme },
+            mercredi: { ...emptyProgramme },
+            jeudi: { ...emptyProgramme },
+            vendredi: { ...emptyProgramme },
+        });
         setEditMode(false);
         setOpenedStageId(null);
     };
 
-    const handleSelectStage = (stage) => {
+    const handleSelectStage = (stage: GetStagesByClubId[number]) => {
         if (openedStageId === stage.id) {
             resetForm();
             return;
@@ -172,23 +140,7 @@ export default function Stages() {
         setAgeMax(stage.age_max ? String(stage.age_max) : '');
         setHeureDebut(stage.heure_debut || '09:00');
         setHeureFin(stage.heure_fin || '17:00');
-        setProgramme({
-            lundi: stage.programme_lundi
-                ? JSON.parse(stage.programme_lundi)
-                : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
-            mardi: stage.programme_mardi
-                ? JSON.parse(stage.programme_mardi)
-                : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
-            mercredi: stage.programme_mercredi
-                ? JSON.parse(stage.programme_mercredi)
-                : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
-            jeudi: stage.programme_jeudi
-                ? JSON.parse(stage.programme_jeudi)
-                : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
-            vendredi: stage.programme_vendredi
-                ? JSON.parse(stage.programme_vendredi)
-                : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' },
-        });
+        setProgramme(getProgrammeFromStage(stage));
         setConfirmation('');
     };
 
@@ -197,105 +149,105 @@ export default function Stages() {
         setEditMode(true);
     };
 
-    const handleChangeProgramme = (day, field, value) => {
-        setProgramme((prev) => ({
-            ...prev,
-            [day]: {
-                ...prev[day],
-                [field]: value,
-            },
-        }));
+    const handleChangeProgramme = (
+        day: keyof ProgrammeByDay,
+        field: keyof Programme,
+        value: string,
+    ) => {
+        setProgramme((prev) => {
+            return {
+                ...prev,
+                [day]: {
+                    ...prev[day],
+                    [field]: value,
+                },
+            };
+        });
         setConfirmation('');
     };
 
-    const enregistrerStage = async () => {
-        if (!clubId) {
-            return Alert.alert('Erreur', 'Club non identifié');
-        }
+    const enregistrerStage = async (clubId: string) => {
         if (!titre || !dateDebut || !dateFin) {
             return Alert.alert('Erreur', 'Champs obligatoires manquants');
         }
-        const dataObj = {
-            club_id: clubId,
-            titre,
-            date_debut: dateDebut,
-            date_fin: dateFin,
-            age_min: parseInt(ageMin) || null,
-            age_max: parseInt(ageMax) || null,
-            heure_debut: normalizeHour(heureDebut),
-            heure_fin: normalizeHour(heureFin),
-            programme_lundi: JSON.stringify(programme.lundi),
-            programme_mardi: JSON.stringify(programme.mardi),
-            programme_mercredi: JSON.stringify(programme.mercredi),
-            programme_jeudi: JSON.stringify(programme.jeudi),
-            programme_vendredi: JSON.stringify(programme.vendredi),
-        };
-        const { error } = await supabase.from('stages').insert(dataObj);
-        if (error) {
-            setConfirmation("❌ Erreur lors de l'enregistrement");
-        } else {
-            await refreshStages();
-            setConfirmation('✅ Stage enregistré !');
-            resetForm();
-        }
-    };
 
-    const modifierStage = async () => {
-        if (!openedStageId) {
-            return;
-        }
-        if (!titre || !dateDebut || !dateFin) {
-            return Alert.alert('Erreur', 'Champs obligatoires manquants');
-        }
-        const dataObj = {
-            club_id: clubId,
-            titre,
-            date_debut: dateDebut,
-            date_fin: dateFin,
-            age_min: parseInt(ageMin) || null,
-            age_max: parseInt(ageMax) || null,
-            heure_debut: normalizeHour(heureDebut),
-            heure_fin: normalizeHour(heureFin),
-            programme_lundi: JSON.stringify(programme.lundi),
-            programme_mardi: JSON.stringify(programme.mardi),
-            programme_mercredi: JSON.stringify(programme.mercredi),
-            programme_jeudi: JSON.stringify(programme.jeudi),
-            programme_vendredi: JSON.stringify(programme.vendredi),
-        };
-        const { error } = await supabase.from('stages').update(dataObj).eq('id', openedStageId);
-        if (error) {
-            setConfirmation('❌ Erreur lors de la modification');
-        } else {
-            await refreshStages();
-            setConfirmation('✅ Stage modifié !');
-            setEditMode(false);
-        }
-    };
-
-    const supprimerStage = async () => {
-        if (!openedStageId) {
-            return;
-        }
-        Alert.alert('Suppression', 'Confirmer la suppression de ce stage ?', [
-            { text: 'Annuler', style: 'cancel' },
-            {
-                text: 'Supprimer',
-                style: 'destructive',
-                onPress: async () => {
-                    const { error } = await supabase
-                        .from('stages')
-                        .delete()
-                        .eq('id', openedStageId);
-                    if (error) {
-                        setConfirmation('❌ Erreur suppression');
-                    } else {
-                        await refreshStages();
-                        setConfirmation('🗑️ Stage supprimé');
-                        resetForm();
-                    }
-                },
+        await createStage({
+            stage: {
+                club_id: clubId,
+                titre,
+                date_debut: dateDebut,
+                date_fin: dateFin,
+                age_min: parseInt(ageMin) || null,
+                age_max: parseInt(ageMax) || null,
+                heure_debut: normalizeHour(heureDebut),
+                heure_fin: normalizeHour(heureFin),
+                programme_lundi: JSON.stringify(programme.lundi),
+                programme_mardi: JSON.stringify(programme.mardi),
+                programme_mercredi: JSON.stringify(programme.mercredi),
+                programme_jeudi: JSON.stringify(programme.jeudi),
+                programme_vendredi: JSON.stringify(programme.vendredi),
             },
-        ]);
+        });
+
+        await fetchStages(clubId);
+        setConfirmation('✅ Stage enregistré !');
+        resetForm();
+    };
+
+    const modifierStage = async (stageId: string, clubId: string) => {
+        if (!titre || !dateDebut || !dateFin) {
+            return Alert.alert('Erreur', 'Champs obligatoires manquants');
+        }
+
+        await updateStage({
+            stageId,
+            stage: {
+                club_id: clubId,
+                titre,
+                date_debut: dateDebut,
+                date_fin: dateFin,
+                age_min: parseInt(ageMin) || null,
+                age_max: parseInt(ageMax) || null,
+                heure_debut: normalizeHour(heureDebut),
+                heure_fin: normalizeHour(heureFin),
+                programme_lundi: JSON.stringify(programme.lundi),
+                programme_mardi: JSON.stringify(programme.mardi),
+                programme_mercredi: JSON.stringify(programme.mercredi),
+                programme_jeudi: JSON.stringify(programme.jeudi),
+                programme_vendredi: JSON.stringify(programme.vendredi),
+            },
+        });
+
+        await fetchStages(clubId);
+        setConfirmation('✅ Stage modifié !');
+        setEditMode(false);
+    };
+
+    const fetchDeleteStage = async (stageId: string, clubId: string) => {
+        await deleteStage({ stageId });
+        await fetchStages(clubId);
+        setConfirmation('🗑️ Stage supprimé');
+        resetForm();
+    };
+
+    const supprimerStage = async (stageId: string, clubId: string) => {
+        // FIXME: revoir la confirmation pour uniformiser web et mobile
+        if (Platform.OS === 'web') {
+            if (confirm(`Confirmer la suppression de ce stage ?`)) {
+                await fetchDeleteStage(stageId, clubId);
+            }
+        } else {
+            Alert.alert('Suppression', 'Confirmer la suppression de ce stage ?', [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Supprimer',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await fetchDeleteStage(stageId, clubId);
+                    },
+                },
+            ]);
+        }
     };
 
     // Impression PDF (ajoute horaires)
@@ -411,8 +363,12 @@ export default function Stages() {
                                         </Text>
                                     )}
                                     <Text style={styles.stageAge}>
-                                        Horaires : {normalizeHour(item.heure_debut) || '09:00'} -{' '}
-                                        {normalizeHour(item.heure_fin) || '17:00'}
+                                        Horaires :{' '}
+                                        {(item.heure_debut && normalizeHour(item.heure_debut)) ||
+                                            '09:00'}{' '}
+                                        -{' '}
+                                        {(item.heure_fin && normalizeHour(item.heure_fin)) ||
+                                            '17:00'}
                                     </Text>
                                     <Text style={styles.openCloseBtn}>
                                         {openedStageId === item.id ? '▲' : '▼'}
@@ -613,7 +569,13 @@ export default function Stages() {
                                                     styles.actionBtn,
                                                     { backgroundColor: '#ff4444', flex: 1 },
                                                 ]}
-                                                onPress={supprimerStage}
+                                                onPress={() =>
+                                                    utilisateur?.club_id &&
+                                                    supprimerStage(
+                                                        openedStageId,
+                                                        utilisateur.club_id,
+                                                    )
+                                                }
                                             >
                                                 <Text
                                                     style={[styles.buttonText, { color: '#fff' }]}
@@ -638,7 +600,13 @@ export default function Stages() {
                                         {editMode && (
                                             <TouchableOpacity
                                                 style={[styles.button, { marginTop: 16 }]}
-                                                onPress={modifierStage}
+                                                onPress={() =>
+                                                    utilisateur?.club_id &&
+                                                    modifierStage(
+                                                        openedStageId,
+                                                        utilisateur.club_id,
+                                                    )
+                                                }
                                             >
                                                 <Text style={styles.buttonText}>
                                                     💾 Enregistrer la modification
@@ -784,7 +752,12 @@ export default function Stages() {
                                     />
                                 </View>
                             ))}
-                            <TouchableOpacity style={styles.button} onPress={enregistrerStage}>
+                            <TouchableOpacity
+                                style={styles.button}
+                                onPress={() =>
+                                    utilisateur?.club_id && enregistrerStage(utilisateur.club_id)
+                                }
+                            >
                                 <Text style={styles.buttonText}>💾 Enregistrer le stage</Text>
                             </TouchableOpacity>
                         </View>
@@ -805,13 +778,13 @@ export default function Stages() {
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: DARK,
+        backgroundColor: COLOR_BLACK_900,
     },
     scroll: { padding: 20, alignSelf: 'center', maxWidth: 790, width: '92%' },
     title: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: GREEN,
+        color: COLOR_GREEN_300,
         marginBottom: 20,
         textAlign: 'center',
     },

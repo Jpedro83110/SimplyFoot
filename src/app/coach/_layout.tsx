@@ -5,7 +5,6 @@ export default function CoachLayout() {
     const pathname = usePathname();
 
     const getPageTitle = () => {
-        // Gère les sous-routes, toujours basé sur le segment après 'coach'
         const pathSegments = pathname.split('/');
         const coachIndex = pathSegments.indexOf('coach');
         const page = pathSegments[coachIndex + 1];

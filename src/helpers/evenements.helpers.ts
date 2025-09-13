@@ -52,46 +52,6 @@ export const getCoachEvenements = async ({ coachId, since }: { coachId: string; 
     );
 };
 
-export type GetCoachEvenementsHasComposition = Awaited<
-    ReturnType<typeof getCoachEvenementsHasComposition>
->;
-
-export const getCoachEvenementsHasComposition = async ({
-    coachId,
-    since,
-}: {
-    coachId: string;
-    since?: Date;
-}) => {
-    // FIXME: à optimiser avec un count des compositions
-    let request = supabase
-        .from('equipes')
-        .select(
-            'evenements!equipe_id(id, titre, date, heure, lieu, utilisateurs:created_by(id), compositions(id))',
-        )
-        .eq('coach_id', coachId); // id from utilisateurs table
-
-    if (since) {
-        request = request.gte('evenements.date', since.toISOString().split('T')[0]);
-    }
-
-    const { data, error } = await request.order('date', {
-        ascending: true,
-        referencedTable: 'evenements',
-    });
-
-    if (error) {
-        throw error;
-    }
-
-    return data.flatMap((equipe) =>
-        equipe.evenements.map((evenement) => ({
-            ...evenement,
-            hasCompo: (evenement.compositions?.length ?? 0) > 0,
-        })),
-    );
-};
-
 export type GetEvenementsByClubId = Awaited<ReturnType<typeof getEvenementsByClubId>>;
 
 export const getEvenementsByClubId = async ({
@@ -216,29 +176,11 @@ export const getEquipeEvenementBesoinsTransport = async ({
     return data;
 };
 
-export type GetTeamList = Awaited<ReturnType<typeof getTeamList>>;
-
-export const getTeamList = async ({ evenementId }: { evenementId: string }) => {
-    const { data, error } = await supabase
-        .from('evenements')
-        .select(
-            'date, lieu, adversaires, compositions(id), equipes:equipe_id(nom, categorie, joueurs(id, numero_licence, utilisateurs(nom, prenom, date_naissance)))',
-        )
-        .eq('id', evenementId)
-        .single();
-
-    if (error) {
-        throw error;
-    }
-
-    return data;
-};
-
 export const createEvenement = async ({
-    joueursId,
+    joueursIds,
     dataToInsert,
 }: {
-    joueursId: string[];
+    joueursIds?: string[];
     dataToInsert: Database['public']['Tables']['evenements']['Insert'];
 }) => {
     // FIXME: change db schema to make equipe_id, created_by, and club_id not nullable
@@ -258,14 +200,16 @@ export const createEvenement = async ({
         throw new Error('Failed to insert evenement');
     }
 
-    await bulkCreateParticipationsEvenement({
-        joueursId,
-        dataToInsert: {
-            evenement_id: insertedEvenement.id,
-            reponse: null,
-            besoin_transport: false,
-        },
-    });
+    if (joueursIds && joueursIds.length > 0) {
+        await bulkCreateParticipationsEvenement({
+            joueursIds,
+            dataToInsert: {
+                evenement_id: insertedEvenement.id,
+                reponse: null,
+                besoin_transport: false,
+            },
+        });
+    }
 
     const type = dataToInsert.type as EvenementType;
 

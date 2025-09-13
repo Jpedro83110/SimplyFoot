@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -15,16 +15,17 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { decode } from 'base64-arraybuffer';
-import { supabase } from '@/lib/supabase';
-import useCacheData from '@/lib/cache';
 import { useSession } from '@/hooks/useSession';
 import { copyToClipboard } from '@/utils/copyToClipboard.utils';
 import Tooltip from 'react-native-walkthrough-tooltip';
-
-const GREEN = '#00ff88';
-const DARK = '#101415';
-const DARK_LIGHT = '#161b20';
+import {
+    COLOR_BLACK_900,
+    COLOR_BLACK_LIGHT_900,
+    COLOR_GREEN_300,
+    RED,
+} from '@/utils/styleContants.utils';
+import { removeImage, uploadImage } from '@/helpers/storage.helpers';
+import { getClubById, GetClubById, updateClub } from '@/helpers/clubs.helpers';
 
 const { width } = Dimensions.get('window');
 const isMobile = width < 600;
@@ -32,83 +33,79 @@ const isMobile = width < 600;
 export default function PresidentDashboard() {
     const router = useRouter();
     const [uploading, setUploading] = useState(false);
-    const [error, setError] = useState(null);
-    const [tooltipVisible, setTooltipVisible] = React.useState(false);
+    const [tooltipVisible, setTooltipVisible] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [club, setClub] = useState<GetClubById | null>(null);
 
     const { signOut } = useSession();
 
     const { utilisateur } = useSession();
 
-    const fetchPresident = async (userId) => {
-        if (!userId) {
-            throw new Error('ID utilisateur manquant');
-        }
+    const fetchClub = async (clubId: string) => {
+        setLoading(true);
 
-        const { data, error } = await supabase
-            .from('utilisateurs')
-            .select('prenom, nom, role')
-            .eq('id', userId)
-            .single();
+        const fetchedClub = await getClubById({ clubId });
+        setClub(fetchedClub);
 
-        if (error || !data) {
-            throw new Error('Impossible de récupérer vos informations.');
-        }
-
-        if (data.role !== 'president') {
-            throw new Error('Seul le président du club a accès à cet espace.');
-        }
-
-        return data;
+        setLoading(false);
     };
 
-    const fetchClub = async (userId) => {
-        if (!userId) {
-            throw new Error('ID utilisateur manquant');
+    useEffect(() => {
+        if (!utilisateur?.club_id || loading || club) {
+            return;
         }
 
-        const { data: clubRows, error: clubError } = await supabase
-            .from('clubs_admins')
-            .select(
-                `
-        club:club_id (
-          id, 
-          nom, 
-          abonnement_actif, 
-          code_acces,
-          logo_url, 
-          facebook_url, 
-          instagram_url, 
-          boutique_url
-        )
-      `,
-            )
-            .eq('user_id', userId)
-            .eq('role_club', 'president')
-            .eq('is_active', true);
+        fetchClub(utilisateur.club_id);
+    }, [club, loading, utilisateur?.club_id]);
 
-        if (clubError || !clubRows || clubRows.length === 0 || !clubRows[0].club) {
-            throw new Error('Aucun club trouvé pour cet utilisateur.');
-        }
+    const processLogoUpload = useCallback(
+        async (image: ImagePicker.ImagePickerAsset) => {
+            if (!utilisateur?.id || !club?.logo_url) {
+                Alert.alert('Erreur', 'Utilisateur ou club non défini');
+                setUploading(false);
+                return;
+            }
 
-        return clubRows[0].club;
-    };
+            try {
+                if (club?.logo_url) {
+                    await removeImage({
+                        url: club.logo_url,
+                        name: 'logos',
+                    });
+                }
 
-    const [president, , loadingPresident] = useCacheData(
-        utilisateur?.id ? `president_${utilisateur?.id}` : null,
-        () => fetchPresident(utilisateur?.id),
-        12 * 3600,
+                const baseLogoUrl = await uploadImage({
+                    image,
+                    name: 'logos',
+                    utilisateurId: utilisateur.id,
+                });
+
+                await updateClub({
+                    clubId: club.id,
+                    club: { logo_url: baseLogoUrl },
+                });
+
+                const displayLogoUrl =
+                    Platform.OS === 'web' ? `${baseLogoUrl}?t=${Date.now()}` : baseLogoUrl;
+
+                setClub((prev) => (prev ? { ...prev, logo_url: displayLogoUrl } : prev));
+
+                Alert.alert('Succès ! 🖼️', 'Logo du club mis à jour !');
+            } catch (error) {
+                Alert.alert(
+                    'Erreur',
+                    `Impossible de mettre à jour le logo:\n${(error as Error).message}`,
+                );
+            } finally {
+                setUploading(false);
+            }
+        },
+        [club?.id, club?.logo_url, utilisateur?.id],
     );
 
-    const [club, setClubState, loadingClub] = useCacheData(
-        utilisateur?.id ? `club_president_${utilisateur?.id}` : null,
-        () => fetchClub(utilisateur?.id),
-        6 * 3600,
-    );
-
-    const handleLogoUpload = async () => {
+    const handleLogoUpload = useCallback(async () => {
         try {
             setUploading(true);
-            setError(null);
 
             if (Platform.OS !== 'web') {
                 const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -121,145 +118,25 @@ export default function PresidentDashboard() {
                 }
             }
 
-            if (Platform.OS === 'web') {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/*';
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+                base64: true,
+            });
 
-                return new Promise((resolve) => {
-                    input.onchange = async (e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                            await processLogoUpload(file, null);
-                        }
-                        resolve();
-                    };
-                    input.click();
-                });
-            } else {
-                const result = await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                    allowsEditing: true,
-                    aspect: [1, 1],
-                    quality: 0.8,
-                    base64: true,
-                });
-
-                if (!result.canceled && result.assets[0]) {
-                    await processLogoUpload(null, result.assets[0]);
-                }
+            if (!result.canceled && result.assets[0]) {
+                await processLogoUpload(result.assets[0]);
             }
         } catch (error) {
             console.error('❌ Erreur sélection logo:', error);
             Alert.alert('Erreur', 'Impossible de sélectionner le logo');
             setUploading(false);
         }
-    };
+    }, [processLogoUpload]);
 
-    const processLogoUpload = async (webFile, mobileImage) => {
-        try {
-            if (club?.logo_url && !club.logo_url.includes('logo.png')) {
-                try {
-                    const urlParts = club.logo_url.split('/');
-                    let oldFileName = urlParts[urlParts.length - 1];
-
-                    oldFileName = oldFileName.split('?')[0];
-
-                    const oldFilePath = `logos/${oldFileName}`;
-
-                    const { error: deleteError } = await supabase.storage
-                        .from('fichiers')
-                        .remove([oldFilePath]);
-
-                    if (deleteError) {
-                        console.warn(
-                            "⚠️ Impossible de supprimer l'ancien logo:",
-                            deleteError.message,
-                        );
-                    }
-                } catch (deleteErr) {
-                    console.warn('⚠️ Erreur lors de la suppression:', deleteErr);
-                }
-            }
-
-            let fileData;
-            let fileExt = 'png';
-            let contentType = 'image/png';
-
-            if (Platform.OS === 'web' && webFile) {
-                fileData = webFile;
-                fileExt = webFile.type.split('/')[1] || 'png';
-                contentType = webFile.type;
-
-                if (webFile.size > 2 * 1024 * 1024) {
-                    throw new Error('Le fichier est trop volumineux (max 2MB)');
-                }
-            } else if (mobileImage) {
-                if (!mobileImage.base64) {
-                    throw new Error('Pas de données base64 disponibles');
-                }
-
-                fileData = decode(mobileImage.base64);
-
-                if (mobileImage.uri.includes('png') || mobileImage.type?.includes('png')) {
-                    fileExt = 'png';
-                    contentType = 'image/png';
-                } else if (
-                    mobileImage.uri.includes('jpeg') ||
-                    mobileImage.uri.includes('jpg') ||
-                    mobileImage.type?.includes('jpeg')
-                ) {
-                    fileExt = 'jpg';
-                    contentType = 'image/jpeg';
-                }
-            } else {
-                throw new Error("Aucune donnée d'image disponible");
-            }
-
-            const fileName = `logos/${club.id}_${Date.now()}.${fileExt}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('fichiers')
-                .upload(fileName, fileData, {
-                    contentType: contentType,
-                    upsert: true,
-                });
-
-            if (uploadError) {
-                console.error('❌ Erreur upload:', uploadError);
-                throw new Error(`Upload échoué: ${uploadError.message}`);
-            }
-
-            const { data: urlData } = supabase.storage.from('fichiers').getPublicUrl(fileName);
-
-            const baseLogoUrl = urlData.publicUrl;
-
-            const { error: updateError } = await supabase
-                .from('clubs')
-                .update({ logo_url: baseLogoUrl })
-                .eq('id', club.id);
-
-            if (updateError) {
-                console.error('❌ Erreur sauvegarde:', updateError);
-                throw new Error(`Sauvegarde échouée: ${updateError.message}`);
-            }
-
-            const displayLogoUrl =
-                Platform.OS === 'web' ? `${baseLogoUrl}?t=${Date.now()}` : baseLogoUrl;
-
-            setClubState((prev) => ({ ...prev, logo_url: displayLogoUrl }));
-
-            Alert.alert('Succès ! 🖼️', 'Logo du club mis à jour !');
-        } catch (error) {
-            console.error('❌ Erreur:', error);
-            Alert.alert('Erreur', `Impossible de mettre à jour le logo:\n${error.message}`);
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    // COMPOSANT IMAGE OPTIMISÉ
-    const LogoComponent = () => {
+    const LogoComponent = useCallback(() => {
         const defaultLogo = require('../../assets/logo-v2.png');
         const currentLogoUrl = club?.logo_url;
 
@@ -273,48 +150,26 @@ export default function PresidentDashboard() {
                 style={styles.logo}
                 resizeMode="cover"
                 onError={(error) => {
-                    console.log('Erreur chargement logo:', error);
-                }}
-                onLoad={() => {
-                    console.log('Logo chargé avec succès !');
+                    console.error('Erreur chargement logo:', error);
                 }}
             />
         );
-    };
+    }, [club?.logo_url]);
 
-    // Fonction pour ouvrir les réseaux sociaux
-    const openSocialLink = async (url, appUrl) => {
-        try {
-            if (Platform.OS !== 'web' && appUrl) {
-                const supported = await Linking.canOpenURL(appUrl);
-                Linking.openURL(supported ? appUrl : url);
-            } else {
-                Linking.openURL(url);
-            }
-        } catch (err) {
-            console.error('Erreur ouverture lien:', err);
-            Linking.openURL(url);
+    const openSocialLink = async (url: string, appUrl?: string) => {
+        const supported = appUrl ? await Linking.canOpenURL(appUrl) : false;
+        const urlToOpen = supported ? appUrl : url;
+        if (urlToOpen) {
+            Linking.openURL(urlToOpen);
+        } else {
+            Alert.alert('Erreur', "Impossible d'ouvrir le lien."); // FIXME: toast
         }
     };
-
-    // Effet pour vérifier les autorisations
-    useEffect(() => {
-        if (president && president.role !== 'president') {
-            Alert.alert('Accès refusé', 'Seul le président du club a accès à cet espace.');
-            router.replace('/');
-        }
-        if (error) {
-            Alert.alert('Erreur', error);
-            router.replace('/');
-        }
-    }, [president, error, router]);
-
-    const loading = loadingPresident || loadingClub;
 
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#00ff88" />
+                <ActivityIndicator size="large" color={COLOR_GREEN_300} />
                 <Text style={styles.loadingText}>
                     {uploading ? 'Mise à jour du logo...' : 'Chargement...'}
                 </Text>
@@ -324,7 +179,7 @@ export default function PresidentDashboard() {
 
     return (
         <ScrollView
-            style={{ flex: 1, backgroundColor: DARK }}
+            style={{ flex: 1, backgroundColor: COLOR_BLACK_900 }}
             contentContainerStyle={styles.container}
         >
             <ScrollView
@@ -339,7 +194,7 @@ export default function PresidentDashboard() {
                             <LogoComponent />
                             {uploading ? (
                                 <View style={styles.uploadingOverlay}>
-                                    <ActivityIndicator size="small" color="#00ff88" />
+                                    <ActivityIndicator size="small" color={COLOR_GREEN_300} />
                                 </View>
                             ) : (
                                 <View style={styles.cameraOverlay}>
@@ -351,7 +206,7 @@ export default function PresidentDashboard() {
                         <View style={styles.headerTextBox}>
                             <Text style={styles.welcome}>
                                 Bienvenue Président{' '}
-                                {president ? `${president.prenom} ${president.nom}` : ''}
+                                {utilisateur ? `${utilisateur.prenom} ${utilisateur.nom}` : ''}
                             </Text>
                             <Text style={styles.title}>{club?.nom || 'Club'}</Text>
 
@@ -361,8 +216,8 @@ export default function PresidentDashboard() {
                                         styles.statusDot,
                                         {
                                             backgroundColor: club?.abonnement_actif
-                                                ? GREEN
-                                                : '#ff4444',
+                                                ? COLOR_GREEN_300
+                                                : RED,
                                         },
                                     ]}
                                 />
@@ -388,26 +243,30 @@ export default function PresidentDashboard() {
                                         placement="bottom"
                                         onClose={() => setTooltipVisible(false)}
                                     >
-                                        <TouchableOpacity
-                                            onPress={() => setTooltipVisible(true)}
-                                            style={styles.infoButton}
-                                        >
+                                        <TouchableOpacity onPress={() => setTooltipVisible(true)}>
                                             <Ionicons
                                                 name="information-circle-outline"
                                                 size={18}
-                                                color={GREEN}
+                                                color={COLOR_GREEN_300}
                                             />
                                         </TouchableOpacity>
                                     </Tooltip>{' '}
                                     :
                                     <View style={styles.clubCodeBox}>
-                                        <Ionicons name="key-outline" size={16} color={GREEN} />{' '}
+                                        <Ionicons
+                                            name="key-outline"
+                                            size={16}
+                                            color={COLOR_GREEN_300}
+                                        />{' '}
                                         <Text selectable style={styles.clubCode}>
                                             {club?.code_acces || 'Code indisponible'}
                                         </Text>
                                         <TouchableOpacity
                                             style={styles.copyButton}
-                                            onPress={() => copyToClipboard(club?.code_acces)}
+                                            onPress={() =>
+                                                club?.code_acces &&
+                                                copyToClipboard(club?.code_acces)
+                                            }
                                         >
                                             <Ionicons name="copy-outline" size={18} color="#000" />
                                         </TouchableOpacity>
@@ -420,11 +279,18 @@ export default function PresidentDashboard() {
 
                 {/* Sections */}
                 <Section title="📋 Infos club">
-                    <FullButton
-                        title="Infos club"
-                        icon="information-circle"
+                    <TouchableOpacity
+                        style={styles.fullBtnOutline}
                         onPress={() => router.push('/president/infos')}
-                    />
+                    >
+                        <Ionicons
+                            name="information-circle"
+                            size={20}
+                            color={COLOR_GREEN_300}
+                            style={{ marginRight: 8 }}
+                        />
+                        <Text style={styles.fullBtnText}>Infos club</Text>
+                    </TouchableOpacity>
                 </Section>
 
                 <Section title="🧾 Gestion du club">
@@ -460,11 +326,13 @@ export default function PresidentDashboard() {
                 </Section>
 
                 <Section title="💼 Administration">
-                    <FullFilledButton
-                        title="Gestion Budget"
-                        icon="cash"
+                    <TouchableOpacity
+                        style={styles.fullBtnFilled}
                         onPress={() => router.push('/president/gestion-budget')}
-                    />
+                    >
+                        <Ionicons name="cash" size={20} color="#111" style={{ marginRight: 8 }} />
+                        <Text style={styles.buttonText}>Gestion Budget</Text>
+                    </TouchableOpacity>
                 </Section>
 
                 {/* Réseaux sociaux */}
@@ -474,7 +342,7 @@ export default function PresidentDashboard() {
                             activeOpacity={0.7}
                             onPress={() =>
                                 openSocialLink(
-                                    club.facebook_url,
+                                    club.facebook_url!,
                                     `fb://facewebmodal/f?href=${club.facebook_url}`,
                                 )
                             }
@@ -490,12 +358,12 @@ export default function PresidentDashboard() {
                         <TouchableOpacity
                             activeOpacity={0.7}
                             onPress={() => {
-                                const username = club.instagram_url
-                                    .split('/')
+                                const username = club
+                                    .instagram_url!.split('/')
                                     .filter(Boolean)
                                     .pop();
                                 openSocialLink(
-                                    club.instagram_url,
+                                    club.instagram_url!,
                                     `instagram://user?username=${username}`,
                                 );
                             }}
@@ -510,7 +378,7 @@ export default function PresidentDashboard() {
                     {club?.boutique_url && (
                         <TouchableOpacity
                             activeOpacity={0.7}
-                            onPress={() => openSocialLink(club.boutique_url)}
+                            onPress={() => openSocialLink(club.boutique_url!)}
                         >
                             <Image
                                 source={require('../../assets/minilogo/boutique.png')}
@@ -525,7 +393,7 @@ export default function PresidentDashboard() {
                     <Ionicons
                         name="log-out-outline"
                         size={20}
-                        color="#00ff88"
+                        color={COLOR_GREEN_300}
                         style={{ marginRight: 8 }}
                     />
                     <Text style={styles.logoutText}>Se déconnecter</Text>
@@ -535,37 +403,34 @@ export default function PresidentDashboard() {
     );
 }
 
-// Composants réutilisables
-function FullButton({ title, icon, onPress }) {
-    return (
-        <TouchableOpacity style={styles.fullBtnOutline} onPress={onPress}>
-            <Ionicons name={icon} size={20} color="#00ff88" style={{ marginRight: 8 }} />
-            <Text style={styles.fullBtnText}>{title}</Text>
-        </TouchableOpacity>
-    );
-}
-
-function FullFilledButton({ title, icon, onPress }) {
-    return (
-        <TouchableOpacity style={styles.fullBtnFilled} onPress={onPress}>
-            <Ionicons name={icon} size={20} color="#111" style={{ marginRight: 8 }} />
-            <Text style={styles.buttonText}>{title}</Text>
-        </TouchableOpacity>
-    );
-}
-
-function HalfButton({ title, icon, onPress, iconFamily = 'Ionicons' }) {
+function HalfButton({
+    title,
+    icon,
+    onPress,
+    iconFamily = 'Ionicons',
+}: {
+    title: string;
+    icon: any; // FIXME: create a shared component and fix this type
+    onPress: () => void;
+    iconFamily?: 'Ionicons' | 'MaterialCommunityIcons';
+}) {
     const IconComponent =
         iconFamily === 'MaterialCommunityIcons' ? MaterialCommunityIcons : Ionicons;
+
     return (
         <TouchableOpacity style={styles.halfBtn} onPress={onPress}>
-            <IconComponent name={icon} size={20} color="#00ff88" style={{ marginRight: 8 }} />
+            <IconComponent
+                name={icon}
+                size={20}
+                color={COLOR_GREEN_300}
+                style={{ marginRight: 8 }}
+            />
             <Text style={styles.fullBtnText}>{title}</Text>
         </TouchableOpacity>
     );
 }
 
-function Section({ title, children }) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
     return (
         <View style={styles.section}>
             <Text style={styles.sectionTitle}>{title}</Text>
@@ -577,23 +442,19 @@ function Section({ title, children }) {
 const styles = StyleSheet.create({
     container: {
         alignSelf: 'center',
-        maxWidth: 790,
-        width: '92%',
     },
     headerCard: {
         marginTop: 28,
         marginBottom: 16,
-        backgroundColor: DARK_LIGHT,
+        backgroundColor: COLOR_BLACK_LIGHT_900,
         borderRadius: 22,
         padding: 20,
         borderWidth: 2,
-        borderColor: GREEN,
-        shadowColor: GREEN,
+        borderColor: COLOR_GREEN_300,
+        shadowColor: COLOR_GREEN_300,
         shadowOpacity: 0.08,
         shadowRadius: 10,
         elevation: 4,
-        width: '92%',
-        maxWidth: 790,
     },
     loadingContainer: {
         flex: 1,
@@ -601,13 +462,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#0a0a0a',
     },
     loadingText: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         marginTop: 10,
         fontSize: 16,
     },
     scroll: {
         flexGrow: 1,
-        padding: 24,
+        padding: 12,
     },
     header: {
         flexDirection: 'row',
@@ -640,7 +501,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         right: 0,
-        backgroundColor: GREEN,
+        backgroundColor: COLOR_GREEN_300,
         borderRadius: 10,
         width: 20,
         height: 20,
@@ -660,7 +521,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: isMobile ? 20 : 22,
         fontWeight: 'bold',
-        color: GREEN,
+        color: COLOR_GREEN_300,
         marginBottom: 16,
     },
     badge: {
@@ -682,7 +543,7 @@ const styles = StyleSheet.create({
         marginBottom: 28,
     },
     sectionTitle: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontSize: 16,
         fontWeight: '600',
         marginBottom: 12,
@@ -696,32 +557,29 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: GREEN,
-        backgroundColor: DARK_LIGHT,
+        borderColor: COLOR_GREEN_300,
+        backgroundColor: COLOR_BLACK_LIGHT_900,
         borderRadius: 22,
         padding: 16,
-        width: '92%',
-        maxWidth: 790,
+        width: '100%',
     },
     fullBtnFilled: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: GREEN,
+        backgroundColor: COLOR_GREEN_300,
         borderRadius: 22,
         padding: 16,
-        width: '92%',
-        maxWidth: 790,
+        width: '100%',
     },
     halfBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: GREEN,
-        backgroundColor: DARK_LIGHT,
+        borderColor: COLOR_GREEN_300,
+        backgroundColor: COLOR_BLACK_LIGHT_900,
         borderRadius: 22,
         padding: 16,
-        width: '45.5%',
-        maxWidth: 390,
+        width: '48%',
     },
     fullBtnText: {
         color: '#fff',
@@ -749,19 +607,19 @@ const styles = StyleSheet.create({
         backgroundColor: '#222',
     },
     logoutButton: {
-        borderColor: GREEN,
-        backgroundColor: DARK_LIGHT,
+        borderColor: COLOR_GREEN_300,
+        backgroundColor: COLOR_BLACK_LIGHT_900,
         borderWidth: 2,
         paddingVertical: 16,
         borderRadius: 12,
         flexDirection: 'row',
         justifyContent: 'center',
+        marginHorizontal: 'auto',
+        paddingHorizontal: 32,
         alignItems: 'center',
-        width: '92%',
-        maxWidth: 790,
     },
     logoutText: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontSize: 16,
         fontWeight: '700',
     },
@@ -785,14 +643,14 @@ const styles = StyleSheet.create({
         marginLeft: isMobile ? 0 : 26,
     },
     clubCode: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontSize: isMobile ? 12 : 16,
         fontWeight: '700',
         letterSpacing: 2,
         fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     },
     copyButton: {
-        backgroundColor: GREEN,
+        backgroundColor: COLOR_GREEN_300,
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 6,

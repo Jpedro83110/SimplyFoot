@@ -83,6 +83,27 @@ export const getCoachEquipesWithJoueurs = async ({
     return data;
 };
 
+export type GetClubEquipesWithJoueurs = Awaited<
+    Awaited<ReturnType<typeof getClubEquipesWithJoueurs>>
+>;
+
+export const getClubEquipesWithJoueurs = async ({ clubId }: { clubId: string }) => {
+    const { data, error } = await supabase
+        .from('equipes')
+        .select(
+            'id, nom, categorie, joueurs(id, photo_profil_url, numero_licence, visite_medicale_valide, equipement, utilisateurs(nom, prenom))',
+        )
+        .eq('club_id', clubId)
+        .order('categorie', { ascending: true })
+        .order('nom', { ascending: true });
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 export type GetCoachEquipesEvaluations = Awaited<ReturnType<typeof getCoachEquipesEvaluations>>;
 
 export const getCoachEquipesEvaluations = async ({
