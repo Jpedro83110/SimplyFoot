@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -58,7 +58,52 @@ export default function PresidentDashboard() {
         fetchClub(utilisateur.club_id);
     }, [club, loading, utilisateur?.club_id]);
 
-    const handleLogoUpload = async () => {
+    const processLogoUpload = useCallback(
+        async (image: ImagePicker.ImagePickerAsset) => {
+            if (!utilisateur?.id || !club?.logo_url) {
+                Alert.alert('Erreur', 'Utilisateur ou club non défini');
+                setUploading(false);
+                return;
+            }
+
+            try {
+                if (club?.logo_url) {
+                    await removeImage({
+                        url: club.logo_url,
+                        name: 'logos',
+                    });
+                }
+
+                const baseLogoUrl = await uploadImage({
+                    image,
+                    name: 'logos',
+                    utilisateurId: utilisateur.id,
+                });
+
+                await updateClub({
+                    clubId: club.id,
+                    club: { logo_url: baseLogoUrl },
+                });
+
+                const displayLogoUrl =
+                    Platform.OS === 'web' ? `${baseLogoUrl}?t=${Date.now()}` : baseLogoUrl;
+
+                setClub((prev) => (prev ? { ...prev, logo_url: displayLogoUrl } : prev));
+
+                Alert.alert('Succès ! 🖼️', 'Logo du club mis à jour !');
+            } catch (error) {
+                Alert.alert(
+                    'Erreur',
+                    `Impossible de mettre à jour le logo:\n${(error as Error).message}`,
+                );
+            } finally {
+                setUploading(false);
+            }
+        },
+        [club?.id, club?.logo_url, utilisateur?.id],
+    );
+
+    const handleLogoUpload = useCallback(async () => {
         try {
             setUploading(true);
 
@@ -89,51 +134,9 @@ export default function PresidentDashboard() {
             Alert.alert('Erreur', 'Impossible de sélectionner le logo');
             setUploading(false);
         }
-    };
+    }, [processLogoUpload]);
 
-    const processLogoUpload = async (image: ImagePicker.ImagePickerAsset) => {
-        if (!utilisateur?.id || !club?.logo_url) {
-            Alert.alert('Erreur', 'Utilisateur ou club non défini');
-            setUploading(false);
-            return;
-        }
-
-        try {
-            if (club?.logo_url) {
-                await removeImage({
-                    url: club.logo_url,
-                    name: 'logos',
-                });
-            }
-
-            const baseLogoUrl = await uploadImage({
-                image,
-                name: 'logos',
-                utilisateurId: utilisateur.id,
-            });
-
-            await updateClub({
-                clubId: club.id,
-                club: { logo_url: baseLogoUrl },
-            });
-
-            const displayLogoUrl =
-                Platform.OS === 'web' ? `${baseLogoUrl}?t=${Date.now()}` : baseLogoUrl;
-
-            setClub((prev) => (prev ? { ...prev, logo_url: displayLogoUrl } : prev));
-
-            Alert.alert('Succès ! 🖼️', 'Logo du club mis à jour !');
-        } catch (error) {
-            Alert.alert(
-                'Erreur',
-                `Impossible de mettre à jour le logo:\n${(error as Error).message}`,
-            );
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const LogoComponent = () => {
+    const LogoComponent = useCallback(() => {
         const defaultLogo = require('../../assets/logo-v2.png');
         const currentLogoUrl = club?.logo_url;
 
@@ -154,7 +157,7 @@ export default function PresidentDashboard() {
                 }}
             />
         );
-    };
+    }, [club?.logo_url]);
 
     const openSocialLink = async (url: string, appUrl?: string) => {
         const supported = appUrl ? await Linking.canOpenURL(appUrl) : false;
