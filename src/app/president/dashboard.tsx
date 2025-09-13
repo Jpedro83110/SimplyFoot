@@ -150,10 +150,7 @@ export default function PresidentDashboard() {
                 style={styles.logo}
                 resizeMode="cover"
                 onError={(error) => {
-                    console.log('Erreur chargement logo:', error);
-                }}
-                onLoad={() => {
-                    console.log('Logo chargé avec succès !');
+                    console.error('Erreur chargement logo:', error);
                 }}
             />
         );
