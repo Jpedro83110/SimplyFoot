@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, ColorValue } from 'react-native';
 import { useSession } from '@/hooks/useSession';
 import { COLOR_GREEN_300 } from '@/utils/styleContants.utils';
@@ -60,15 +60,14 @@ export default function EvalMentale() {
         fetchData(utilisateur.id);
     }, [evalData, loading, utilisateur?.id]);
 
-    // Calcul dynamique de la note globale au cas où elle n'existe pas
-    const computeNoteGlobale = () => {
+    const computeNoteGlobale = useCallback(() => {
         if (!evalData) {
             return 0;
         }
 
         const notes = Object.values(evalData).filter((value) => Number(value));
         return Math.round(notes.reduce((a, b) => a + b, 0) / notes.length);
-    };
+    }, [evalData]);
 
     if (loading) {
         return <ActivityIndicator size="large" color="#00ff88" style={{ marginTop: 40 }} />;

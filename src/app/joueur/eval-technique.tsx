@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -7,64 +7,81 @@ import {
     Image,
     Dimensions,
     ActivityIndicator,
+    ColorValue,
 } from 'react-native';
-import { supabase } from '../../lib/supabase';
+import { COLOR_GREEN_300 } from '@/utils/styleContants.utils';
+import {
+    EvaluationsTechnique,
+    getEvaluationsTechniquesByJoueur,
+} from '@/helpers/evaluationsTechniques.helpers';
+import { useSession } from '@/hooks/useSession';
+
+interface Criteres {
+    key: keyof EvaluationsTechnique;
+    label: string;
+    color: ColorValue;
+}
+
+const criteres: Criteres[] = [
+    { key: 'tir', label: 'TIR', color: '#facc15' },
+    { key: 'passe', label: 'PASSE', color: COLOR_GREEN_300 },
+    { key: 'centre', label: 'CENTRE', color: '#38bdf8' },
+    { key: 'tete', label: 'TÊTE', color: '#fb7185' },
+    { key: 'vitesse', label: 'VITESSE', color: '#4fd1c5' },
+    { key: 'defense', label: 'DÉFENSE', color: '#f97316' },
+    { key: 'placement', label: 'PLACEMENT', color: '#a3e635' },
+    { key: 'jeu_sans_ballon', label: 'J. SANS BALLON', color: '#818cf8' },
+];
 
 export default function EvalTechnique() {
-    const [evalData, setEvalData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [evalData, setEvalData] = useState<EvaluationsTechnique | null>(null);
+    const [noteGlobale, setNoteGlobale] = useState<number | null>(null);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const criteres = useMemo(
-        () => [
-            { key: 'tir', label: 'TIR', color: '#facc15' },
-            { key: 'passe', label: 'PASSE', color: '#00ff88' },
-            { key: 'centre', label: 'CENTRE', color: '#38bdf8' },
-            { key: 'tete', label: 'TÊTE', color: '#fb7185' },
-            { key: 'vitesse', label: 'VITESSE', color: '#4fd1c5' },
-            { key: 'defense', label: 'DÉFENSE', color: '#f97316' },
-            { key: 'placement', label: 'PLACEMENT', color: '#a3e635' },
-            { key: 'jeu_sans_ballon', label: 'J. SANS BALLON', color: '#818cf8' },
-        ],
-        [],
-    );
+    const { utilisateur } = useSession();
 
-    useEffect(() => {
-        async function fetchData() {
-            setError('');
-            try {
-                const { data: sessionData } = await supabase.auth.getSession();
-                const userId = sessionData?.session?.user?.id;
-                if (!userId) {
-                    throw new Error('Utilisateur non identifié.');
-                }
+    async function fetchData(utilisateurId: string) {
+        setLoading(true);
 
-                const { data } = await supabase
-                    .from('evaluations_techniques')
-                    .select('*')
-                    .eq('joueur_id', userId)
-                    .single();
+        try {
+            const fetchedEvalData = await getEvaluationsTechniquesByJoueur({
+                joueurId: utilisateurId,
+            });
 
-                const defaultData = Object.fromEntries(criteres.map((c) => [c.key, 50]));
-                setEvalData(data ? { ...defaultData, ...data } : defaultData);
-            } catch (e) {
-                setError(e.message || 'Erreur de chargement.');
-            } finally {
-                setLoading(false);
-            }
+            setEvalData({
+                tir: fetchedEvalData?.tir ?? 50,
+                passe: fetchedEvalData?.passe ?? 50,
+                centre: fetchedEvalData?.centre ?? 50,
+                tete: fetchedEvalData?.tete ?? 50,
+                vitesse: fetchedEvalData?.vitesse ?? 50,
+                defense: fetchedEvalData?.defense ?? 50,
+                placement: fetchedEvalData?.placement ?? 50,
+                jeu_sans_ballon: fetchedEvalData?.jeu_sans_ballon ?? 50,
+            });
+            setNoteGlobale(fetchedEvalData?.moyenne ?? null);
+        } catch (error) {
+            setError((error as Error).message);
         }
 
-        fetchData();
-    }, [criteres]);
+        setLoading(false);
+    }
 
-    // Calcul dynamique de la moyenne
-    const computeMoyenne = () => {
+    useEffect(() => {
+        if (!utilisateur?.id || loading || evalData) {
+            return;
+        }
+
+        fetchData(utilisateur.id);
+    }, [evalData, loading, utilisateur?.id]);
+
+    const computeMoyenne = useCallback(() => {
         if (!evalData) {
             return 0;
         }
         const notes = criteres.map((c) => Number(evalData[c.key]) || 0);
         return Math.round(notes.reduce((a, b) => a + b, 0) / criteres.length);
-    };
+    }, [evalData]);
 
     if (loading) {
         return <ActivityIndicator size="large" color="#00ff88" style={{ marginTop: 50 }} />;
@@ -78,7 +95,7 @@ export default function EvalTechnique() {
             <Text style={styles.title}>⚽ Évaluation technique</Text>
 
             <Text style={styles.globalNote}>
-                Note globale : {evalData?.moyenne ?? computeMoyenne()} / 100
+                Note globale : {noteGlobale ?? computeMoyenne()} / 100
             </Text>
 
             <View style={styles.jerseyWrapper}>
