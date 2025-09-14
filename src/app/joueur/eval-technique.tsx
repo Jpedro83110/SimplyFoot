@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    Image,
-    Dimensions,
-    ActivityIndicator,
-    ColorValue,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, ColorValue } from 'react-native';
 import { COLOR_GREEN_300 } from '@/utils/styleContants.utils';
 import {
     EvaluationsTechnique,
@@ -98,14 +89,6 @@ export default function EvalTechnique() {
                 Note globale : {noteGlobale ?? computeMoyenne()} / 100
             </Text>
 
-            <View style={styles.jerseyWrapper}>
-                <Image
-                    source={require('../../assets/maillot-simplyfoot.png')}
-                    style={styles.jersey}
-                    resizeMode="contain"
-                />
-            </View>
-
             <View style={styles.underStatsBlock}>
                 <Text style={styles.statsTitle}>Détails par critère</Text>
                 {criteres.map(({ key, label, color }) => (
@@ -131,8 +114,6 @@ export default function EvalTechnique() {
     );
 }
 
-const screenWidth = Dimensions.get('window').width;
-
 const styles = StyleSheet.create({
     container: {
         backgroundColor: '#121212',
@@ -153,17 +134,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         textAlign: 'center',
         marginBottom: 16,
-    },
-    jerseyWrapper: {
-        width: screenWidth * 0.9,
-        alignItems: 'center',
-        position: 'relative',
-    },
-    jersey: {
-        width: '100%',
-        height: undefined,
-        aspectRatio: 3 / 4,
-        zIndex: 0,
     },
     underStatsBlock: {
         marginTop: 30,
