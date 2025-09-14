@@ -197,11 +197,18 @@ export default function ConvocationReponse() {
         try {
             await updateMessageBesoinTransport({
                 messagesBesoinTransportId,
-                messageBesoinTransport: {
-                    signature_demandeur: true,
-                    signature_demandeur_date: new Date().toISOString(),
-                    etat: qui === 'conducteur' ? 'signe' : 'proposition_faite',
-                },
+                messageBesoinTransport:
+                    qui === 'conducteur'
+                        ? {
+                              signature_conducteur: true,
+                              signature_conducteur_date: new Date().toISOString(),
+                              etat: 'signe',
+                          }
+                        : {
+                              signature_demandeur: true,
+                              signature_demandeur_date: new Date().toISOString(),
+                              etat: 'proposition_faite',
+                          },
             });
 
             await fetchData(evenementId, utilisateur.id);
