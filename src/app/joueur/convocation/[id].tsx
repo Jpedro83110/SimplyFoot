@@ -14,7 +14,6 @@ import {
     ScrollView,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { supabase } from '@/lib/supabase';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +22,12 @@ import {
     getEvenementInfosByUtilisateurId,
 } from '@/helpers/evenements.helpers';
 import { ParticipationsEvenementReponse } from '@/types/participationsEvenement.types';
+import { useSession } from '@/hooks/useSession';
+import { upsertParticipationEvenement } from '@/helpers/participationsEvenement.helpers';
+import {
+    createMessageBesoinTransport,
+    updateMessageBesoinTransport,
+} from '@/helpers/messagesBesoinTransport.helpers';
 
 dayjs.locale('fr');
 
@@ -32,9 +37,11 @@ type ConvocationReponseParams = {
 
 export default function ConvocationReponse() {
     const { id: evenementId } = useLocalSearchParams<ConvocationReponseParams>();
-    const [evenementInfos, setEvenementInfos] = useState<GetEvenementInfosByUtilisateurId>();
+    const [evenementInfos, setEvenementInfos] = useState<GetEvenementInfosByUtilisateurId | null>(
+        null,
+    );
 
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [besoinTransport, setBesoinTransport] = useState(false);
     const [reponse, setReponse] = useState<ParticipationsEvenementReponse>();
     const [reponseLoading, setReponseLoading] = useState(false);
@@ -45,36 +52,35 @@ export default function ConvocationReponse() {
     const [nouvelleHeure, setNouvelleHeure] = useState('');
     const [sendingProposition, setSendingProposition] = useState(false);
 
-    useEffect(() => {
-        async function fetchData() {
-            try {
-                setLoading(true);
-                const session = await supabase.auth.getSession();
-                const utilisateurId = session.data.session?.user?.id;
+    const { utilisateur } = useSession();
 
-                if (!utilisateurId) {
-                    throw new Error('Utilisateur non trouvé.');
-                }
+    const fetchData = async (evenementId: string, utilisateurId: string) => {
+        try {
+            setLoading(true);
 
-                const fetchedEvenementInfos = await getEvenementInfosByUtilisateurId({
-                    evenementId,
-                    utilisateurId,
-                });
+            const fetchedEvenementInfos = await getEvenementInfosByUtilisateurId({
+                evenementId,
+                utilisateurId,
+            });
 
-                console.log('Fetched Evenement Infos:', fetchedEvenementInfos);
-
-                setEvenementInfos(fetchedEvenementInfos);
-            } catch (error) {
-                Alert.alert(
-                    'Erreur',
-                    `Impossible de charger la convocation: ${(error as Error).message}`,
-                );
-            } finally {
-                setLoading(false);
-            }
+            setEvenementInfos(fetchedEvenementInfos);
+        } catch (error) {
+            Alert.alert(
+                'Erreur',
+                `Impossible de charger la convocation: ${(error as Error).message}`,
+            );
+        } finally {
+            setLoading(false);
         }
-        fetchData();
-    }, [evenementId]);
+    };
+
+    useEffect(() => {
+        if (!utilisateur?.id || loading || evenementInfos) {
+            return;
+        }
+
+        fetchData(evenementId, utilisateur.id);
+    }, [evenementId, evenementInfos, loading, utilisateur?.id]);
 
     // Réponse à la convocation
     const envoyerReponse = async (valeur: ParticipationsEvenementReponse) => {
@@ -99,37 +105,28 @@ export default function ConvocationReponse() {
             const besoinTransportFinal =
                 accepteTransport && besoinTransport && valeur === 'present';
 
-            const { error } = await supabase.from('participations_evenement').upsert(
-                [
-                    {
-                        utilisateur_id: utilisateurId,
-                        evenement_id: evenementId,
-                        reponse: valeur,
-                        besoin_transport: besoinTransportFinal,
-                    },
-                ],
-                { onConflict: 'utilisateur_id,evenement_id' },
-            );
-
-            if (error) {
-                Alert.alert('Erreur', error.message || "Erreur lors de l'envoi.");
-                setReponseLoading(false);
-                return;
-            }
+            await upsertParticipationEvenement({
+                evenementId,
+                utilisateurId,
+                participationEvenement: {
+                    reponse: valeur,
+                    besoin_transport: besoinTransportFinal,
+                },
+            });
 
             setReponse(valeur);
             setBesoinTransport(besoinTransportFinal);
-            setReponseLoading(false);
-            // await fetchTransportMessages(); // FIXME
+            await fetchData(evenementId, utilisateurId);
             Alert.alert('✅ Réponse enregistrée !');
         } catch (error) {
-            setReponseLoading(false);
             Alert.alert('Erreur', `Erreur critique dans l'envoi: ${(error as Error).message}`);
+        } finally {
+            setReponseLoading(false);
         }
     };
 
     const envoyerDemandeTransport = async () => {
-        if (!nouvelleAdresse || !nouvelleHeure) {
+        if (!nouvelleAdresse || !nouvelleHeure || !utilisateur?.id) {
             Alert.alert("Merci de remplir le lieu et l'heure.");
             return;
         }
@@ -137,24 +134,22 @@ export default function ConvocationReponse() {
             setSendingProposition(true);
 
             const utilisateurId = evenementInfos?.participations_evenement[0]?.utilisateurs?.id;
-            const { error } = await supabase.from('messages_besoin_transport').insert({
-                evenement_id: evenementId,
-                utilisateur_id: utilisateurId,
-                adresse_demande: nouvelleAdresse,
-                heure_demande: nouvelleHeure,
-                etat: 'en_attente',
-                created_at: new Date().toISOString(),
+            await createMessageBesoinTransport({
+                messageBesoinTransport: {
+                    evenement_id: evenementId,
+                    utilisateur_id: utilisateurId,
+                    adresse_demande: nouvelleAdresse,
+                    heure_demande: nouvelleHeure,
+                    etat: 'en_attente',
+                    created_at: new Date().toISOString(),
+                },
             });
 
-            if (error) {
-                Alert.alert('Erreur', 'Insertion échouée : ' + error.message);
-            } else {
-                setShowTransportModal(false);
-                setNouvelleAdresse('');
-                setNouvelleHeure('');
-                Alert.alert('✅ Demande envoyée à la messagerie transport !');
-                // await fetchTransportMessages(); // FIXME
-            }
+            setShowTransportModal(false);
+            setNouvelleAdresse('');
+            setNouvelleHeure('');
+            Alert.alert('✅ Demande envoyée à la messagerie transport !');
+            await fetchData(evenementId, utilisateur.id);
         } catch (error) {
             Alert.alert('Erreur', (error as Error).message);
         } finally {
@@ -163,23 +158,26 @@ export default function ConvocationReponse() {
     };
 
     // Propositions et signatures
-    const proposerLieuHeure = async (messageBesoinTransportId: string) => {
+    const proposerLieuHeure = async (messagesBesoinTransportId: string) => {
+        if (!utilisateur?.id) {
+            Alert.alert('Erreur: utilisateur non connecté.');
+            return;
+        }
+
         try {
             setSendingProposition(true);
-            const { error } = await supabase
-                .from('messages_besoin_transport')
-                .update({
+            await updateMessageBesoinTransport({
+                messagesBesoinTransportId,
+                messageBesoinTransport: {
                     adresse_demande: nouvelleAdresse,
                     heure_demande: nouvelleHeure,
                     etat: 'proposition_faite',
-                })
-                .eq('id', messageBesoinTransportId);
-            if (error) {
-                throw error;
-            }
+                },
+            });
+
             setNouvelleAdresse('');
             setNouvelleHeure('');
-            // await fetchTransportMessages(); // FIXME
+            await fetchData(evenementId, utilisateur.id);
         } catch (error) {
             Alert.alert('Erreur', (error as Error).message);
         } finally {
@@ -188,33 +186,25 @@ export default function ConvocationReponse() {
     };
 
     const signerTransport = async (
-        messageBesoinTransportId: string,
+        messagesBesoinTransportId: string,
         qui: 'demandeur' | 'conducteur',
     ) => {
+        if (!utilisateur?.id) {
+            Alert.alert('Erreur: utilisateur non connecté.');
+            return;
+        }
+
         try {
-            let fields = {};
-            if (qui === 'demandeur') {
-                fields = {
+            await updateMessageBesoinTransport({
+                messagesBesoinTransportId,
+                messageBesoinTransport: {
                     signature_demandeur: true,
-                    signature_demandeur_date: new Date(),
-                    etat: 'proposition_faite',
-                };
-            }
-            if (qui === 'conducteur') {
-                fields = {
-                    signature_conducteur: true,
-                    signature_conducteur_date: new Date(),
-                    etat: 'signe',
-                };
-            }
-            const { error } = await supabase
-                .from('messages_besoin_transport')
-                .update(fields)
-                .eq('id', messageBesoinTransportId);
-            if (error) {
-                throw error;
-            }
-            // await fetchTransportMessages(); // FIXME
+                    signature_demandeur_date: new Date().toISOString(),
+                    etat: qui === 'conducteur' ? 'signe' : 'proposition_faite',
+                },
+            });
+
+            await fetchData(evenementId, utilisateur.id);
         } catch (error) {
             Alert.alert('Erreur', (error as Error).message);
         }

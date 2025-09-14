@@ -25,7 +25,7 @@ export const upsertSignatureTransport = async ({
 
         await updateMessageBesoinTransport({
             messagesBesoinTransportId,
-            dataToUpdate: { etat },
+            messageBesoinTransport: { etat },
         });
     }
 };

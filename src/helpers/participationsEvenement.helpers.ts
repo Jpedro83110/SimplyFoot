@@ -19,3 +19,25 @@ export const bulkCreateParticipationsEvenement = async ({
         throw error;
     }
 };
+
+export const upsertParticipationEvenement = async ({
+    utilisateurId,
+    evenementId,
+    participationEvenement,
+}: {
+    utilisateurId: string;
+    evenementId: string;
+    participationEvenement: Database['public']['Tables']['participations_evenement']['Insert'];
+}) => {
+    const { error } = await supabase.from('participations_evenement').upsert(
+        {
+            ...participationEvenement,
+            utilisateur_id: utilisateurId,
+            evenement_id: evenementId,
+        },
+        { onConflict: 'utilisateur_id,evenement_id' },
+    );
+    if (error) {
+        throw error;
+    }
+};

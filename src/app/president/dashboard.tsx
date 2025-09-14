@@ -37,9 +37,7 @@ export default function PresidentDashboard() {
     const [loading, setLoading] = useState(false);
     const [club, setClub] = useState<GetClubById | null>(null);
 
-    const { signOut } = useSession();
-
-    const { utilisateur } = useSession();
+    const { signOut, utilisateur } = useSession();
 
     const fetchClub = async (clubId: string) => {
         setLoading(true);
