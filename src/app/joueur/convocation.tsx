@@ -8,107 +8,48 @@ import {
     FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
+import {
+    GetEvenementsInfosByUtilisateurId,
+    getEvenementsInfosByUtilisateurId,
+} from '@/helpers/evenements.helpers';
+import { useSession } from '@/hooks/useSession';
 
-dayjs.locale('fr');
+dayjs.locale('fr'); // FIXME: mmmh ???
 
 export default function ConvocationsJoueur() {
-    const [loading, setLoading] = useState(true);
-    const [convocations, setConvocations] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [evenementsInfos, setEvenementsInfos] =
+        useState<GetEvenementsInfosByUtilisateurId | null>(null);
+
+    const { utilisateur } = useSession();
     const router = useRouter();
 
-    useEffect(() => {
-        async function fetchConvocations() {
-            setLoading(true);
-            try {
-                const session = await supabase.auth.getSession();
-                const utilisateurId = session.data.session?.user?.id;
+    async function fetchConvocations(utilisateurId: string) {
+        setLoading(true);
 
-                console.log('🔐 Utilisateur connecté:', utilisateurId);
+        try {
+            const fetchedEvenementsInfos = await getEvenementsInfosByUtilisateurId({
+                utilisateurId,
+                since: new Date(),
+            });
 
-                if (!utilisateurId) {
-                    throw new Error('Utilisateur non connecté');
-                }
-
-                // Vérifier le rôle de l'utilisateur
-                const { data: utilisateur, error: userError } = await supabase
-                    .from('utilisateurs')
-                    .select('id, role, joueur_id')
-                    .eq('id', utilisateurId)
-                    .single();
-
-                console.log('👤 Données utilisateur:', utilisateur);
-
-                if (userError || !utilisateur) {
-                    throw new Error('Utilisateur non trouvé');
-                }
-
-                if (utilisateur.role !== 'joueur') {
-                    throw new Error('Utilisateur non joueur');
-                }
-
-                // 🎯 CORRECTION : Utiliser l'ID utilisateur directement
-                // car participations_evenement.utilisateur_id contient maintenant des IDs d'utilisateurs
-                const { data: participations, error: partError } = await supabase
-                    .from('participations_evenement')
-                    .select('evenement_id, reponse, utilisateur_id')
-                    .eq('utilisateur_id', utilisateurId); // Utiliser directement l'ID utilisateur
-
-                console.log('🎯 Participations trouvées:', participations);
-
-                if (partError) {
-                    console.error('❌ Erreur participations:', partError);
-                    throw partError;
-                }
-
-                if (!participations || participations.length === 0) {
-                    console.log('ℹ️ Aucune participation trouvée');
-                    setConvocations([]);
-                    setLoading(false);
-                    return;
-                }
-
-                const evenementIds = participations.map((p) => p.evenement_id);
-                console.log('📅 IDs événements:', evenementIds);
-
-                // 3. Récupérer les événements à venir
-                const { data: evenements, error: evtError } = await supabase
-                    .from('evenements')
-                    .select('*')
-                    .in('id', evenementIds)
-                    .gte('date', dayjs().format('YYYY-MM-DD'))
-                    .order('date', { ascending: true })
-                    .limit(4);
-
-                console.log('📅 Événements trouvés:', evenements);
-
-                if (evtError) {
-                    console.error('❌ Erreur événements:', evtError);
-                    throw evtError;
-                }
-
-                // 4. Mapper avec la participation (présent/absent)
-                const convocationsList = (evenements || []).map((evt) => {
-                    const participation = participations.find((p) => p.evenement_id === evt.id);
-                    return {
-                        ...evt,
-                        reponse: participation?.reponse || null,
-                        participation_id: participation?.utilisateur_id,
-                    };
-                });
-
-                console.log('📋 Convocations finales:', convocationsList);
-                setConvocations(convocationsList);
-            } catch (e) {
-                console.error('💥 Erreur fetchConvocations:', e);
-                setConvocations([]);
-            }
-            setLoading(false);
+            setEvenementsInfos(fetchedEvenementsInfos);
+        } catch (e) {
+            console.error('💥 Erreur fetchConvocations:', e);
         }
-        fetchConvocations();
-    }, []);
+
+        setLoading(false);
+    }
+
+    useEffect(() => {
+        if (!utilisateur?.id || loading || evenementsInfos) {
+            return;
+        }
+
+        fetchConvocations(utilisateur.id);
+    }, [evenementsInfos, loading, utilisateur?.id]);
 
     if (loading) {
         return (
@@ -126,9 +67,11 @@ export default function ConvocationsJoueur() {
             <Text style={styles.title}>📋 Mes Convocations</Text>
 
             {/* Debug info */}
-            <Text style={styles.debugText}>{convocations.length} convocation(s) trouvée(s)</Text>
+            <Text style={styles.debugText}>
+                {evenementsInfos?.length} convocation(s) trouvée(s)
+            </Text>
 
-            {convocations.length === 0 ? (
+            {evenementsInfos?.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <Text style={styles.emptyText}>Aucune convocation à venir.</Text>
                     <Text style={styles.emptySubtext}>
@@ -137,7 +80,7 @@ export default function ConvocationsJoueur() {
                 </View>
             ) : (
                 <FlatList
-                    data={convocations}
+                    data={evenementsInfos}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
                         <TouchableOpacity
@@ -159,14 +102,23 @@ export default function ConvocationsJoueur() {
                             <Text
                                 style={[
                                     styles.cardReponse,
-                                    item.reponse === 'present' && { color: '#00ff88' },
-                                    item.reponse === 'absent' && { color: '#ff4444' },
-                                    !item.reponse && { color: '#ffaa00' },
+                                    item.participations_evenement[0].reponse === 'present' && {
+                                        color: '#00ff88',
+                                    },
+                                    item.participations_evenement[0].reponse === 'absent' && {
+                                        color: '#ff4444',
+                                    },
+                                    !item.participations_evenement[0].reponse && {
+                                        color: '#ffaa00',
+                                    },
                                 ]}
                             >
-                                {item.reponse === 'present' && '✅ Présent'}
-                                {item.reponse === 'absent' && '❌ Absent'}
-                                {!item.reponse && '❔ Pas encore répondu'}
+                                {item.participations_evenement[0].reponse === 'present' &&
+                                    '✅ Présent'}
+                                {item.participations_evenement[0].reponse === 'absent' &&
+                                    '❌ Absent'}
+                                {!item.participations_evenement[0].reponse &&
+                                    '❔ Pas encore répondu'}
                             </Text>
                         </TouchableOpacity>
                     )}

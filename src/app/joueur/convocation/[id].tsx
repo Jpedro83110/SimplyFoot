@@ -55,9 +55,9 @@ export default function ConvocationReponse() {
     const { utilisateur } = useSession();
 
     const fetchData = async (evenementId: string, utilisateurId: string) => {
-        try {
-            setLoading(true);
+        setLoading(true);
 
+        try {
             const fetchedEvenementInfos = await getEvenementInfosByUtilisateurId({
                 evenementId,
                 utilisateurId,
