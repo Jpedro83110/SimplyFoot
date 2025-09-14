@@ -21,7 +21,7 @@ import Button from '@/components/atoms/Button';
 import InputDate from '@/components/molecules/InputDate';
 import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
 import { useSession } from '@/hooks/useSession';
-import { insertUtilisateur } from '@/helpers/utilisateurs.helpers';
+import { insertUtilisateur, updateUtilisateur } from '@/helpers/utilisateurs.helpers';
 
 // Validation email
 function isValidEmail(email: string) {
@@ -278,6 +278,15 @@ export default function InscriptionCoach() {
                 .insert(staffData)
                 .select('id')
                 .single();
+
+            // FIXME: ne plus avoir cette dépendence cyclique entre
+            // utilisateurs et staff avec le nouveau schéma
+            await updateUtilisateur({
+                utilisateurId: userId,
+                dataToUpdate: {
+                    staff_id: insertedStaff?.id || null,
+                },
+            });
 
             if (insertStaffError) {
                 console.error('❌ Erreur insertion staff:', insertStaffError);
