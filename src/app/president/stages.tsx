@@ -30,6 +30,7 @@ import {
     ProgrammeByDay,
     updateStage,
 } from '@/helpers/stages.helpers';
+import InputDate from '@/components/molecules/InputDate';
 
 function downloadCSVWeb(filename: string, csv: string) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -50,8 +51,8 @@ export default function Stages() {
     const [editMode, setEditMode] = useState(false);
 
     const [titre, setTitre] = useState('');
-    const [dateDebut, setDateDebut] = useState('');
-    const [dateFin, setDateFin] = useState('');
+    const [dateDebut, setDateDebut] = useState<Date | undefined>();
+    const [dateFin, setDateFin] = useState<Date | undefined>();
     const [ageMin, setAgeMin] = useState('');
     const [ageMax, setAgeMax] = useState('');
     const [heureDebut, setHeureDebut] = useState('09:00');
@@ -109,8 +110,8 @@ export default function Stages() {
 
     const resetForm = () => {
         setTitre('');
-        setDateDebut('');
-        setDateFin('');
+        setDateDebut(undefined);
+        setDateFin(undefined);
         setAgeMin('');
         setAgeMax('');
         setHeureDebut('09:00');
@@ -134,8 +135,8 @@ export default function Stages() {
         setOpenedStageId(stage.id);
         setEditMode(false);
         setTitre(stage.titre || '');
-        setDateDebut(stage.date_debut || '');
-        setDateFin(stage.date_fin || '');
+        setDateDebut(stage.date_debut ? new Date(stage.date_debut) : undefined);
+        setDateFin(stage.date_fin ? new Date(stage.date_fin) : undefined);
         setAgeMin(stage.age_min ? String(stage.age_min) : '');
         setAgeMax(stage.age_max ? String(stage.age_max) : '');
         setHeureDebut(stage.heure_debut || '09:00');
@@ -175,8 +176,8 @@ export default function Stages() {
             stage: {
                 club_id: clubId,
                 titre,
-                date_debut: dateDebut,
-                date_fin: dateFin,
+                date_debut: dateDebut.toISOString(),
+                date_fin: dateFin.toISOString(),
                 age_min: parseInt(ageMin) || null,
                 age_max: parseInt(ageMax) || null,
                 heure_debut: normalizeHour(heureDebut),
@@ -204,8 +205,8 @@ export default function Stages() {
             stage: {
                 club_id: clubId,
                 titre,
-                date_debut: dateDebut,
-                date_fin: dateFin,
+                date_debut: dateDebut.toISOString(),
+                date_fin: dateFin.toISOString(),
                 age_min: parseInt(ageMin) || null,
                 age_max: parseInt(ageMax) || null,
                 heure_debut: normalizeHour(heureDebut),
@@ -389,20 +390,22 @@ export default function Stages() {
                                             onChangeText={setTitre}
                                             placeholderTextColor="#aaa"
                                         />
-                                        <View style={{ flexDirection: 'row', gap: 10 }}>
-                                            <TextInput
-                                                style={[styles.input, { flex: 1 }]}
-                                                placeholder="Date début (YYYY-MM-DD)"
+                                        <View
+                                            style={{ flexDirection: 'row', gap: 10, width: '100%' }}
+                                        >
+                                            <InputDate
                                                 value={dateDebut}
-                                                onChangeText={setDateDebut}
-                                                placeholderTextColor="#aaa"
+                                                onChange={(date) => setDateDebut(date)}
+                                                placeholder="Date de début"
                                             />
-                                            <TextInput
-                                                style={[styles.input, { flex: 1 }]}
-                                                placeholder="Date fin (YYYY-MM-DD)"
+                                        </View>
+                                        <View
+                                            style={{ flexDirection: 'row', gap: 10, width: '100%' }}
+                                        >
+                                            <InputDate
                                                 value={dateFin}
-                                                onChangeText={setDateFin}
-                                                placeholderTextColor="#aaa"
+                                                onChange={(date) => setDateFin(date)}
+                                                placeholder="Date de fin"
                                             />
                                         </View>
                                         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -637,20 +640,18 @@ export default function Stages() {
                                 onChangeText={setTitre}
                                 placeholderTextColor="#aaa"
                             />
-                            <View style={{ flexDirection: 'row', gap: 10 }}>
-                                <TextInput
-                                    style={[styles.input, { flex: 1 }]}
-                                    placeholder="Date début (YYYY-MM-DD)"
+                            <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                                <InputDate
                                     value={dateDebut}
-                                    onChangeText={setDateDebut}
-                                    placeholderTextColor="#aaa"
+                                    onChange={(date) => setDateDebut(date)}
+                                    placeholder="Date de début"
                                 />
-                                <TextInput
-                                    style={[styles.input, { flex: 1 }]}
-                                    placeholder="Date fin (YYYY-MM-DD)"
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                                <InputDate
                                     value={dateFin}
-                                    onChangeText={setDateFin}
-                                    placeholderTextColor="#aaa"
+                                    onChange={(date) => setDateFin(date)}
+                                    placeholder="Date de fin"
                                 />
                             </View>
                             <View style={{ flexDirection: 'row', gap: 10 }}>

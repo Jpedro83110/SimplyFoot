@@ -194,8 +194,8 @@ export default function ProgrammeStage() {
                             >
                                 {days.map((day) => {
                                     const prog = getProgrammeFromStage(stage)[day];
-                                    let heureDebut = prog.heureDebut;
-                                    let heureFin = prog.heureFin;
+                                    let heureDebut = prog.heureDebut || stage.heure_debut || '';
+                                    let heureFin = prog.heureFin || stage.heure_fin || '';
 
                                     return (
                                         <View key={day} style={styles.dayBlock}>
