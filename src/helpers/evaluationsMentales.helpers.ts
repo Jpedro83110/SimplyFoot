@@ -18,7 +18,7 @@ export const getEvaluationsMentalesByJoueur = async ({ joueurId }: { joueurId: s
     const { data, error } = await supabase
         .from('evaluations_mentales')
         .select(
-            'id, motivation, rigueur, ponctualite, attitude, respect, utilisateurs!joueur_id(id, nom, prenom, role, joueur_id)',
+            'id, motivation, rigueur, ponctualite, attitude, respect, note_globale, utilisateurs!joueur_id(id, nom, prenom, role, joueur_id)',
         )
         .eq('joueur_id', joueurId)
         .maybeSingle();
