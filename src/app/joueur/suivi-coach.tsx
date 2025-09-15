@@ -5,58 +5,44 @@ import {
     StyleSheet,
     ScrollView,
     ActivityIndicator,
-    Image,
     useWindowDimensions,
     Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '../../lib/supabase';
-
-const demoMode = false;
+import {
+    GetSuiviPersonnalisesByUtilisateurId,
+    getSuiviPersonnalisesByUtilisateurId,
+} from '@/helpers/suivisPersonnalises.helpers';
+import { useSession } from '@/hooks/useSession';
+import { formatDateForDisplay } from '@/utils/date.utils';
 
 export default function SuiviJoueur() {
-    const [suivi, setSuivi] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [suivi, setSuivi] = useState<GetSuiviPersonnalisesByUtilisateurId | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const { utilisateur } = useSession();
     const { width } = useWindowDimensions();
 
-    // Largeur maximum (responsive)
     const maxBlockWidth = Platform.OS === 'web' ? 520 : Math.min(width - 32, 380);
 
+    async function fetchSuivi(utilisateurId: string) {
+        setLoading(true);
+
+        const fetchedSuiviPersonnalises = await getSuiviPersonnalisesByUtilisateurId({
+            utilisateurId,
+        });
+        setSuivi(fetchedSuiviPersonnalises);
+
+        setLoading(false);
+    }
+
     useEffect(() => {
-        async function fetchSuivi() {
-            if (demoMode) {
-                setSuivi({
-                    point_fort: 'Très bon placement défensif',
-                    axe_travail: 'Améliorer la réactivité dans les duels',
-                    date: '2025-06-07',
-                });
-                setLoading(false);
-            } else {
-                const { data: sessionData } = await supabase.auth.getSession();
-                const joueurId = sessionData?.session?.user?.id;
-                if (!joueurId) {
-                    return;
-                }
-
-                const { data, error } = await supabase
-                    .from('suivis_personnalises')
-                    .select('*')
-                    .eq('joueur_id', joueurId)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .single();
-
-                if (error) {
-                    console.error(error);
-                } else {
-                    setSuivi(data);
-                }
-
-                setLoading(false);
-            }
+        if (!utilisateur?.id) {
+            return;
         }
-        fetchSuivi();
-    }, []);
+
+        fetchSuivi(utilisateur.id);
+    }, [utilisateur?.id]);
 
     if (loading) {
         return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
@@ -66,33 +52,20 @@ export default function SuiviJoueur() {
         <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>
             <ScrollView contentContainerStyle={styles.scroll}>
                 <Text style={styles.title}>📋 Mon suivi personnalisé</Text>
-                {suivi?.date && (
+                {suivi && suivi[0].updated_at && (
                     <Text style={styles.dateText}>
-                        🕓 Suivi du {suivi.date?.split('T')[0] || suivi.date}
+                        🕓 Suivi du {formatDateForDisplay({ date: suivi[0].updated_at })}
                     </Text>
                 )}
 
-                {/* Block Point fort */}
                 <View style={[styles.block, { width: maxBlockWidth }]}>
                     <Text style={styles.label}>🟢 Point fort</Text>
-                    <Text style={styles.value}>{suivi?.point_fort || '—'}</Text>
+                    <Text style={styles.value}>{suivi ? suivi[0].point_fort || '—' : '—'}</Text>
                 </View>
 
-                {/* Block Illustration */}
-                <View
-                    style={[styles.illustrationBlock, { width: maxBlockWidth, aspectRatio: 1.7 }]}
-                >
-                    <Image
-                        source={require('../../assets/coach-joueur-highfive.png')}
-                        style={styles.illustration}
-                        resizeMode="contain"
-                    />
-                </View>
-
-                {/* Block A travailler */}
                 <View style={[styles.block, { width: maxBlockWidth }]}>
                     <Text style={styles.label}>🔴 À travailler</Text>
-                    <Text style={styles.value}>{suivi?.axe_travail || '—'}</Text>
+                    <Text style={styles.value}>{suivi ? suivi[0].axe_travail || '—' : '—'}</Text>
                 </View>
             </ScrollView>
         </LinearGradient>
