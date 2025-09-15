@@ -15,6 +15,7 @@ import {
 } from '@/helpers/suivisPersonnalises.helpers';
 import { useSession } from '@/hooks/useSession';
 import { formatDateForDisplay } from '@/utils/date.utils';
+import { COLOR_GREEN_300 } from '@/utils/styleContants.utils';
 
 export default function SuiviJoueur() {
     const [suivi, setSuivi] = useState<GetSuiviPersonnalisesByUtilisateurId | null>(null);
@@ -45,7 +46,7 @@ export default function SuiviJoueur() {
     }, [utilisateur?.id]);
 
     if (loading) {
-        return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
+        return <ActivityIndicator style={{ marginTop: 40 }} color={COLOR_GREEN_300} />;
     }
 
     return (
@@ -78,7 +79,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#00ff88',
+        color: COLOR_GREEN_300,
         textAlign: 'center',
         marginBottom: 12,
     },
@@ -94,18 +95,18 @@ const styles = StyleSheet.create({
         padding: 16,
         marginBottom: 18,
         borderLeftWidth: 4,
-        borderLeftColor: '#00ff88',
+        borderLeftColor: COLOR_GREEN_300,
         minHeight: 62,
         justifyContent: 'center',
         alignSelf: 'center',
-        shadowColor: '#00ff88',
+        shadowColor: COLOR_GREEN_300,
         shadowOpacity: 0.15,
         shadowOffset: { width: 0, height: 2 },
         shadowRadius: 8,
         elevation: 4,
     },
     label: {
-        color: '#00ff88',
+        color: COLOR_GREEN_300,
         fontSize: 16,
         fontWeight: 'bold',
         marginBottom: 5,
@@ -123,8 +124,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: '#00ff88',
-        shadowColor: '#00ff88',
+        borderColor: COLOR_GREEN_300,
+        shadowColor: COLOR_GREEN_300,
         shadowOpacity: 0.2,
         shadowOffset: { width: 0, height: 4 },
         shadowRadius: 18,
