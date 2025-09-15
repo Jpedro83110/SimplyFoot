@@ -1,0 +1,60 @@
+erDiagram
+    USERS {
+        uuid id PK
+        varchar mail
+        varchar phone_number
+        date birthdate
+        varchar first_name
+        varchar last_name
+        array[varchar] expo_push_token
+        date created_at
+        date updated_at
+    }
+
+    PLAYERS {
+        uuid id PK
+        uuid users_id FK
+        %% voir avec jerem
+        array[enum] equipments "BALL, SHIN_GUARDS, JERSEY, SHORTS, SOCKS, CLEATS"
+        varchar license_number
+        enum position "GOALKEEPER, DEFENDER, MIDFIELDER, FORWARD"
+        enum medical_test "VALID, EXPIRED, NOT_PROVIDED"
+        date medical_test_validity_date
+    }
+
+    ROLE {
+        %% many to many
+        uuid users_id FK
+        %% many to many
+        uuid team_id FK
+        enum role "PLAYER, COACH, PRESIDENT"
+    }
+
+    TEAMS {
+        uuid id PK
+        uuid club_id FK
+        varchar category
+        varchar code
+        date created_at
+        date updated_at
+    }
+
+    CLUBS {
+        uuid id PK
+        varchar code
+        enum subscription_status "NONE, SUBSCRIBED"
+        varchar name
+        varchar address
+        varchar postal_code
+        varchar city
+        varchar phone_number
+        varchar mail
+        varchar website
+        varchar webshop
+        varchar facebook
+        varchar instagram
+        varchar youtube
+        varchar dailymotion
+        date created_at
+        date updated_at 
+    }
