@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -8,33 +8,25 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
 import { COLOR_GREEN_300 } from '@/utils/styleContants.utils';
 import { getEquipeIdByUtilisateurId } from '@/helpers/joueurs.helpers';
 import {
     GetMessagesBesoinTransportAndUtilisateurByEquipeId,
     getMessagesBesoinTransportAndUtilisateurByEquipeId,
 } from '@/helpers/messagesBesoinTransport.helpers';
-import useEffectOnce from 'react-use/lib/useEffectOnce';
+import { useSession } from '@/hooks/useSession';
 
 export default function BesoinTransportJoueur() {
-    const [loading, setLoading] = useState(true);
-    const [demandes, setDemandes] = useState<GetMessagesBesoinTransportAndUtilisateurByEquipeId>(
-        [],
-    );
+    const [loading, setLoading] = useState(false);
+    const [demandes, setDemandes] =
+        useState<GetMessagesBesoinTransportAndUtilisateurByEquipeId | null>(null);
+    const { utilisateur } = useSession();
     const router = useRouter();
 
-    async function fetchDemandes() {
+    async function fetchDemandes(utilisateurId: string) {
         setLoading(true);
 
         try {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const utilisateurId = sessionData?.session?.user?.id;
-
-            if (!utilisateurId) {
-                return; // FIXME: manage error
-            }
-
             const equipeId = await getEquipeIdByUtilisateurId({
                 utilisateurId,
             });
@@ -50,21 +42,25 @@ export default function BesoinTransportJoueur() {
             setDemandes(fetchedDemandes);
         } catch (error) {
             console.error('Error fetching demandes:', error);
-        } finally {
-            setLoading(false);
         }
+
+        setLoading(false);
     }
 
-    useEffectOnce(() => {
-        fetchDemandes();
-    });
+    useEffect(() => {
+        if (!utilisateur?.id || loading || demandes) {
+            return;
+        }
+
+        fetchDemandes(utilisateur.id);
+    }, [utilisateur?.id, loading, demandes]);
 
     return (
         <ScrollView style={styles.container}>
             <Text style={styles.title}>🚘 Demandes de transport - Équipe</Text>
             {loading && <ActivityIndicator color={COLOR_GREEN_300} style={{ marginTop: 40 }} />}
 
-            {!loading && demandes.length === 0 && (
+            {!loading && demandes?.length === 0 && (
                 <View style={styles.emptyContainer}>
                     <Text style={styles.empty}>
                         Aucune demande de transport à venir dans votre équipe.
@@ -78,7 +74,7 @@ export default function BesoinTransportJoueur() {
                 </View>
             )}
 
-            {demandes.map((demande) => (
+            {demandes?.map((demande) => (
                 <View key={demande.id} style={styles.card}>
                     <Text style={styles.joueur}>
                         👤 {demande.utilisateurs?.prenom} {demande.utilisateurs?.nom}

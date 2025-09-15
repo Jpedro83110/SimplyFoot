@@ -38,12 +38,12 @@ export default function SuiviJoueur() {
     }
 
     useEffect(() => {
-        if (!utilisateur?.id) {
+        if (!utilisateur?.id || loading || suivi) {
             return;
         }
 
         fetchSuivi(utilisateur.id);
-    }, [utilisateur?.id]);
+    }, [loading, suivi, utilisateur?.id]);
 
     if (loading) {
         return <ActivityIndicator style={{ marginTop: 40 }} color={COLOR_GREEN_300} />;
