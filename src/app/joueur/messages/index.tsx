@@ -1,35 +1,35 @@
-import { useCallback, useState } from 'react';
-import useEffectOnce from 'react-use/lib/useEffectOnce';
+import { useEffect, useState } from 'react';
 import { Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '@/lib/supabase';
 import { DARK_GRADIENT, COLOR_GREEN_300 } from '@/utils/styleContants.utils';
 import { getAccepteTransportByUtilisateurId } from '@/helpers/joueurs.helpers';
+import { useSession } from '@/hooks/useSession';
 
 export default function MessagesIndex() {
     const router = useRouter();
-    const [canAnswerTransportRequest, setCanAnswerTransportRequest] = useState(false);
+    const [canAnswerTransportRequest, setCanAnswerTransportRequest] = useState<boolean | null>(
+        null,
+    );
 
-    const checkCanAskTransport = useCallback(async () => {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const utilisateurId = sessionData?.session?.user?.id;
+    const { utilisateur } = useSession();
 
-        if (!utilisateurId) {
-            return;
-        }
-
+    const checkCanAskTransport = async (utilisateurId: string) => {
         const accepteTransport = await getAccepteTransportByUtilisateurId({
             utilisateurId,
         });
 
         setCanAnswerTransportRequest(accepteTransport);
-    }, []);
+    };
 
-    useEffectOnce(() => {
-        checkCanAskTransport();
-    });
+    useEffect(() => {
+        if (!utilisateur?.id || canAnswerTransportRequest !== null) {
+            return;
+        }
+
+        checkCanAskTransport(utilisateur.id);
+    }, [canAnswerTransportRequest, utilisateur?.id]);
 
     function handleAskTransport() {
         router.push('/joueur/messages/besoin-transport');
