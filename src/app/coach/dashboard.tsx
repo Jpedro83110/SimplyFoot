@@ -129,6 +129,7 @@ export default function CoachDashboard() {
             }
 
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
@@ -169,8 +170,7 @@ export default function CoachDashboard() {
                         },
                     });
 
-                    const newRefreshKey = Date.now();
-                    setRefreshKey(newRefreshKey);
+                    setRefreshKey(Date.now());
 
                     Alert.alert(
                         'Succès ! 📸',

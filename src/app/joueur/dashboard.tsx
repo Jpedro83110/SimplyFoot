@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -11,7 +11,6 @@ import {
     Modal,
     TextInput,
     Switch,
-    Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
@@ -19,7 +18,6 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import * as ImagePicker from 'expo-image-picker';
-import { decode } from 'base64-arraybuffer';
 import { useSession } from '@/hooks/useSession';
 import {
     COLOR_BLACK_900,
@@ -30,6 +28,7 @@ import { Database } from '@/types/database.types';
 import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
 import { GetClubById, getClubById } from '@/helpers/clubs.helpers';
 import { GetEquipeById, getEquipeById } from '@/helpers/equipes.helpers';
+import { removeImage, uploadImage } from '@/helpers/storage.helpers';
 
 const LAST_MESSAGES_VIEWED = 'last-messages-viewed';
 const DEADLINE_LICENCE = new Date('2025-10-15T23:59:59');
@@ -69,63 +68,6 @@ export default function JoueurDashboard() {
 
     const router = useRouter();
 
-    const sendNotificationToStaff = useCallback(async () => {
-        if (!utilisateur || !joueur || !equipe?.club_id) {
-            return;
-        }
-
-        try {
-            const { data: staffData } = await supabase
-                .from('utilisateurs')
-                .select('id, expo_push_token, prenom, nom, role')
-                .in('role', ['president', 'coach'])
-                .eq('club_id', equipe.club_id)
-                .not('expo_push_token', 'is', null);
-
-            if (staffData && staffData.length > 0) {
-                const notificationsDB = staffData.map((staff) => ({
-                    recepteur_id: staff.id,
-                    titre: '⚠️ Licence manquante',
-                    contenu: `Le joueur ${utilisateur.prenom} ${utilisateur.nom} n'a pas renseigné son numéro de licence avant la date limite du 15/10/2025.`,
-                    type: 'alerte_licence',
-                    created_at: new Date().toISOString(),
-                }));
-
-                await supabase.from('notifications').insert(notificationsDB);
-                const pushNotifications = staffData
-                    .filter((staff) => staff.expo_push_token && staff.expo_push_token.trim() !== '')
-                    .map((staff) => ({
-                        to: staff.expo_push_token,
-                        sound: 'default',
-                        title: '⚠️ Licence manquante',
-                        body: `${utilisateur.prenom} ${utilisateur.nom} n'a pas sa licence !`,
-                        data: {
-                            type: 'licence_manquante',
-                            joueur_id: joueur.id,
-                            joueur_nom: `${utilisateur.prenom} ${utilisateur.nom}`,
-                            equipe_id: equipe.id,
-                            timestamp: new Date().toISOString(),
-                        },
-                        badge: 1,
-                        priority: 'high',
-                    }));
-                if (pushNotifications.length > 0) {
-                    await fetch('https://exp.host/--/api/v2/push/send', {
-                        method: 'POST',
-                        headers: {
-                            Accept: 'application/json',
-                            'Accept-encoding': 'gzip, deflate',
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(pushNotifications),
-                    });
-                }
-            }
-        } catch (error) {
-            console.error('❌ Erreur envoi notification:', error);
-        }
-    }, [equipe?.club_id, equipe?.id, joueur, utilisateur]);
-
     useEffect(() => {
         const timer = setInterval(() => {
             const now = new Date().getTime();
@@ -138,19 +80,10 @@ export default function JoueurDashboard() {
                 });
             } else {
                 setTimeLeft({ expired: true });
-                if (
-                    joueur &&
-                    (!joueur.numero_licence ||
-                        joueur.numero_licence.trim() === '' ||
-                        joueur.numero_licence === 'N/C' ||
-                        joueur.numero_licence === 'NC')
-                ) {
-                    sendNotificationToStaff();
-                }
             }
         }, 1000);
         return () => clearInterval(timer);
-    }, [joueur, sendNotificationToStaff]);
+    }, [joueur]);
 
     const fetchAll = useCallback(async () => {
         if (!joueur?.equipe_id || !utilisateur?.id || equipe) {
@@ -232,6 +165,10 @@ export default function JoueurDashboard() {
 
     const handleImagePicker = async () => {
         try {
+            if (!utilisateur?.id) {
+                return;
+            }
+
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
             if (status !== 'granted') {
@@ -256,76 +193,17 @@ export default function JoueurDashboard() {
 
                 try {
                     if (joueur?.photo_profil_url) {
-                        try {
-                            const url = joueur.photo_profil_url.split('?')[0];
-                            const pathParts = url.split('/');
-                            const folderIndex = pathParts.findIndex(
-                                (part) => part === 'photos_profils_joueurs',
-                            );
-
-                            if (folderIndex !== -1 && pathParts[folderIndex + 1]) {
-                                const fileName = pathParts[folderIndex + 1];
-                                const oldFilePath = `photos_profils_joueurs/${fileName}`;
-                                await supabase.storage.from('fichiers').remove([oldFilePath]);
-                            }
-                        } catch (deleteErr) {
-                            console.error(
-                                "Erreur lors de la suppression de l'ancienne photo:",
-                                deleteErr,
-                            );
-                        }
-                    }
-
-                    let fileData,
-                        fileExt = 'jpg';
-
-                    if (Platform.OS === 'web') {
-                        const response = await fetch(image.uri);
-                        fileData = await response.blob();
-
-                        if (image.uri.includes('.png')) {
-                            fileExt = 'png';
-                        } else if (image.uri.includes('.jpeg') || image.uri.includes('.jpg')) {
-                            fileExt = 'jpg';
-                        } else if (image.uri.includes('.gif')) {
-                            fileExt = 'gif';
-                        }
-                    } else {
-                        if (!image.base64) {
-                            throw new Error('Pas de données base64 disponibles');
-                        }
-
-                        fileData = decode(image.base64);
-
-                        if (image.uri.includes('png') || image.type?.includes('png')) {
-                            fileExt = 'png';
-                        } else if (
-                            image.uri.includes('jpeg') ||
-                            image.uri.includes('jpg') ||
-                            image.type?.includes('jpeg')
-                        ) {
-                            fileExt = 'jpg';
-                        } else if (image.uri.includes('gif') || image.type?.includes('gif')) {
-                            fileExt = 'gif';
-                        }
-                    }
-
-                    const fileName = `photos_profils_joueurs/${utilisateur?.id}_${Date.now()}.${fileExt}`;
-                    const { error: uploadError } = await supabase.storage
-                        .from('fichiers')
-                        .upload(fileName, fileData, {
-                            contentType: `image/${fileExt}`,
-                            upsert: true,
+                        await removeImage({
+                            url: joueur.photo_profil_url,
+                            name: 'photos_profils_joueurs',
                         });
-
-                    if (uploadError) {
-                        throw new Error(`Upload échoué: ${uploadError.message}`);
                     }
 
-                    const { data: urlData } = supabase.storage
-                        .from('fichiers')
-                        .getPublicUrl(fileName);
-                    const basePhotoUrl = urlData.publicUrl;
+                    const basePhotoUrl = await uploadImage({
+                        image,
+                        name: 'photos_profils_joueurs',
+                        utilisateurId: utilisateur.id,
+                    });
 
                     await updateUserData({
                         joueurData: {
