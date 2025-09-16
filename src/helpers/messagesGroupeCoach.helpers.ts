@@ -6,9 +6,9 @@ export type GetMessagesGroupeCoach = Awaited<ReturnType<typeof getMessagesGroupe
 export const getMessagesGroupeCoach = async ({ equipeId }: { equipeId: string }) => {
     const { data, error } = await supabase
         .from('messages_groupe_coach')
-        .select('id, titre, contenu, created_at, reponses_messages_joueur(texte)')
+        .select('id, titre, contenu, created_at')
         .eq('equipe_id', equipeId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(100);
 
     if (error) {
@@ -19,11 +19,12 @@ export const getMessagesGroupeCoach = async ({ equipeId }: { equipeId: string })
 };
 
 export const insertMessageGroupeCoach = async ({
-    dataToInsert,
+    messageGroupeCoach,
 }: {
-    dataToInsert: Database['public']['Tables']['messages_groupe_coach']['Insert'];
+    messageGroupeCoach: Database['public']['Tables']['messages_groupe_coach']['Insert'];
 }) => {
-    const { error } = await supabase.from('messages_groupe_coach').insert(dataToInsert);
+    const { error } = await supabase.from('messages_groupe_coach').insert(messageGroupeCoach);
+
     if (error) {
         throw error;
     }

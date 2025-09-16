@@ -11,8 +11,6 @@ import {
 import useEffectOnce from 'react-use/lib/useEffectOnce';
 import { useSession } from '@/hooks/useSession';
 import { GetCoachEquipes, getCoachEquipes } from '@/helpers/equipes.helpers';
-import { insertReponsesMessagesJoueur } from '@/helpers/reponsesMessagesJoueur.helpers';
-import { formatDateForDisplay } from '@/utils/date.utils';
 
 export default function MessagesGroupesCoach() {
     const [equipes, setEquipes] = useState<GetCoachEquipes | undefined>(undefined);
@@ -20,8 +18,8 @@ export default function MessagesGroupesCoach() {
     const [messagesGroupeCoach, setMessagesGroupeCoach] = useState<
         GetMessagesGroupeCoach | undefined
     >(undefined);
+    const [titre, setTitre] = useState('');
     const [message, setMessage] = useState('');
-    const [reponseText, setReponseText] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
 
     const { utilisateur } = useSession();
@@ -70,40 +68,19 @@ export default function MessagesGroupesCoach() {
         }
 
         await insertMessageGroupeCoach({
-            dataToInsert: {
+            messageGroupeCoach: {
                 equipe_id: selectedEquipeId,
                 coach_id: utilisateur.id,
-                titre: 'Message important',
+                titre,
                 contenu: message,
             },
         });
 
+        setTitre('');
         setMessage('');
         setMessagesGroupeCoach(undefined);
         fetchMessagesGroupeCoach(selectedEquipeId);
-    }, [message, selectedEquipeId, utilisateur?.id]);
-
-    const envoyerReponse = useCallback(
-        async (msgId: string) => {
-            const contenu = reponseText[msgId];
-
-            if (!contenu || !utilisateur?.id || !selectedEquipeId) {
-                return;
-            }
-
-            await insertReponsesMessagesJoueur({
-                dataToInsert: {
-                    message_id: msgId,
-                    joueur_id: utilisateur.id,
-                    texte: contenu,
-                },
-            });
-
-            setMessagesGroupeCoach(undefined);
-            fetchMessagesGroupeCoach(selectedEquipeId);
-        },
-        [reponseText, selectedEquipeId, utilisateur?.id],
-    );
+    }, [titre, message, selectedEquipeId, utilisateur?.id]);
 
     return (
         <LinearGradient colors={['#0a0a0acc', '#0f0f0fcc']} style={styles.container}>
@@ -127,6 +104,13 @@ export default function MessagesGroupesCoach() {
                     ))}
                 </View>
                 <TextInput
+                    placeholder="Titre du message"
+                    placeholderTextColor="#777"
+                    style={styles.input}
+                    value={titre}
+                    onChangeText={setTitre}
+                />
+                <TextInput
                     placeholder="Ton message pour l'équipe..."
                     placeholderTextColor="#777"
                     style={styles.input}
@@ -143,29 +127,10 @@ export default function MessagesGroupesCoach() {
                             <Text style={styles.messageTitle}>{message.titre}</Text>
                             <Text style={styles.messageContent}>{message.contenu}</Text>
                             <Text style={styles.messageMeta}>
-                                📅 {formatDateForDisplay({ date: message.created_at })}
+                                📅{' '}
+                                {message.created_at &&
+                                    new Date(message.created_at).toLocaleString()}
                             </Text>
-                            {message.reponses_messages_joueur.map((reponse, i) => (
-                                <Text key={i} style={styles.reponse}>
-                                    🧒 {reponse.texte}
-                                </Text>
-                            ))}
-                            <TextInput
-                                placeholder="Répondre à tous..."
-                                placeholderTextColor="#777"
-                                value={reponseText[message.id] || ''}
-                                onChangeText={(txt) =>
-                                    setReponseText((prev) => ({ ...prev, [message.id]: txt }))
-                                }
-                                style={styles.input}
-                            />
-                            <Pressable
-                                onPress={() => envoyerReponse(message.id)}
-                                style={styles.bouton}
-                            >
-                                <Ionicons name="send" size={18} color="#111" />
-                                <Text style={styles.boutonText}>Répondre</Text>
-                            </Pressable>
                         </View>
                     ))}
                 </View>
