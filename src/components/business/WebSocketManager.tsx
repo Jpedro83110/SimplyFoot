@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 
+// FIXME: devrais être un hook...
 export default function WebSocketManager() {
     useEffect(() => {
         const wsUrl = 'wss://echo.websocket.events'; // Serveur de test, change par le tien plus tard
@@ -25,7 +26,7 @@ export default function WebSocketManager() {
         socket.onerror = (error) => {
             console.error(
                 '❌ Erreur WebSocket complète :',
-                error?.message || JSON.stringify(error) || 'Erreur inconnue',
+                JSON.stringify(error) || 'Erreur inconnue',
             );
         };
 
