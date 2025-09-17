@@ -67,6 +67,25 @@ export const getJoueurMessagesPrivesWithCoach = async ({
     return { messages: data, coachId };
 };
 
+export const getUtilisateurLastMessagesPrivesDate = async ({
+    utilisateurId,
+}: {
+    utilisateurId: string;
+}) => {
+    const { data, error } = await supabase
+        .from('messages_prives')
+        .select('created_at')
+        .or(`emetteur_id.eq.${utilisateurId},recepteur_id.eq.${utilisateurId}`)
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return data?.created_at ? new Date(data.created_at) : null;
+};
+
 export const insertMessagePrive = async ({
     dataToInsert,
 }: {

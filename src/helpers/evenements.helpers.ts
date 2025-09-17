@@ -81,6 +81,25 @@ export const getEvenementsByClubId = async ({
     return data;
 };
 
+export type GetNextEvenementByEquipeId = Awaited<ReturnType<typeof getNextEvenementByEquipeId>>;
+
+export const getNextEvenementByEquipeId = async ({ equipeId }: { equipeId: string }) => {
+    const { data, error } = await supabase
+        .from('evenements')
+        .select('type, date, lieu, lieu_complement')
+        .eq('equipe_id', equipeId)
+        .gte('date', new Date().toISOString().split('T')[0])
+        .order('date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 export type GetEvenementsInfosByUtilisateurId = Awaited<
     ReturnType<typeof getEvenementsInfosByUtilisateurId>
 >;

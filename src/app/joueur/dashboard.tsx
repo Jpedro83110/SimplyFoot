@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -13,7 +13,6 @@ import {
     Switch,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
@@ -29,6 +28,16 @@ import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
 import { GetClubById, getClubById } from '@/helpers/clubs.helpers';
 import { GetEquipeById, getEquipeById } from '@/helpers/equipes.helpers';
 import { removeImage, uploadImage } from '@/helpers/storage.helpers';
+import {
+    getNextEvenementByEquipeId,
+    GetNextEvenementByEquipeId,
+} from '@/helpers/evenements.helpers';
+import {
+    getParticipationsEvenementByUtilisateurId,
+    GetParticipationsEvenementByUtilisateurId,
+} from '@/helpers/participationsEvenement.helpers';
+import { getUtilisateurLastMessagesPrivesDate } from '@/helpers/messagesPrives.helpers';
+import { getEquipeLastMessageGroupeCoachDate } from '@/helpers/messagesGroupeCoach.helpers';
 
 const LAST_MESSAGES_VIEWED = 'last-messages-viewed';
 const DEADLINE_LICENCE = new Date('2025-10-15T23:59:59');
@@ -49,24 +58,29 @@ export default function JoueurDashboard() {
     const [refreshKey, setRefreshKey] = useState(Date.now());
     const [equipe, setEquipe] = useState<GetEquipeById | null>(null);
     const [club, setClub] = useState<GetClubById | null>(null);
-    const [evenement, setEvenement] = useState<
-        Database['public']['Tables']['evenements']['Row'] | null
-    >(null);
-    const [participations, setParticipations] = useState<
-        Database['public']['Tables']['participations_evenement']['Row'][]
-    >([]);
+    const [evenement, setEvenement] = useState<GetNextEvenementByEquipeId | null>(null);
+    const [participations, setParticipations] =
+        useState<GetParticipationsEvenementByUtilisateurId | null>(null);
     const [nouveauMessage, setNouveauMessage] = useState(false);
 
     const { signOut, utilisateur, joueur, updateUserData } = useSession();
 
-    const [editData, setEditData] = useState<Database['public']['Tables']['joueurs']['Update']>({
-        numero_licence: '',
-        visite_medicale_valide: false,
-        equipement: 'false',
-        photo_profil_url: '',
-    });
+    const [editData, setEditData] = useState<
+        Database['public']['Tables']['joueurs']['Update'] | null
+    >(null);
 
     const router = useRouter();
+
+    useEffect(() => {
+        if (editData === null && joueur) {
+            setEditData({
+                numero_licence: joueur?.numero_licence,
+                visite_medicale_valide: joueur?.visite_medicale_valide,
+                equipement: joueur?.equipement,
+                photo_profil_url: joueur?.photo_profil_url,
+            });
+        }
+    }, [editData, joueur]);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -85,20 +99,9 @@ export default function JoueurDashboard() {
         return () => clearInterval(timer);
     }, [joueur]);
 
-    const fetchAll = useCallback(async () => {
-        if (!joueur?.equipe_id || !utilisateur?.id || equipe) {
-            return;
-        }
-
+    const fetchAll = async (equipeId: string, utilisateurId: string) => {
         try {
-            setEditData({
-                numero_licence: joueur?.numero_licence,
-                visite_medicale_valide: joueur?.visite_medicale_valide,
-                equipement: joueur?.equipement,
-                photo_profil_url: joueur?.photo_profil_url,
-            });
-
-            const equipeData = await getEquipeById({ equipeId: joueur.equipe_id });
+            const equipeData = await getEquipeById({ equipeId });
             setEquipe(equipeData);
 
             if (!equipeData?.club_id) {
@@ -108,60 +111,44 @@ export default function JoueurDashboard() {
             const clubData = await getClubById({ clubId: equipeData.club_id });
             setClub(clubData);
 
-            const { data: eventData } = await supabase
-                .from('evenements')
-                .select('*')
-                .eq('equipe_id', equipeData.id)
-                .gte('date', new Date().toISOString())
-                .order('date', { ascending: true })
-                .limit(1)
-                .single();
+            const eventData = await getNextEvenementByEquipeId({ equipeId });
             setEvenement(eventData);
 
-            const { data: participData } = await supabase
-                .from('participations_evenement')
-                .select('*')
-                .eq('utilisateur_id', utilisateur.id);
-            setParticipations(participData || []);
+            const participData = await getParticipationsEvenementByUtilisateurId({
+                utilisateurId,
+            });
+            setParticipations(participData);
 
             const lastViewed = await AsyncStorage.getItem(LAST_MESSAGES_VIEWED);
             const lastDate = lastViewed ? new Date(lastViewed) : new Date(0);
-            const { data: messagesPrives } = await supabase
-                .from('messages_prives')
-                .select('created_at')
-                .eq('recepteur_id', utilisateur.id);
-            const { data: messagesGroupes } = await supabase
-                .from('messages_groupe_coach')
-                .select('created_at')
-                .eq('equipe_id', equipeData.id);
-            const allDates = [
-                ...(messagesPrives
-                    ?.filter((message) => message.created_at)
-                    .map((message) => new Date(message.created_at!)) || []),
-                ...(messagesGroupes
-                    ?.filter((message) => message.created_at)
-                    .map((message) => new Date(message.created_at!)) || []),
-            ];
-            const nouveau = allDates.some((date) => date > lastDate);
+
+            const lastMessagesPrivesDate = await getUtilisateurLastMessagesPrivesDate({
+                utilisateurId,
+            });
+
+            const lastMessagesGroupesDate = await getEquipeLastMessageGroupeCoachDate({
+                equipeId: equipeData.id,
+            });
+
+            const nouveau = [lastMessagesPrivesDate, lastMessagesGroupesDate].some(
+                (date) => date && date > lastDate,
+            );
+
             setNouveauMessage(nouveau);
             setLoading(false);
         } catch (error) {
             setError((error as Error).message);
             setLoading(false);
         }
-    }, [
-        equipe,
-        joueur?.equipe_id,
-        joueur?.equipement,
-        joueur?.numero_licence,
-        joueur?.photo_profil_url,
-        joueur?.visite_medicale_valide,
-        utilisateur?.id,
-    ]);
+    };
 
     useEffect(() => {
-        fetchAll();
-    }, [fetchAll]);
+        if (!utilisateur?.id || !joueur?.equipe_id || loading || equipe) {
+            return;
+        }
+
+        fetchAll(joueur.equipe_id, utilisateur.id);
+    }, [equipe, joueur?.equipe_id, loading, utilisateur?.id]);
 
     const handleImagePicker = async () => {
         try {
@@ -237,9 +224,9 @@ export default function JoueurDashboard() {
     const handleSaveChanges = async () => {
         try {
             const updateData = {
-                numero_licence: editData.numero_licence?.trim(),
-                visite_medicale_valide: editData.visite_medicale_valide,
-                equipement: editData.equipement ? 'Complet' : 'En attente',
+                numero_licence: editData?.numero_licence?.trim(),
+                visite_medicale_valide: editData?.visite_medicale_valide,
+                equipement: editData?.equipement ? 'Complet' : 'En attente',
             };
 
             await updateUserData({
@@ -256,8 +243,9 @@ export default function JoueurDashboard() {
         }
     };
 
-    const present = participations.filter((p) => p.reponse === 'present').length;
-    const total = participations.length;
+    const present =
+        participations?.filter((participation) => participation.reponse === 'present').length || 0;
+    const total = participations?.length || 0;
     const tauxPresence = total > 0 ? Math.round((present / total) * 100) : 0;
 
     const handleOpenMessages = async () => {
@@ -734,7 +722,7 @@ export default function JoueurDashboard() {
                             <Text style={styles.inputLabel}>Numéro de licence</Text>
                             <TextInput
                                 style={styles.textInput}
-                                value={editData.numero_licence || ''}
+                                value={editData?.numero_licence || ''}
                                 onChangeText={(text) =>
                                     setEditData((prev) => ({ ...prev, numero_licence: text }))
                                 }
@@ -745,7 +733,7 @@ export default function JoueurDashboard() {
                         <View style={styles.switchContainer}>
                             <Text style={styles.inputLabel}>Visite médicale validée</Text>
                             <Switch
-                                value={editData.visite_medicale_valide ?? false}
+                                value={editData?.visite_medicale_valide ?? false}
                                 onValueChange={(value) =>
                                     setEditData((prev) => ({
                                         ...prev,
@@ -753,13 +741,13 @@ export default function JoueurDashboard() {
                                     }))
                                 }
                                 trackColor={{ false: '#767577', true: COLOR_GREEN_300 }}
-                                thumbColor={editData.visite_medicale_valide ? '#fff' : '#f4f3f4'}
+                                thumbColor={editData?.visite_medicale_valide ? '#fff' : '#f4f3f4'}
                             />
                         </View>
                         <View style={styles.switchContainer}>
                             <Text style={styles.inputLabel}>Équipement reçu</Text>
                             <Switch
-                                value={editData.equipement === 'Complet'}
+                                value={editData?.equipement === 'Complet'}
                                 onValueChange={(value: boolean) =>
                                     setEditData((prev) => ({
                                         ...prev,
@@ -767,7 +755,7 @@ export default function JoueurDashboard() {
                                     }))
                                 }
                                 trackColor={{ false: '#767577', true: COLOR_GREEN_300 }}
-                                thumbColor={editData.equipement ? '#fff' : '#f4f3f4'}
+                                thumbColor={editData?.equipement ? '#fff' : '#f4f3f4'}
                             />
                         </View>
                         <View style={styles.modalButtons}>

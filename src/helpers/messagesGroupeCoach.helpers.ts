@@ -18,6 +18,22 @@ export const getMessagesGroupeCoach = async ({ equipeId }: { equipeId: string })
     return data;
 };
 
+export const getEquipeLastMessageGroupeCoachDate = async ({ equipeId }: { equipeId: string }) => {
+    const { data, error } = await supabase
+        .from('messages_groupe_coach')
+        .select('created_at')
+        .eq('equipe_id', equipeId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return data?.created_at ? new Date(data.created_at) : null;
+};
+
 export const insertMessageGroupeCoach = async ({
     messageGroupeCoach,
 }: {

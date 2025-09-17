@@ -1,6 +1,27 @@
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database.types';
 
+export type GetParticipationsEvenementByUtilisateurId = Awaited<
+    ReturnType<typeof getParticipationsEvenementByUtilisateurId>
+>;
+
+export const getParticipationsEvenementByUtilisateurId = async ({
+    utilisateurId,
+}: {
+    utilisateurId: string;
+}) => {
+    const { data, error } = await supabase
+        .from('participations_evenement')
+        .select('reponse')
+        .eq('utilisateur_id', utilisateurId);
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 export const bulkCreateParticipationsEvenement = async ({
     joueursIds,
     dataToInsert,
