@@ -1,100 +1,73 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, ColorValue } from 'react-native';
+import { useSession } from '@/hooks/useSession';
+import { COLOR_GREEN_300 } from '@/utils/styleContants.utils';
+import {
+    EvaluationsMentale,
+    getEvaluationsMentalesByJoueur,
+} from '@/helpers/evaluationsMentales.helpers';
 
-const defaultEvalData = {
-    motivation: 50,
-    rigueur: 50,
-    ponctualite: 50,
-    attitude: 50,
-    respect: 50,
-};
-
-interface Critere {
-    key: keyof typeof defaultEvalData;
+interface Criteres {
+    key: keyof EvaluationsMentale;
     label: string;
-    color: string;
+    color: ColorValue;
 }
 
-type EvalMentaleParams = {
-    user: string;
-};
+const criteres: Criteres[] = [
+    { key: 'motivation', label: 'Motivation', color: COLOR_GREEN_300 },
+    { key: 'rigueur', label: 'Rigueur', color: '#4fd1c5' },
+    { key: 'ponctualite', label: 'Ponctualité', color: '#facc15' },
+    { key: 'attitude', label: 'Attitude', color: '#f97316' },
+    { key: 'respect', label: 'Respect', color: '#fb7185' },
+];
 
 export default function EvalMentale() {
-    const { user } = useLocalSearchParams<EvalMentaleParams>();
-    const [evalData, setEvalData] = useState<{
-        note_globale?: any;
-        motivation: any;
-        rigueur: any;
-        ponctualite: any;
-        attitude: any;
-        respect: any;
-    }>();
-    const [loading, setLoading] = useState(true);
-    const [role, setRole] = useState('');
+    const [evalData, setEvalData] = useState<EvaluationsMentale | null>(null);
+    const [noteGlobale, setNoteGlobale] = useState<number | null>(null);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const criteres = useMemo<Critere[]>(
-        () => [
-            { key: 'motivation', label: 'Motivation', color: '#00ff88' },
-            { key: 'rigueur', label: 'Rigueur', color: '#4fd1c5' },
-            { key: 'ponctualite', label: 'Ponctualité', color: '#facc15' },
-            { key: 'attitude', label: 'Attitude', color: '#f97316' },
-            { key: 'respect', label: 'Respect', color: '#fb7185' },
-        ],
-        [],
-    );
+    const { utilisateur } = useSession();
 
-    useEffect(() => {
-        async function fetchData() {
-            setLoading(true);
-            setError('');
-            try {
-                const { data: sessionData } = await supabase.auth.getSession();
-                const userId = sessionData?.session?.user?.id;
-                if (!userId) {
-                    throw new Error('Utilisateur non identifié.');
-                }
+    const fetchData = async (utilisateurId: string) => {
+        setLoading(true);
 
-                const { data: utilisateur } = await supabase
-                    .from('utilisateurs')
-                    .select('role')
-                    .eq('id', userId)
-                    .single();
+        try {
+            const fetchedEvalData = await getEvaluationsMentalesByJoueur({
+                joueurId: utilisateurId,
+            });
 
-                const currentRole = utilisateur?.role || 'joueur';
-                setRole(currentRole);
-
-                const { data, error } = await supabase
-                    .from('evaluations_mentales')
-                    .select('note_globale, motivation, rigueur, ponctualite, attitude, respect')
-                    .eq('joueur_id', user)
-                    .single();
-
-                if (error && error.code !== 'PGRST116') {
-                    throw new Error("Impossible de charger l'évaluation.");
-                }
-                setEvalData(data || defaultEvalData);
-            } catch (error) {
-                setError((error as Error).message);
-            } finally {
-                setLoading(false);
-            }
+            setEvalData({
+                motivation: fetchedEvalData?.motivation ?? 50,
+                rigueur: fetchedEvalData?.rigueur ?? 50,
+                ponctualite: fetchedEvalData?.ponctualite ?? 50,
+                attitude: fetchedEvalData?.attitude ?? 50,
+                respect: fetchedEvalData?.respect ?? 50,
+            });
+            setNoteGlobale(fetchedEvalData?.note_globale ?? null);
+        } catch (error) {
+            setError((error as Error).message);
         }
 
-        fetchData();
-    }, [criteres, user]);
+        setLoading(false);
+    };
 
-    // Calcul dynamique de la note globale au cas où elle n'existe pas
-    const computeNoteGlobale = () => {
+    useEffect(() => {
+        if (!utilisateur?.id || loading || evalData) {
+            return;
+        }
+
+        fetchData(utilisateur.id);
+    }, [evalData, loading, utilisateur?.id]);
+
+    const computeNoteGlobale = useCallback(() => {
         if (!evalData) {
             return 0;
         }
 
         const notes = Object.values(evalData).filter((value) => Number(value));
         return Math.round(notes.reduce((a, b) => a + b, 0) / notes.length);
-    };
+    }, [evalData]);
 
     if (loading) {
         return <ActivityIndicator size="large" color="#00ff88" style={{ marginTop: 40 }} />;
@@ -106,38 +79,33 @@ export default function EvalMentale() {
     return (
         <ScrollView contentContainerStyle={styles.container}>
             <Text style={styles.title}>🧠 Évaluation mentale</Text>
-            {role !== 'coach' && <Text style={styles.readonly}>Lecture seule</Text>}
+            <Text style={styles.readonly}>Lecture seule</Text>
 
-            {criteres.map(({ key, label, color }) => (
-                <View key={key} style={styles.block}>
-                    <Text style={[styles.label, { color }]}>{label.toUpperCase()}</Text>
-                    <View style={styles.progressBarBackground}>
-                        <View
-                            style={[
-                                styles.progressBarFill,
-                                {
-                                    width: `${evalData?.[key] || 0}%`,
-                                    backgroundColor: color,
-                                    shadowColor: color,
-                                },
-                            ]}
-                        />
+            {evalData &&
+                criteres.map(({ key, label, color }) => (
+                    <View key={key} style={styles.block}>
+                        <Text style={[styles.label, { color }]}>{label.toUpperCase()}</Text>
+                        <View style={styles.progressBarBackground}>
+                            <View
+                                style={[
+                                    styles.progressBarFill,
+                                    {
+                                        width: `${evalData[key] || 0}%`,
+                                        backgroundColor: color,
+                                        shadowColor: color,
+                                    },
+                                ]}
+                            />
+                        </View>
+                        <Text style={styles.score}>{evalData?.[key] ?? 0} / 100</Text>
                     </View>
-                    <Text style={styles.score}>{evalData?.[key] ?? 0} / 100</Text>
-                </View>
-            ))}
+                ))}
 
             <View style={styles.moyenneBlock}>
                 <Text style={styles.moyenneLabel}>
-                    🟢 Note globale : {evalData?.note_globale ?? computeNoteGlobale()} / 100
+                    🟢 Note globale : {noteGlobale ?? computeNoteGlobale()} / 100
                 </Text>
             </View>
-
-            {/* Si tu stockes coach et date :
-      <Text style={styles.small}>
-        Évalué par {evalData?.coach_nom ?? '...'} le {evalData?.updated_at ? new Date(evalData.updated_at).toLocaleDateString('fr-FR') : '-'}
-      </Text>
-      */}
         </ScrollView>
     );
 }

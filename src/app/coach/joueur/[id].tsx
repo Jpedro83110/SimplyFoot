@@ -20,7 +20,6 @@ import {
     upsertCoachSuiviPersonnalise,
 } from '@/helpers/suivisPersonnalises.helpers';
 import { useSession } from '@/hooks/useSession';
-import { Database } from '@/types/database.types';
 import { formatDateForDisplay } from '@/utils/date.utils';
 
 type JoueurDetailParams = {
@@ -94,20 +93,18 @@ export default function JoueurDetail() {
         setSaving(true);
 
         try {
-            const dataToUpdate: Database['public']['Tables']['suivis_personnalises']['Update'] = {
-                joueur_id: suivi.id,
-                coach_id: utilisateur.id,
-                point_fort: newSuivi.point_fort,
-                axe_travail: newSuivi.axe_travail,
-                updated_at: new Date().toISOString(),
-            };
-
             const suivisPersonnalisesId =
                 suivi.suivis_personnalises.length > 0 ? suivi.suivis_personnalises[0].id : null;
 
             const data = await upsertCoachSuiviPersonnalise({
                 suivisPersonnalisesId,
-                dataToUpdate,
+                suivisPersonnalises: {
+                    joueur_id: suivi.id,
+                    coach_id: utilisateur.id,
+                    point_fort: newSuivi.point_fort,
+                    axe_travail: newSuivi.axe_travail,
+                    updated_at: new Date().toISOString(),
+                },
             });
 
             // add suivi to state

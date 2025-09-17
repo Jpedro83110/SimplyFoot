@@ -118,7 +118,7 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
             if (isMyDemandeTransport) {
                 await updateMessageBesoinTransport({
                     messagesBesoinTransportId: messageBesoinTransport.id,
-                    dataToUpdate: {
+                    messageBesoinTransport: {
                         adresse_demande: finalLieu,
                         heure_demande: finalHeure,
                     },

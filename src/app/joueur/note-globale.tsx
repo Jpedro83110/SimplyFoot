@@ -10,104 +10,104 @@ import {
     Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabase';
+import {
+    GetUtilisateurEvaluationsMoyennes,
+    getUtilisateurEvaluationsMoyennes,
+} from '@/helpers/utilisateurs.helpers';
+import { useSession } from '@/hooks/useSession';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function NoteGlobaleEquipe() {
     const [loading, setLoading] = useState(true);
-    const [notes, setNotes] = useState({ mentale: null, technique: null });
+    const [moyennes, setMoyennes] = useState<GetUtilisateurEvaluationsMoyennes | undefined>(
+        undefined,
+    );
+
+    const { utilisateur } = useSession();
+
+    async function fetchNotes(utilisateurId: string) {
+        setLoading(true);
+
+        try {
+            const fetchedMoyennes = await getUtilisateurEvaluationsMoyennes({
+                utilisateurId,
+            });
+
+            setMoyennes(fetchedMoyennes);
+        } catch (err) {
+            console.error(err);
+        }
+
+        setLoading(false);
+    }
 
     useEffect(() => {
-        async function fetchNotes() {
-            try {
-                const session = await supabase.auth.getSession();
-                const userId = session.data.session.user.id;
-
-                // Sécurité : SELECT bien la colonne "moyenne" (sinon data = null)
-                const { data: mentaleRow } = await supabase
-                    .from('evaluations_mentales')
-                    .select('moyenne')
-                    .eq('joueur_id', userId)
-                    .order('updated_at', { ascending: false })
-                    .limit(1)
-                    .single();
-
-                const { data: techniqueRow } = await supabase
-                    .from('evaluations_techniques')
-                    .select('moyenne')
-                    .eq('joueur_id', userId)
-                    .order('updated_at', { ascending: false })
-                    .limit(1)
-                    .single();
-
-                setNotes({
-                    mentale: mentaleRow?.moyenne ?? null,
-                    technique: techniqueRow?.moyenne ?? null,
-                });
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
+        if (!utilisateur?.id || loading || moyennes) {
+            return;
         }
-        fetchNotes();
-    }, []);
 
-    // Moyenne générale sur 100 (ignore les nulls)
-    function calcMoyenneGen(m, t) {
-        if (m !== null && t !== null) {
-            return Math.round((Number(m) + Number(t)) / 2);
+        fetchNotes(utilisateur.id);
+    }, [loading, moyennes, utilisateur?.id]);
+
+    function calcMoyenneGen(mentale: number | null, technique: number | null) {
+        if (mentale !== null && technique !== null) {
+            return Math.round((Number(mentale) + Number(technique)) / 2);
         }
-        if (m !== null) {
-            return Math.round(Number(m));
+        if (mentale !== null) {
+            return Math.round(Number(mentale));
         }
-        if (t !== null) {
-            return Math.round(Number(t));
+        if (technique !== null) {
+            return Math.round(Number(technique));
         }
         return null;
     }
-    const moyenneGen = calcMoyenneGen(notes.mentale, notes.technique);
+    const moyenneGen = calcMoyenneGen(
+        moyennes?.evaluations_mentales[0].moyenne || null,
+        moyennes?.evaluations_techniques?.moyenne || null,
+    );
 
-    // Choix du badge selon la moyenne générale
-    function getBadge(n) {
-        if (n === null) {
+    function getBadge(moyenneGen: number | null) {
+        if (moyenneGen === null) {
             return null;
         }
-        if (n >= 95) {
+
+        if (moyenneGen >= 95) {
             return {
                 icon: require('../../assets/badges/platine.png'),
                 label: 'PLATINE',
                 color: '#9eeaff',
             };
         }
-        if (n >= 80) {
+
+        if (moyenneGen >= 80) {
             return { icon: require('../../assets/badges/or.png'), label: 'OR', color: '#ffe773' };
         }
-        if (n >= 60) {
+
+        if (moyenneGen >= 60) {
             return {
                 icon: require('../../assets/badges/argent.png'),
                 label: 'ARGENT',
                 color: '#bfcbd6',
             };
         }
+
         return {
             icon: require('../../assets/badges/bronze.png'),
             label: 'BRONZE',
             color: '#d6964c',
         };
     }
+
     const badge = getBadge(moyenneGen);
 
     if (loading) {
         return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
     }
 
-    // Responsive design
     const isMobile = screenWidth < 600;
-
-    // Helpers d'affichage note :
-    const displayNote = (note) => (note !== null ? `${Math.round(note)}/100` : '—/100');
+    const displayNote = (note: number | null) =>
+        note !== null ? `${Math.round(note)}/100` : '—/100';
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
@@ -123,7 +123,9 @@ export default function NoteGlobaleEquipe() {
                         color="#00ff88"
                     />
                     <Text style={styles.label}>Mentale</Text>
-                    <Text style={styles.note}>{displayNote(notes.mentale)}</Text>
+                    <Text style={styles.note}>
+                        {displayNote(moyennes?.evaluations_mentales[0].moyenne || null)}
+                    </Text>
                 </View>
 
                 {/* Coupe au centre */}
@@ -143,7 +145,9 @@ export default function NoteGlobaleEquipe() {
                         color="#00ff88"
                     />
                     <Text style={styles.label}>Technique</Text>
-                    <Text style={styles.note}>{displayNote(notes.technique)}</Text>
+                    <Text style={styles.note}>
+                        {displayNote(moyennes?.evaluations_techniques?.moyenne || null)}
+                    </Text>
                 </View>
             </View>
 

@@ -7,6 +7,28 @@ export interface SuiviPersonnalise {
     axe_travail: string;
 }
 
+export type GetSuiviPersonnalisesByUtilisateurId = Awaited<
+    ReturnType<typeof getSuiviPersonnalisesByUtilisateurId>
+>;
+
+export const getSuiviPersonnalisesByUtilisateurId = async ({
+    utilisateurId,
+}: {
+    utilisateurId: string;
+}) => {
+    const { data, error } = await supabase
+        .from('suivis_personnalises')
+        .select('*')
+        .eq('joueur_id', utilisateurId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 export type GetCoachSuivisPersonnalisesByJoueurId = Awaited<
     ReturnType<typeof getCoachSuivisPersonnalisesByJoueurId>
 >;
@@ -36,14 +58,14 @@ export const getCoachSuivisPersonnalisesByJoueurId = async ({
 
 export const upsertCoachSuiviPersonnalise = async ({
     suivisPersonnalisesId,
-    dataToUpdate,
+    suivisPersonnalises,
 }: {
     suivisPersonnalisesId: string | null;
-    dataToUpdate: Database['public']['Tables']['suivis_personnalises']['Update'];
+    suivisPersonnalises: Database['public']['Tables']['suivis_personnalises']['Update'];
 }) => {
     const { data, error } = await supabase
         .from('suivis_personnalises')
-        .upsert({ ...dataToUpdate, id: suivisPersonnalisesId || undefined })
+        .upsert({ ...suivisPersonnalises, id: suivisPersonnalisesId || undefined })
         .select('id, created_at, updated_at')
         .single();
 

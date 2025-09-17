@@ -1914,6 +1914,7 @@ export type Database = {
                     nom: string | null;
                     prenom: string | null;
                     role: string;
+                    staff_id: string | null;
                     telephone: string | null;
                 };
                 Insert: {
@@ -1927,6 +1928,7 @@ export type Database = {
                     nom?: string | null;
                     prenom?: string | null;
                     role: string;
+                    staff_id?: string | null;
                     telephone?: string | null;
                 };
                 Update: {
@@ -1940,6 +1942,7 @@ export type Database = {
                     nom?: string | null;
                     prenom?: string | null;
                     role?: string;
+                    staff_id?: string | null;
                     telephone?: string | null;
                 };
                 Relationships: [
@@ -1948,6 +1951,13 @@ export type Database = {
                         columns: ['joueur_id'];
                         isOneToOne: false;
                         referencedRelation: 'joueurs';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'utilisateurs_staff_id_fkey';
+                        columns: ['staff_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'staff';
                         referencedColumns: ['id'];
                     },
                 ];

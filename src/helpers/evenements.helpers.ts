@@ -81,6 +81,57 @@ export const getEvenementsByClubId = async ({
     return data;
 };
 
+export type GetNextEvenementByEquipeId = Awaited<ReturnType<typeof getNextEvenementByEquipeId>>;
+
+export const getNextEvenementByEquipeId = async ({ equipeId }: { equipeId: string }) => {
+    const { data, error } = await supabase
+        .from('evenements')
+        .select('type, date, lieu, lieu_complement')
+        .eq('equipe_id', equipeId)
+        .gte('date', new Date().toISOString().split('T')[0])
+        .order('date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
+export type GetEvenementsInfosByUtilisateurId = Awaited<
+    ReturnType<typeof getEvenementsInfosByUtilisateurId>
+>;
+
+export const getEvenementsInfosByUtilisateurId = async ({
+    utilisateurId,
+    since,
+}: {
+    utilisateurId: string;
+    since?: Date;
+}) => {
+    let request = supabase
+        .from('evenements')
+        .select(
+            `id, titre, date, heure, lieu, lieu_complement, type, adversaires, participations_evenement(id, reponse)`,
+        )
+        .eq('participations_evenement.utilisateur_id', utilisateurId)
+        .not('participations_evenement', 'is', null);
+
+    if (since) {
+        request = request.gte('date', since.toISOString().split('T')[0]);
+    }
+
+    const { data, error } = await request.order('date', { ascending: true });
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 export type GetEvenementInfosByUtilisateurId = Awaited<
     ReturnType<typeof getEvenementInfosByUtilisateurId>
 >;
@@ -97,7 +148,7 @@ export const getEvenementInfosByUtilisateurId = async ({
         .select(
             `id, titre, date, heure, lieu, lieu_complement, meteo, latitude, longitude, participations_evenement(id, besoin_transport, reponse, utilisateurs!utilisateur_id(id, prenom, nom, joueurs:joueur_id(decharges_generales(accepte_transport)))), messages_besoin_transport(id, etat, adresse_demande, heure_demande, signature_demandeur, signature_conducteur, utilisateurs:utilisateur_id(id, prenom, nom))`,
         )
-        // .neq('messages_besoin_transport.utilisateur_id', utilisateurId)
+        .neq('messages_besoin_transport.utilisateur_id', utilisateurId)
         .eq('participations_evenement.utilisateur_id', utilisateurId)
         .eq('id', evenementId)
         .single();

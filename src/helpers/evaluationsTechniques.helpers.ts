@@ -21,7 +21,7 @@ export const getEvaluationsTechniquesByJoueur = async ({ joueurId }: { joueurId:
     const { data, error } = await supabase
         .from('evaluations_techniques')
         .select(
-            'id, tir, passe, centre, tete, vitesse, defense, placement, jeu_sans_ballon, utilisateurs!joueur_id(id, nom, prenom, role, joueur_id)',
+            'id, tir, passe, centre, tete, vitesse, defense, placement, jeu_sans_ballon, moyenne, utilisateurs!joueur_id(id, nom, prenom, role, joueur_id)',
         )
         .eq('joueur_id', joueurId)
         .maybeSingle();

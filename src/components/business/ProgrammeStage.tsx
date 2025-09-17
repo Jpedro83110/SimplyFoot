@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -12,14 +12,20 @@ import {
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
-import { supabase } from '../../lib/supabase';
 import { days, formatDateForDisplay, normalizeHour } from '@/utils/date.utils';
+import { useSession } from '@/hooks/useSession';
+import {
+    getProgrammeFromStage,
+    getStagesByClubId,
+    GetStagesByClubId,
+} from '@/helpers/stages.helpers';
+import {
+    COLOR_BLACK_900,
+    COLOR_BLACK_LIGHT_900,
+    COLOR_GREEN_300,
+} from '@/utils/styleContants.utils';
 
-const GREEN = '#00ff88';
-const DARK = '#101415';
-const DARK_LIGHT = '#161b20';
-
-function downloadCSVWeb(filename, csv) {
+function downloadCSVWeb(filename: string, csv: string) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -30,51 +36,35 @@ function downloadCSVWeb(filename, csv) {
     document.body.removeChild(link);
 }
 
-export default function ProgrammeStage() {
+export const ProgrammeStage: FC = () => {
     const { width } = useWindowDimensions();
-    const [stages, setStages] = useState([]);
-    const [openedStageId, setOpenedStageId] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [stages, setStages] = useState<GetStagesByClubId | undefined>(undefined);
+    const [openedStageId, setOpenedStageId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
     const [confirmation, setConfirmation] = useState('');
 
+    const { utilisateur } = useSession();
+
+    const fetchStages = async (clubId: string) => {
+        setLoading(true);
+
+        const stagesList = await getStagesByClubId({ clubId });
+
+        setStages(stagesList);
+        setLoading(false);
+    };
+
     useEffect(() => {
-        const fetchStages = async () => {
-            const { data: session } = await supabase.auth.getSession();
-            const userId = session?.session?.user?.id;
-            if (!userId) {
-                return;
-            }
+        if (!utilisateur?.club_id || loading || stages) {
+            return;
+        }
 
-            const { data: user } = await supabase
-                .from('utilisateurs')
-                .select('club_id')
-                .eq('id', userId)
-                .single();
+        fetchStages(utilisateur.club_id);
+    }, [loading, stages, utilisateur?.club_id]);
 
-            if (!user) {
-                return;
-            }
-
-            const { data: stagesList } = await supabase
-                .from('stages')
-                .select('*')
-                .eq('club_id', user.club_id)
-                .order('date_debut', { ascending: false });
-
-            setStages(stagesList || []);
-            setLoading(false);
-        };
-        fetchStages();
-    }, []);
-
-    const imprimerStage = async (stage) => {
+    const imprimerStage = async (stage: GetStagesByClubId[number]) => {
         try {
-            const programme = {};
-            days.forEach((day) => {
-                programme[day] = stage[`programme_${day}`]
-                    ? JSON.parse(stage[`programme_${day}`])
-                    : { lieu: '', matin: '', apresMidi: '', heureDebut: '', heureFin: '' };
-            });
+            const programmes = getProgrammeFromStage(stage);
             const html = `
         <html><head>
         <style>
@@ -93,9 +83,9 @@ export default function ProgrammeStage() {
           <tbody>
             ${days
                 .map((day) => {
-                    const prog = programme[day];
-                    let heureDebut = prog.heureDebut || stage.heure_debut || '09:00';
-                    let heureFin = prog.heureFin || stage.heure_fin || '17:00';
+                    const prog = programmes[day];
+                    let heureDebut = prog.heureDebut;
+                    let heureFin = prog.heureFin;
                     return `<tr>
                 <td>${day.charAt(0).toUpperCase() + day.slice(1)}</td>
                 <td>${prog?.lieu || ''}</td>
@@ -113,18 +103,20 @@ export default function ProgrammeStage() {
             await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
             setConfirmation('📄 PDF généré');
         } catch (error) {
-            console.error('Erreur impression PDF:', error);
+            console.error("Erreur lors de l'impression du PDF:", error);
             setConfirmation('❌ Erreur impression PDF');
         }
     };
 
-    const exporterStageCSV = async (stage) => {
+    const exporterStageCSV = async (stage: GetStagesByClubId[number]) => {
         try {
             let csv = `Titre;Date début;Date fin;Âge min;Âge max;Jour;Lieu;Horaires;Matin;Après-midi\n`;
+            const programmes = getProgrammeFromStage(stage);
+
             days.forEach((day) => {
-                const prog = stage[`programme_${day}`] ? JSON.parse(stage[`programme_${day}`]) : {};
-                let heureDebut = prog.heureDebut || stage.heure_debut || '09:00';
-                let heureFin = prog.heureFin || stage.heure_fin || '17:00';
+                const prog = programmes[day];
+                let heureDebut = prog.heureDebut;
+                let heureFin = prog.heureFin;
                 csv += `${stage.titre};${stage.date_debut};${stage.date_fin};${stage.age_min || ''};${stage.age_max || ''};${day};${prog.lieu || ''};${normalizeHour(heureDebut)} - ${normalizeHour(heureFin)};${prog.matin || ''};${prog.apresMidi || ''}\n`;
             });
             if (Platform.OS === 'web') {
@@ -139,7 +131,7 @@ export default function ProgrammeStage() {
                 setConfirmation('📤 Export CSV mobile OK');
             }
         } catch (error) {
-            console.error('Erreur export CSV:', error);
+            console.error("Erreur lors de l'export CSV:", error);
             setConfirmation('❌ Erreur export');
         }
     };
@@ -148,7 +140,7 @@ export default function ProgrammeStage() {
         return <ActivityIndicator color="#00ff88" style={{ marginTop: 40 }} />;
     }
 
-    if (!stages.length) {
+    if (!stages?.length) {
         return (
             <Text style={{ color: '#ccc', textAlign: 'center', marginTop: 40 }}>
                 Aucun stage trouvé.
@@ -201,18 +193,10 @@ export default function ProgrammeStage() {
                                 ]}
                             >
                                 {days.map((day) => {
-                                    const prog = stage[`programme_${day}`]
-                                        ? JSON.parse(stage[`programme_${day}`])
-                                        : {
-                                              lieu: '',
-                                              matin: '',
-                                              apresMidi: '',
-                                              heureDebut: '',
-                                              heureFin: '',
-                                          };
-                                    let heureDebut =
-                                        prog.heureDebut || stage.heure_debut || '09:00';
-                                    let heureFin = prog.heureFin || stage.heure_fin || '17:00';
+                                    const prog = getProgrammeFromStage(stage)[day];
+                                    let heureDebut = prog.heureDebut || stage.heure_debut || '';
+                                    let heureFin = prog.heureFin || stage.heure_fin || '';
+
                                     return (
                                         <View key={day} style={styles.dayBlock}>
                                             <Text style={styles.dayTitle}>
@@ -305,17 +289,17 @@ export default function ProgrammeStage() {
             </ScrollView>
         </ScrollView>
     );
-}
+};
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: DARK,
+        backgroundColor: COLOR_BLACK_900,
         flex: 1,
     },
     scroll: { padding: 20, alignSelf: 'center', maxWidth: 790, width: '92%' },
     title: {
         fontSize: 22,
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontWeight: 'bold',
         marginBottom: 18,
         alignSelf: 'center',
@@ -338,7 +322,7 @@ const styles = StyleSheet.create({
     stageDate: { color: '#00ff88', fontSize: 14, marginTop: 6 },
     stageAge: { color: '#facc15', fontSize: 14, marginTop: 4 },
     openCloseBtn: {
-        color: GREEN,
+        color: COLOR_GREEN_300,
         fontWeight: 'bold',
         fontSize: 20,
         textAlign: 'center',
@@ -346,7 +330,7 @@ const styles = StyleSheet.create({
     },
 
     formBlock: {
-        backgroundColor: DARK_LIGHT,
+        backgroundColor: COLOR_BLACK_LIGHT_900,
         borderRadius: 14,
         padding: 14,
         marginBottom: 20,
@@ -363,7 +347,7 @@ const styles = StyleSheet.create({
     dayTitle: {
         fontWeight: '600',
         fontSize: 16,
-        color: GREEN,
+        color: COLOR_GREEN_300,
         marginBottom: 10,
     },
 

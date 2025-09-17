@@ -51,6 +51,30 @@ export const getUtilisateursPushTokenByClubId = async ({ clubId }: { clubId: str
     return data;
 };
 
+export type GetUtilisateurEvaluationsMoyennes = Awaited<
+    ReturnType<typeof getUtilisateurEvaluationsMoyennes>
+>;
+
+export const getUtilisateurEvaluationsMoyennes = async ({
+    utilisateurId,
+}: {
+    utilisateurId: string;
+}) => {
+    const { data, error } = await supabase
+        .from('utilisateurs')
+        .select(
+            'evaluations_mentales!joueur_id(moyenne), evaluations_techniques!joueur_id(moyenne)',
+        )
+        .eq('id', utilisateurId)
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+};
+
 export const insertUtilisateur = async ({
     dataToInsert,
 }: {

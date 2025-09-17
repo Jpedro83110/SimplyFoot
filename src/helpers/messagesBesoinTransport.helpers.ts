@@ -51,16 +51,30 @@ export const getMessagesBesoinTransportById = async ({
     return data;
 };
 
-export const updateMessageBesoinTransport = async ({
-    messagesBesoinTransportId,
-    dataToUpdate,
+export const createMessageBesoinTransport = async ({
+    messageBesoinTransport,
 }: {
-    messagesBesoinTransportId: string;
-    dataToUpdate: Database['public']['Tables']['messages_besoin_transport']['Update'];
+    messageBesoinTransport: Database['public']['Tables']['messages_besoin_transport']['Insert'];
 }) => {
     const { error } = await supabase
         .from('messages_besoin_transport')
-        .update({ ...dataToUpdate })
+        .insert({ ...messageBesoinTransport });
+
+    if (error) {
+        throw error;
+    }
+};
+
+export const updateMessageBesoinTransport = async ({
+    messagesBesoinTransportId,
+    messageBesoinTransport,
+}: {
+    messagesBesoinTransportId: string;
+    messageBesoinTransport: Database['public']['Tables']['messages_besoin_transport']['Update'];
+}) => {
+    const { error } = await supabase
+        .from('messages_besoin_transport')
+        .update({ ...messageBesoinTransport })
         .eq('id', messagesBesoinTransportId);
 
     if (error) {

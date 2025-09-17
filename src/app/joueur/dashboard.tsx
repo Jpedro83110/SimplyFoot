@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -11,15 +11,12 @@ import {
     Modal,
     TextInput,
     Switch,
-    Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import * as ImagePicker from 'expo-image-picker';
-import { decode } from 'base64-arraybuffer';
 import { useSession } from '@/hooks/useSession';
 import {
     COLOR_BLACK_900,
@@ -30,6 +27,17 @@ import { Database } from '@/types/database.types';
 import { getImageUrlWithCacheBuster } from '@/utils/url.utils';
 import { GetClubById, getClubById } from '@/helpers/clubs.helpers';
 import { GetEquipeById, getEquipeById } from '@/helpers/equipes.helpers';
+import { removeImage, uploadImage } from '@/helpers/storage.helpers';
+import {
+    getNextEvenementByEquipeId,
+    GetNextEvenementByEquipeId,
+} from '@/helpers/evenements.helpers';
+import {
+    getParticipationsEvenementByUtilisateurId,
+    GetParticipationsEvenementByUtilisateurId,
+} from '@/helpers/participationsEvenement.helpers';
+import { getUtilisateurLastMessagesPrivesDate } from '@/helpers/messagesPrives.helpers';
+import { getEquipeLastMessageGroupeCoachDate } from '@/helpers/messagesGroupeCoach.helpers';
 
 const LAST_MESSAGES_VIEWED = 'last-messages-viewed';
 const DEADLINE_LICENCE = new Date('2025-10-15T23:59:59');
@@ -42,7 +50,7 @@ interface TimeLeft {
 }
 
 export default function JoueurDashboard() {
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -50,81 +58,29 @@ export default function JoueurDashboard() {
     const [refreshKey, setRefreshKey] = useState(Date.now());
     const [equipe, setEquipe] = useState<GetEquipeById | null>(null);
     const [club, setClub] = useState<GetClubById | null>(null);
-    const [evenement, setEvenement] = useState<
-        Database['public']['Tables']['evenements']['Row'] | null
-    >(null);
-    const [participations, setParticipations] = useState<
-        Database['public']['Tables']['participations_evenement']['Row'][]
-    >([]);
+    const [evenement, setEvenement] = useState<GetNextEvenementByEquipeId | null>(null);
+    const [participations, setParticipations] =
+        useState<GetParticipationsEvenementByUtilisateurId | null>(null);
     const [nouveauMessage, setNouveauMessage] = useState(false);
 
     const { signOut, utilisateur, joueur, updateUserData } = useSession();
 
-    const [editData, setEditData] = useState<Database['public']['Tables']['joueurs']['Update']>({
-        numero_licence: '',
-        visite_medicale_valide: false,
-        equipement: 'false',
-        photo_profil_url: '',
-    });
+    const [editData, setEditData] = useState<
+        Database['public']['Tables']['joueurs']['Update'] | null
+    >(null);
 
     const router = useRouter();
 
-    const sendNotificationToStaff = useCallback(async () => {
-        if (!utilisateur || !joueur || !equipe?.club_id) {
-            return;
+    useEffect(() => {
+        if (editData === null && joueur) {
+            setEditData({
+                numero_licence: joueur?.numero_licence,
+                visite_medicale_valide: joueur?.visite_medicale_valide,
+                equipement: joueur?.equipement,
+                photo_profil_url: joueur?.photo_profil_url,
+            });
         }
-
-        try {
-            const { data: staffData } = await supabase
-                .from('utilisateurs')
-                .select('id, expo_push_token, prenom, nom, role')
-                .in('role', ['president', 'coach'])
-                .eq('club_id', equipe.club_id)
-                .not('expo_push_token', 'is', null);
-
-            if (staffData && staffData.length > 0) {
-                const notificationsDB = staffData.map((staff) => ({
-                    recepteur_id: staff.id,
-                    titre: '⚠️ Licence manquante',
-                    contenu: `Le joueur ${utilisateur.prenom} ${utilisateur.nom} n'a pas renseigné son numéro de licence avant la date limite du 15/10/2025.`,
-                    type: 'alerte_licence',
-                    created_at: new Date().toISOString(),
-                }));
-
-                await supabase.from('notifications').insert(notificationsDB);
-                const pushNotifications = staffData
-                    .filter((staff) => staff.expo_push_token && staff.expo_push_token.trim() !== '')
-                    .map((staff) => ({
-                        to: staff.expo_push_token,
-                        sound: 'default',
-                        title: '⚠️ Licence manquante',
-                        body: `${utilisateur.prenom} ${utilisateur.nom} n'a pas sa licence !`,
-                        data: {
-                            type: 'licence_manquante',
-                            joueur_id: joueur.id,
-                            joueur_nom: `${utilisateur.prenom} ${utilisateur.nom}`,
-                            equipe_id: equipe.id,
-                            timestamp: new Date().toISOString(),
-                        },
-                        badge: 1,
-                        priority: 'high',
-                    }));
-                if (pushNotifications.length > 0) {
-                    await fetch('https://exp.host/--/api/v2/push/send', {
-                        method: 'POST',
-                        headers: {
-                            Accept: 'application/json',
-                            'Accept-encoding': 'gzip, deflate',
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(pushNotifications),
-                    });
-                }
-            }
-        } catch (error) {
-            console.error('❌ Erreur envoi notification:', error);
-        }
-    }, [equipe?.club_id, equipe?.id, joueur, utilisateur]);
+    }, [editData, joueur]);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -138,34 +94,16 @@ export default function JoueurDashboard() {
                 });
             } else {
                 setTimeLeft({ expired: true });
-                if (
-                    joueur &&
-                    (!joueur.numero_licence ||
-                        joueur.numero_licence.trim() === '' ||
-                        joueur.numero_licence === 'N/C' ||
-                        joueur.numero_licence === 'NC')
-                ) {
-                    sendNotificationToStaff();
-                }
             }
         }, 1000);
         return () => clearInterval(timer);
-    }, [joueur, sendNotificationToStaff]);
+    }, [joueur]);
 
-    const fetchAll = useCallback(async () => {
-        if (!joueur?.equipe_id || !utilisateur?.id || equipe) {
-            return;
-        }
+    const fetchAll = async (equipeId: string, utilisateurId: string) => {
+        setLoading(true);
 
         try {
-            setEditData({
-                numero_licence: joueur?.numero_licence,
-                visite_medicale_valide: joueur?.visite_medicale_valide,
-                equipement: joueur?.equipement,
-                photo_profil_url: joueur?.photo_profil_url,
-            });
-
-            const equipeData = await getEquipeById({ equipeId: joueur.equipe_id });
+            const equipeData = await getEquipeById({ equipeId });
             setEquipe(equipeData);
 
             if (!equipeData?.club_id) {
@@ -175,63 +113,51 @@ export default function JoueurDashboard() {
             const clubData = await getClubById({ clubId: equipeData.club_id });
             setClub(clubData);
 
-            const { data: eventData } = await supabase
-                .from('evenements')
-                .select('*')
-                .eq('equipe_id', equipeData.id)
-                .gte('date', new Date().toISOString())
-                .order('date', { ascending: true })
-                .limit(1)
-                .single();
+            const eventData = await getNextEvenementByEquipeId({ equipeId });
             setEvenement(eventData);
 
-            const { data: participData } = await supabase
-                .from('participations_evenement')
-                .select('*')
-                .eq('utilisateur_id', utilisateur.id);
-            setParticipations(participData || []);
+            const participData = await getParticipationsEvenementByUtilisateurId({
+                utilisateurId,
+            });
+            setParticipations(participData);
 
             const lastViewed = await AsyncStorage.getItem(LAST_MESSAGES_VIEWED);
             const lastDate = lastViewed ? new Date(lastViewed) : new Date(0);
-            const { data: messagesPrives } = await supabase
-                .from('messages_prives')
-                .select('created_at')
-                .eq('recepteur_id', utilisateur.id);
-            const { data: messagesGroupes } = await supabase
-                .from('messages_groupe_coach')
-                .select('created_at')
-                .eq('equipe_id', equipeData.id);
-            const allDates = [
-                ...(messagesPrives
-                    ?.filter((message) => message.created_at)
-                    .map((message) => new Date(message.created_at!)) || []),
-                ...(messagesGroupes
-                    ?.filter((message) => message.created_at)
-                    .map((message) => new Date(message.created_at!)) || []),
-            ];
-            const nouveau = allDates.some((date) => date > lastDate);
+
+            const lastMessagesPrivesDate = await getUtilisateurLastMessagesPrivesDate({
+                utilisateurId,
+            });
+
+            const lastMessagesGroupesDate = await getEquipeLastMessageGroupeCoachDate({
+                equipeId: equipeData.id,
+            });
+
+            const nouveau = [lastMessagesPrivesDate, lastMessagesGroupesDate].some(
+                (date) => date && date > lastDate,
+            );
+
             setNouveauMessage(nouveau);
-            setLoading(false);
         } catch (error) {
             setError((error as Error).message);
-            setLoading(false);
         }
-    }, [
-        equipe,
-        joueur?.equipe_id,
-        joueur?.equipement,
-        joueur?.numero_licence,
-        joueur?.photo_profil_url,
-        joueur?.visite_medicale_valide,
-        utilisateur?.id,
-    ]);
+
+        setLoading(false);
+    };
 
     useEffect(() => {
-        fetchAll();
-    }, [fetchAll]);
+        if (!utilisateur?.id || !joueur?.equipe_id || loading || equipe) {
+            return;
+        }
+
+        fetchAll(joueur.equipe_id, utilisateur.id);
+    }, [equipe, joueur?.equipe_id, loading, utilisateur?.id]);
 
     const handleImagePicker = async () => {
         try {
+            if (!utilisateur?.id) {
+                return;
+            }
+
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
             if (status !== 'granted') {
@@ -256,76 +182,17 @@ export default function JoueurDashboard() {
 
                 try {
                     if (joueur?.photo_profil_url) {
-                        try {
-                            const url = joueur.photo_profil_url.split('?')[0];
-                            const pathParts = url.split('/');
-                            const folderIndex = pathParts.findIndex(
-                                (part) => part === 'photos_profils_joueurs',
-                            );
-
-                            if (folderIndex !== -1 && pathParts[folderIndex + 1]) {
-                                const fileName = pathParts[folderIndex + 1];
-                                const oldFilePath = `photos_profils_joueurs/${fileName}`;
-                                await supabase.storage.from('fichiers').remove([oldFilePath]);
-                            }
-                        } catch (deleteErr) {
-                            console.error(
-                                "Erreur lors de la suppression de l'ancienne photo:",
-                                deleteErr,
-                            );
-                        }
-                    }
-
-                    let fileData,
-                        fileExt = 'jpg';
-
-                    if (Platform.OS === 'web') {
-                        const response = await fetch(image.uri);
-                        fileData = await response.blob();
-
-                        if (image.uri.includes('.png')) {
-                            fileExt = 'png';
-                        } else if (image.uri.includes('.jpeg') || image.uri.includes('.jpg')) {
-                            fileExt = 'jpg';
-                        } else if (image.uri.includes('.gif')) {
-                            fileExt = 'gif';
-                        }
-                    } else {
-                        if (!image.base64) {
-                            throw new Error('Pas de données base64 disponibles');
-                        }
-
-                        fileData = decode(image.base64);
-
-                        if (image.uri.includes('png') || image.type?.includes('png')) {
-                            fileExt = 'png';
-                        } else if (
-                            image.uri.includes('jpeg') ||
-                            image.uri.includes('jpg') ||
-                            image.type?.includes('jpeg')
-                        ) {
-                            fileExt = 'jpg';
-                        } else if (image.uri.includes('gif') || image.type?.includes('gif')) {
-                            fileExt = 'gif';
-                        }
-                    }
-
-                    const fileName = `photos_profils_joueurs/${utilisateur?.id}_${Date.now()}.${fileExt}`;
-                    const { error: uploadError } = await supabase.storage
-                        .from('fichiers')
-                        .upload(fileName, fileData, {
-                            contentType: `image/${fileExt}`,
-                            upsert: true,
+                        await removeImage({
+                            url: joueur.photo_profil_url,
+                            name: 'photos_profils_joueurs',
                         });
-
-                    if (uploadError) {
-                        throw new Error(`Upload échoué: ${uploadError.message}`);
                     }
 
-                    const { data: urlData } = supabase.storage
-                        .from('fichiers')
-                        .getPublicUrl(fileName);
-                    const basePhotoUrl = urlData.publicUrl;
+                    const basePhotoUrl = await uploadImage({
+                        image,
+                        name: 'photos_profils_joueurs',
+                        utilisateurId: utilisateur.id,
+                    });
 
                     await updateUserData({
                         joueurData: {
@@ -359,9 +226,9 @@ export default function JoueurDashboard() {
     const handleSaveChanges = async () => {
         try {
             const updateData = {
-                numero_licence: editData.numero_licence?.trim(),
-                visite_medicale_valide: editData.visite_medicale_valide,
-                equipement: editData.equipement ? 'Complet' : 'En attente',
+                numero_licence: editData?.numero_licence?.trim(),
+                visite_medicale_valide: editData?.visite_medicale_valide,
+                equipement: editData?.equipement ? 'Complet' : 'En attente',
             };
 
             await updateUserData({
@@ -378,8 +245,9 @@ export default function JoueurDashboard() {
         }
     };
 
-    const present = participations.filter((p) => p.reponse === 'present').length;
-    const total = participations.length;
+    const present =
+        participations?.filter((participation) => participation.reponse === 'present').length || 0;
+    const total = participations?.length || 0;
     const tauxPresence = total > 0 ? Math.round((present / total) * 100) : 0;
 
     const handleOpenMessages = async () => {
@@ -856,7 +724,7 @@ export default function JoueurDashboard() {
                             <Text style={styles.inputLabel}>Numéro de licence</Text>
                             <TextInput
                                 style={styles.textInput}
-                                value={editData.numero_licence || ''}
+                                value={editData?.numero_licence || ''}
                                 onChangeText={(text) =>
                                     setEditData((prev) => ({ ...prev, numero_licence: text }))
                                 }
@@ -867,7 +735,7 @@ export default function JoueurDashboard() {
                         <View style={styles.switchContainer}>
                             <Text style={styles.inputLabel}>Visite médicale validée</Text>
                             <Switch
-                                value={editData.visite_medicale_valide ?? false}
+                                value={editData?.visite_medicale_valide ?? false}
                                 onValueChange={(value) =>
                                     setEditData((prev) => ({
                                         ...prev,
@@ -875,13 +743,13 @@ export default function JoueurDashboard() {
                                     }))
                                 }
                                 trackColor={{ false: '#767577', true: COLOR_GREEN_300 }}
-                                thumbColor={editData.visite_medicale_valide ? '#fff' : '#f4f3f4'}
+                                thumbColor={editData?.visite_medicale_valide ? '#fff' : '#f4f3f4'}
                             />
                         </View>
                         <View style={styles.switchContainer}>
                             <Text style={styles.inputLabel}>Équipement reçu</Text>
                             <Switch
-                                value={editData.equipement === 'Complet'}
+                                value={editData?.equipement === 'Complet'}
                                 onValueChange={(value: boolean) =>
                                     setEditData((prev) => ({
                                         ...prev,
@@ -889,7 +757,7 @@ export default function JoueurDashboard() {
                                     }))
                                 }
                                 trackColor={{ false: '#767577', true: COLOR_GREEN_300 }}
-                                thumbColor={editData.equipement ? '#fff' : '#f4f3f4'}
+                                thumbColor={editData?.equipement ? '#fff' : '#f4f3f4'}
                             />
                         </View>
                         <View style={styles.modalButtons}>
