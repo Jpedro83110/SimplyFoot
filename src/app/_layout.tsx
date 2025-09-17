@@ -1,4 +1,4 @@
-import { FC, useCallback, useEffect } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, StatusBar, Platform } from 'react-native';
 import { Slot } from 'expo-router';
 import WebSocketManager from '@/components/business/WebSocketManager';
@@ -23,7 +23,8 @@ Notifications.setNotificationHandler({
 });
 
 const PrivateGlobalLayout: FC = () => {
-    const { updateUserData } = useSession();
+    const [pushTokenSetupDone, setPushTokenSetupDone] = useState(false);
+    const { updateUserData, utilisateur } = useSession();
 
     const setupPushToken = useCallback(async () => {
         if (!Device.isDevice || Platform.OS === 'web') {
@@ -56,12 +57,17 @@ const PrivateGlobalLayout: FC = () => {
         const expoToken = tokenData.data;
 
         updateUserData({ utilisateurData: { expo_push_token: expoToken } });
+        setPushTokenSetupDone(true);
     }, [updateUserData]);
 
     useEffect(() => {
+        if (pushTokenSetupDone || !utilisateur) {
+            return;
+        }
+
         deleteMessagesPrivesOneWeekOld();
         setupPushToken();
-    }, [setupPushToken]);
+    }, [pushTokenSetupDone, setupPushToken, utilisateur]);
 
     return (
         <>

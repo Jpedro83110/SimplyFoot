@@ -10,6 +10,7 @@ import {
 } from '@/helpers/messagesPrives.helpers';
 import { COLOR_BLACK_900, COLOR_GREEN_300 } from '@/utils/styleContants.utils';
 import { useSession } from '@/hooks/useSession';
+import useEffectOnce from 'react-use/lib/useEffectOnce';
 
 export default function MessagesPrivesJoueur() {
     const [messagesPrives, setMessagesPrives] = useState<
@@ -19,12 +20,12 @@ export default function MessagesPrivesJoueur() {
 
     const { utilisateur, joueur } = useSession();
 
-    useEffect(() => {
+    useEffectOnce(() => {
         const purgeOldMessages = async () => {
             await deleteMessagesPrivesOneWeekOld();
         };
         purgeOldMessages();
-    }, []);
+    });
 
     const fetchMessagesPrives = async (joueurId: string, equipeId: string) => {
         const fetchedMessagesPrives = await getJoueurMessagesPrivesWithCoach({

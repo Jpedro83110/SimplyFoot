@@ -50,7 +50,7 @@ interface TimeLeft {
 }
 
 export default function JoueurDashboard() {
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -100,6 +100,8 @@ export default function JoueurDashboard() {
     }, [joueur]);
 
     const fetchAll = async (equipeId: string, utilisateurId: string) => {
+        setLoading(true);
+
         try {
             const equipeData = await getEquipeById({ equipeId });
             setEquipe(equipeData);
@@ -135,11 +137,11 @@ export default function JoueurDashboard() {
             );
 
             setNouveauMessage(nouveau);
-            setLoading(false);
         } catch (error) {
             setError((error as Error).message);
-            setLoading(false);
         }
+
+        setLoading(false);
     };
 
     useEffect(() => {
