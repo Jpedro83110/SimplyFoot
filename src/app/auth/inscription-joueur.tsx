@@ -22,6 +22,8 @@ import InputDate from '@/components/molecules/InputDate';
 import { calculateAge, formatDateToYYYYMMDD } from '@/utils/date.utils';
 import { useSession } from '@/hooks/useSession';
 import { insertUtilisateur } from '@/helpers/utilisateurs.helpers';
+import { Picker } from '@react-native-picker/picker';
+import { COLOR_BLACK_LIGHT_900, COLOR_GREEN_300 } from '@/utils/styleContants.utils';
 
 // Utils
 function isValidEmail(email: string) {
@@ -235,6 +237,7 @@ export default function InscriptionJoueur() {
                 dataToInsert: {
                     id: userId,
                     email: email.trim().toLowerCase(),
+                    telephone: !isMinor ? telephone.trim() : null,
                     nom: nom.trim(),
                     prenom: prenom.trim(),
                     club_id: equipeData?.club_id,
@@ -332,7 +335,6 @@ export default function InscriptionJoueur() {
                     keyboardShouldPersistTaps="handled"
                 >
                     <View style={styles.form}>
-                        {/* EMAIL */}
                         <Input
                             icon="mail-outline"
                             placeholder="Email"
@@ -344,7 +346,6 @@ export default function InscriptionJoueur() {
                             mandatory
                             error={errors.email ? "L'email n'est pas valide" : false}
                         />
-                        {/* PASSWORD */}
                         <Input
                             icon="lock-closed-outline"
                             placeholder="Mot de passe"
@@ -363,7 +364,6 @@ export default function InscriptionJoueur() {
                                     : false
                             }
                         />
-                        {/* CONFIRM PASSWORD */}
                         <Input
                             icon="lock-closed-outline"
                             placeholder="Confirmer le mot de passe"
@@ -380,7 +380,6 @@ export default function InscriptionJoueur() {
                                 errors.confirmPassword ? 'Le mot de passe ne correspond pas' : false
                             }
                         />
-                        {/* CODE EQUIPE */}
                         <Input
                             icon="key-outline"
                             placeholder="Code Équipe"
@@ -391,7 +390,6 @@ export default function InscriptionJoueur() {
                             mandatory
                             error={errors.codeEquipe ? "Le code équipe n'est pas valide" : false}
                         />
-                        {/* INFOS EQUIPE */}
                         {equipeData && (
                             <View style={styles.equipeInfoBlock}>
                                 <Text style={styles.equipeTitle}>
@@ -408,7 +406,6 @@ export default function InscriptionJoueur() {
                                 </Text>
                             </View>
                         )}
-                        {/* NOM / PRÉNOM */}
                         <Input
                             icon="person-outline"
                             placeholder="Nom du joueur"
@@ -427,16 +424,12 @@ export default function InscriptionJoueur() {
                             editable={!loading}
                             mandatory
                         />
-
-                        {/* DATE DE NAISSANCE */}
                         <InputDate
                             value={dateNaissance}
                             onChange={handleDateChange}
                             placeholder="Date de naissance"
                             maximumDate={new Date()}
                         />
-
-                        {/* ÂGE + Mineur */}
                         {calculatedAge !== null && (
                             <View
                                 style={[
@@ -462,15 +455,39 @@ export default function InscriptionJoueur() {
                                 </Text>
                             </View>
                         )}
-                        {/* POSTE(S) */}
-                        <Input
-                            icon="football-outline"
-                            placeholder="Poste(s) (optionnel, ex: Gardien, Défenseur...)"
-                            value={postes}
-                            onChangeText={setPostes}
-                            editable={!loading}
-                        />
-                        {/* TÉLÉPHONE JOUEUR OU INFOS PARENT */}
+                        <Picker
+                            selectedValue={postes}
+                            onValueChange={(itemValue) => setPostes(itemValue)}
+                            style={styles.picker}
+                            dropdownIconColor={COLOR_GREEN_300}
+                            enabled={!loading}
+                        >
+                            <Picker.Item label="Gardien" value="Gardien" />
+                            <Picker.Item label="Défenseur Central" value="Défenseur Central" />
+                            <Picker.Item label="Défenseur Gauche" value="Défenseur Gauche" />
+                            <Picker.Item label="Défenseur Droit" value="Défenseur Droit" />
+                            <Picker.Item
+                                label="Défenseur Latéral Gauche"
+                                value="Défenseur Latéral Gauche"
+                            />
+                            <Picker.Item
+                                label="Défenseur Latéral Droit"
+                                value="Défenseur Latéral Droit"
+                            />
+                            <Picker.Item
+                                label="Milieu Défensif Central"
+                                value="Milieu Défensif Central"
+                            />
+                            <Picker.Item label="Milieu Droit" value="Milieu Droit" />
+                            <Picker.Item label="Milieu Gauche" value="Milieu Gauche" />
+                            <Picker.Item
+                                label="Milieu Offensif Central"
+                                value="Milieu Offensif Central"
+                            />
+                            <Picker.Item label="Ailier Gauche" value="Ailier Gauche" />
+                            <Picker.Item label="Ailier Droit" value="Ailier Droit" />
+                            <Picker.Item label="Buteur" value="Buteur" />
+                        </Picker>
                         {!isMinor && (
                             <Input
                                 icon="call-outline"
@@ -521,7 +538,6 @@ export default function InscriptionJoueur() {
                                             : false
                                     }
                                 />
-                                {/* Bloc décharge */}
                                 <View style={styles.waiverBlock}>
                                     <Text style={styles.waiverTitle}>
                                         <Ionicons
@@ -615,7 +631,6 @@ export default function InscriptionJoueur() {
     );
 }
 
-// Styles : exactement les tiens d'origine + block équipe
 const styles = StyleSheet.create({
     scroll: {
         flexGrow: 1,
@@ -751,4 +766,12 @@ const styles = StyleSheet.create({
     },
     equipeTitle: { color: '#00ff88', fontSize: 18, fontWeight: '700', marginBottom: 3 },
     equipeLabel: { color: '#aaa', fontSize: 15 },
+    picker: {
+        backgroundColor: COLOR_BLACK_LIGHT_900,
+        color: '#fff',
+        marginBottom: 16,
+        paddingVertical: 15,
+        paddingLeft: 14,
+        borderRadius: 8,
+    },
 });

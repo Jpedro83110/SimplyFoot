@@ -121,9 +121,16 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
                     messageBesoinTransport: {
                         adresse_demande: finalLieu,
                         heure_demande: finalHeure,
+                        etat: 'proposition_faite',
                     },
                 });
             } else {
+                await updateMessageBesoinTransport({
+                    messagesBesoinTransportId: messageBesoinTransport.id,
+                    messageBesoinTransport: {
+                        etat: 'proposition_faite',
+                    },
+                });
                 await upsertPropositionTransport({
                     propisitionsTransportId,
                     dataToUpdate: {
@@ -162,16 +169,30 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
 
     const deletePropositionTransport = useCallback(
         async (propositionsTransportId: string) => {
-            if (!utilisateur?.role) {
+            if (!utilisateur?.role || !messageBesoinTransport?.id) {
                 return;
             }
 
             await deletePropositionTransportById({
                 propositionsTransportId,
             });
+            if (messageBesoinTransport.propositions_transport.length <= 1) {
+                await updateMessageBesoinTransport({
+                    messagesBesoinTransportId: messageBesoinTransport.id,
+                    messageBesoinTransport: {
+                        etat: 'en_attente',
+                    },
+                });
+            }
             fetchAll(demandeId, utilisateur.id, utilisateur.role === 'coach');
         },
-        [demandeId, utilisateur?.id, utilisateur?.role],
+        [
+            demandeId,
+            messageBesoinTransport?.id,
+            utilisateur?.id,
+            utilisateur?.role,
+            messageBesoinTransport?.propositions_transport,
+        ],
     );
 
     const handleDeleteProposition = useCallback(

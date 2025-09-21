@@ -8,7 +8,6 @@ import {
     Alert,
     ActivityIndicator,
     Image,
-    TextInput,
     Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -125,29 +124,6 @@ export default function Staff() {
                         </View>
                     ))
                 )}
-
-                {/* Formulaire d'ajout d'un coach */}
-                <View style={styles.form}>
-                    <Text style={styles.subtitle}>➕ Ajouter un coach</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Prénom"
-                        placeholderTextColor="#aaa"
-                        // value={prenom}
-                        // onChangeText={setPrenom}
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Nom"
-                        placeholderTextColor="#aaa"
-                        // value={nom}
-                        // onChangeText={setNom}
-                    />
-                    <TouchableOpacity style={styles.button}>
-                        <Ionicons name="add-circle" size={20} color="#111" />
-                        <Text style={styles.buttonText}>Créer le coach</Text>
-                    </TouchableOpacity>
-                </View>
             </ScrollView>
         </ScrollView>
     );

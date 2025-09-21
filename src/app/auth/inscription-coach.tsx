@@ -243,6 +243,7 @@ export default function InscriptionCoach() {
                 dataToInsert: {
                     id: userId,
                     email: email.trim().toLowerCase(),
+                    telephone: telephone.trim(),
                     nom: nom.trim(),
                     prenom: prenom.trim(),
                     club_id: clubData.id,

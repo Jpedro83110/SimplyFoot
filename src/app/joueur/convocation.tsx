@@ -15,6 +15,7 @@ import {
     getEvenementsInfosByUtilisateurId,
 } from '@/helpers/evenements.helpers';
 import { useSession } from '@/hooks/useSession';
+import { COLOR_GREEN_300 } from '@/utils/styleContants.utils';
 
 dayjs.locale('fr'); // FIXME: mmmh ???
 
@@ -26,12 +27,13 @@ export default function ConvocationsJoueur() {
     const { utilisateur } = useSession();
     const router = useRouter();
 
-    async function fetchConvocations(utilisateurId: string) {
+    async function fetchConvocations(utilisateurId: string, clubId: string) {
         setLoading(true);
 
         try {
             const fetchedEvenementsInfos = await getEvenementsInfosByUtilisateurId({
                 utilisateurId,
+                clubId,
                 since: new Date(),
             });
 
@@ -44,12 +46,12 @@ export default function ConvocationsJoueur() {
     }
 
     useEffect(() => {
-        if (!utilisateur?.id || loading || evenementsInfos) {
+        if (!utilisateur?.club_id || loading || evenementsInfos) {
             return;
         }
 
-        fetchConvocations(utilisateur.id);
-    }, [evenementsInfos, loading, utilisateur?.id]);
+        fetchConvocations(utilisateur.id, utilisateur.club_id);
+    }, [evenementsInfos, loading, utilisateur?.id, utilisateur?.club_id]);
 
     if (loading) {
         return (
@@ -99,27 +101,29 @@ export default function ConvocationsJoueur() {
                             {item.adversaires && (
                                 <Text style={styles.cardAdversaires}>⚔️ vs {item.adversaires}</Text>
                             )}
-                            <Text
-                                style={[
-                                    styles.cardReponse,
-                                    item.participations_evenement[0].reponse === 'present' && {
-                                        color: '#00ff88',
-                                    },
-                                    item.participations_evenement[0].reponse === 'absent' && {
-                                        color: '#ff4444',
-                                    },
-                                    !item.participations_evenement[0].reponse && {
-                                        color: '#ffaa00',
-                                    },
-                                ]}
-                            >
-                                {item.participations_evenement[0].reponse === 'present' &&
-                                    '✅ Présent'}
-                                {item.participations_evenement[0].reponse === 'absent' &&
-                                    '❌ Absent'}
-                                {!item.participations_evenement[0].reponse &&
-                                    '❔ Pas encore répondu'}
-                            </Text>
+                            {item.participations_evenement.length > 0 && (
+                                <Text
+                                    style={[
+                                        styles.cardReponse,
+                                        item.participations_evenement[0].reponse === 'present' && {
+                                            color: COLOR_GREEN_300,
+                                        },
+                                        item.participations_evenement[0].reponse === 'absent' && {
+                                            color: '#ff4444',
+                                        },
+                                        !item.participations_evenement[0].reponse && {
+                                            color: '#ffaa00',
+                                        },
+                                    ]}
+                                >
+                                    {item.participations_evenement[0].reponse === 'present' &&
+                                        '✅ Présent'}
+                                    {item.participations_evenement[0].reponse === 'absent' &&
+                                        '❌ Absent'}
+                                    {!item.participations_evenement[0].reponse &&
+                                        '❔ Pas encore répondu'}
+                                </Text>
+                            )}
                         </TouchableOpacity>
                     )}
                     showsVerticalScrollIndicator={false}

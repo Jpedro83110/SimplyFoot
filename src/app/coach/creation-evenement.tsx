@@ -358,7 +358,7 @@ export default function CreateEvent() {
                 />
 
                 {/* Adversaires */}
-                <Text style={styles.label}>Adversaires (séparés par virgule)</Text>
+                <Text style={styles.label}>Adversaires</Text>
                 <TextInput
                     style={styles.input}
                     placeholder="Adversaires"

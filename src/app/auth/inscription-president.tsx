@@ -284,6 +284,7 @@ export default function InscriptionPresident() {
             const dataToInsert = {
                 id: userId,
                 email: email.trim().toLowerCase(),
+                telephone: telephoneClub.trim(),
                 nom: nom.trim(),
                 prenom: prenom.trim(),
                 club_id: clubData.id,
@@ -698,8 +699,8 @@ export default function InscriptionPresident() {
                                     </TouchableOpacity>
                                 </View>
                                 <Text style={styles.clubCodeInfo}>
-                                    Partagez ce code avec vos joueurs et coachs pour qu&apos;ils
-                                    puissent rejoindre le club. Vous pourrez configurer les autres
+                                    Partagez ce code avec vos coachs pour qu&apos;ils puissent
+                                    rejoindre le club. Vous pourrez configurer les autres
                                     informations (site web, réseaux sociaux, etc.) dans votre
                                     dashboard.
                                 </Text>
@@ -802,50 +803,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         right: 15,
         padding: 5,
-    },
-    datePickerButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#1e1e1e',
-        borderRadius: 10,
-        paddingVertical: 14,
-        paddingLeft: 45,
-        paddingRight: 18,
-        borderWidth: 1,
-        borderColor: '#333',
-    },
-    datePickerText: {
-        color: '#fff',
-        fontSize: 16,
-    },
-    datePickerPlaceholder: {
-        color: '#aaa',
-    },
-    datePickerContainer: {
-        backgroundColor: '#1e1e1e',
-        borderRadius: 10,
-        marginBottom: 16,
-        padding: 10,
-        borderWidth: 1,
-        borderColor: '#333',
-    },
-    iosDatePicker: {
-        backgroundColor: 'transparent',
-    },
-    closeDatePickerButton: {
-        backgroundColor: '#00ff88',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 8,
-        alignSelf: 'center',
-        marginTop: 10,
-    },
-    closeDatePickerText: {
-        color: '#000',
-        fontWeight: '600',
-        fontSize: 16,
     },
     ageIndicator: {
         flexDirection: 'row',
