@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, act } from '@testing-library/react';
 import { AuthContext, AuthProvider } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -9,6 +8,7 @@ import * as UtilisateursHelper from '@/helpers/utilisateurs.helpers';
 import * as StaffHelper from '@/helpers/staff.helpers';
 import * as ClubAdminsHelper from '@/helpers/clubsAdmins.helpers';
 import { localStorageMock } from '../../../.jest/localStorageMock';
+import { useContext, useEffect } from 'react';
 
 // Mock SecureStore
 jest.mock('expo-secure-store', () => ({
@@ -52,8 +52,8 @@ jest.mock('@/helpers/clubsAdmins.helpers');
 
 // Helper component to access context values in tests
 const TestConsumer = ({ onContextValue }: { onContextValue: jest.Mock }) => {
-    const contextValue = React.useContext(AuthContext);
-    React.useEffect(() => {
+    const contextValue = useContext(AuthContext);
+    useEffect(() => {
         onContextValue(contextValue);
     }, [contextValue, onContextValue]);
     return null;

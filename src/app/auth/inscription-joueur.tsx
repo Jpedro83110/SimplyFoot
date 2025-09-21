@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -50,7 +50,7 @@ export default function InscriptionJoueur() {
     const [coachData, setCoachData] = useState<
         Database['public']['Tables']['staff']['Insert'] | null
     >(null); // FIXME
-    const [errors, setErrors] = React.useState<Record<string, string>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const [nom, setNom] = useState('');
     const [prenom, setPrenom] = useState('');
