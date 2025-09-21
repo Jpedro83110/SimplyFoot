@@ -28,7 +28,7 @@ export const getCoachClubData = async ({ clubId }: { clubId: string }) => {
     const { data, error } = await supabase
         .from('clubs')
         .select(
-            'nom, logo_url, facebook_url, instagram_url, boutique_url, equipes(id, nom, joueurs(count)), evenements(id, titre, lieu, lieu_complement, meteo, latitude, longitude, date, heure, participations_evenement(reponse, besoin_transport)), stages(id)',
+            'nom, logo_url, facebook_url, instagram_url, boutique_url, equipes(id, nom, code_equipe, joueurs(count)), evenements(id, titre, lieu, lieu_complement, meteo, latitude, longitude, date, heure, participations_evenement(reponse, besoin_transport)), stages(id)',
         )
         .eq('id', clubId)
         .gte('evenements.date', yesterday.toISOString().split('T')[0])

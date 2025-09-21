@@ -462,31 +462,19 @@ export default function InscriptionJoueur() {
                             dropdownIconColor={COLOR_GREEN_300}
                             enabled={!loading}
                         >
-                            <Picker.Item label="Gardien" value="Gardien" />
-                            <Picker.Item label="Défenseur Central" value="Défenseur Central" />
-                            <Picker.Item label="Défenseur Gauche" value="Défenseur Gauche" />
-                            <Picker.Item label="Défenseur Droit" value="Défenseur Droit" />
-                            <Picker.Item
-                                label="Défenseur Latéral Gauche"
-                                value="Défenseur Latéral Gauche"
-                            />
-                            <Picker.Item
-                                label="Défenseur Latéral Droit"
-                                value="Défenseur Latéral Droit"
-                            />
-                            <Picker.Item
-                                label="Milieu Défensif Central"
-                                value="Milieu Défensif Central"
-                            />
-                            <Picker.Item label="Milieu Droit" value="Milieu Droit" />
-                            <Picker.Item label="Milieu Gauche" value="Milieu Gauche" />
-                            <Picker.Item
-                                label="Milieu Offensif Central"
-                                value="Milieu Offensif Central"
-                            />
-                            <Picker.Item label="Ailier Gauche" value="Ailier Gauche" />
-                            <Picker.Item label="Ailier Droit" value="Ailier Droit" />
-                            <Picker.Item label="Buteur" value="Buteur" />
+                            <Picker.Item label="Gardien" value="G" />
+                            <Picker.Item label="Défenseur Central" value="DC" />
+                            <Picker.Item label="Défenseur Gauche" value="DG" />
+                            <Picker.Item label="Défenseur Droit" value="DD" />
+                            <Picker.Item label="Défenseur Latéral Gauche" value="DLG" />
+                            <Picker.Item label="Défenseur Latéral Droit" value="DLD" />
+                            <Picker.Item label="Milieu Défensif Central" value="MDC" />
+                            <Picker.Item label="Milieu Droit" value="MD" />
+                            <Picker.Item label="Milieu Gauche" value="MG" />
+                            <Picker.Item label="Milieu Offensif Central" value="MOC" />
+                            <Picker.Item label="Ailier Gauche" value="AG" />
+                            <Picker.Item label="Ailier Droit" value="AD" />
+                            <Picker.Item label="Buteur" value="B" />
                         </Picker>
                         {!isMinor && (
                             <Input

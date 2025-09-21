@@ -49,6 +49,19 @@ export default function SuiviJoueur() {
         return <ActivityIndicator style={{ marginTop: 40 }} color={COLOR_GREEN_300} />;
     }
 
+    if (!suivi || suivi.length === 0) {
+        return (
+            <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>
+                <ScrollView contentContainerStyle={styles.scroll}>
+                    <Text style={styles.title}>📋 Mon suivi personnalisé</Text>
+                    <Text style={{ color: '#888', textAlign: 'center', marginTop: 20 }}>
+                        Le coach n&apos;a pas encore rempli ton suivi personnalisé.
+                    </Text>
+                </ScrollView>
+            </LinearGradient>
+        );
+    }
+
     return (
         <LinearGradient colors={['#0a0a0a', '#0f0f0f']} style={styles.container}>
             <ScrollView contentContainerStyle={styles.scroll}>
