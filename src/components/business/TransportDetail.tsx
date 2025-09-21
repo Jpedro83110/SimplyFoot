@@ -121,9 +121,16 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
                     messageBesoinTransport: {
                         adresse_demande: finalLieu,
                         heure_demande: finalHeure,
+                        etat: 'proposition_faite',
                     },
                 });
             } else {
+                await updateMessageBesoinTransport({
+                    messagesBesoinTransportId: messageBesoinTransport.id,
+                    messageBesoinTransport: {
+                        etat: 'proposition_faite',
+                    },
+                });
                 await upsertPropositionTransport({
                     propisitionsTransportId,
                     dataToUpdate: {
@@ -162,16 +169,30 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
 
     const deletePropositionTransport = useCallback(
         async (propositionsTransportId: string) => {
-            if (!utilisateur?.role) {
+            if (!utilisateur?.role || !messageBesoinTransport?.id) {
                 return;
             }
 
             await deletePropositionTransportById({
                 propositionsTransportId,
             });
+            if (messageBesoinTransport.propositions_transport.length <= 1) {
+                await updateMessageBesoinTransport({
+                    messagesBesoinTransportId: messageBesoinTransport.id,
+                    messageBesoinTransport: {
+                        etat: 'en_attente',
+                    },
+                });
+            }
             fetchAll(demandeId, utilisateur.id, utilisateur.role === 'coach');
         },
-        [demandeId, utilisateur?.id, utilisateur?.role],
+        [
+            demandeId,
+            messageBesoinTransport?.id,
+            utilisateur?.id,
+            utilisateur?.role,
+            messageBesoinTransport?.propositions_transport,
+        ],
     );
 
     const handleDeleteProposition = useCallback(
@@ -314,30 +335,34 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
 
             {!loading && messageBesoinTransport && autorise && (
                 <>
-                    {!isMyDemandeTransport && !utitlisateurPropositionTransport && (
+                    {!isMyDemandeTransport &&
+                        !utitlisateurPropositionTransport &&
+                        messageBesoinTransport.etat !== 'valide' && (
+                            <TouchableOpacity
+                                style={styles.actionBtn}
+                                onPress={() => {
+                                    setEditPropId(null);
+                                    proposerOuModifierTransport(true);
+                                }}
+                            >
+                                <Ionicons name="checkmark-circle" size={15} color="#111" />
+                                <Text style={styles.actionText}>
+                                    Je le prends (lieu/heure demandés)
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    {messageBesoinTransport.etat !== 'valide' && (
                         <TouchableOpacity
-                            style={styles.actionBtn}
+                            style={[styles.actionBtn, { backgroundColor: YELLOW }]}
                             onPress={() => {
-                                setEditPropId(null);
-                                proposerOuModifierTransport(true);
+                                setEditPropId(utitlisateurPropositionTransport?.id ?? null);
+                                setShowPropModal(true);
                             }}
                         >
-                            <Ionicons name="checkmark-circle" size={15} color="#111" />
-                            <Text style={styles.actionText}>
-                                Je le prends (lieu/heure demandés)
-                            </Text>
+                            <Ionicons name="car-sport" size={15} color="#111" />
+                            <Text style={styles.actionText}>Proposer un autre lieu/heure</Text>
                         </TouchableOpacity>
                     )}
-                    <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: YELLOW }]}
-                        onPress={() => {
-                            setEditPropId(utitlisateurPropositionTransport?.id ?? null);
-                            setShowPropModal(true);
-                        }}
-                    >
-                        <Ionicons name="car-sport" size={15} color="#111" />
-                        <Text style={styles.actionText}>Proposer un autre lieu/heure</Text>
-                    </TouchableOpacity>
                 </>
             )}
 
@@ -439,9 +464,12 @@ export const TransportDetail: FC<TransportDetailProps> = ({ demandeId }) => {
                                                             fontStyle: 'italic',
                                                         }}
                                                     >
-                                                        “Je m&apos;engage à transporter le joueur
-                                                        selon les modalités convenues, sous ma
-                                                        responsabilité.”
+                                                        “Je m&apos;engage à assurer le transport du
+                                                        joueur dans les conditions prévues, en
+                                                        garantissant mon aptitude à conduire,
+                                                        notamment en m&apos;abstenant de toute
+                                                        consommation d&apos;alcool ou de produits
+                                                        stupéfiants avant et pendant le trajet.”
                                                     </Text>
                                                     <TouchableOpacity
                                                         style={styles.acceptBtn}

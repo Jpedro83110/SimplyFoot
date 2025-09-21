@@ -82,21 +82,46 @@ export const CompositionDragDrop: FC<CompositionDragDropProps> = ({ evenementId 
                 (fetchedMatchEvenementInfos.compositions[0]?.joueurs as string) || '{}',
             );
 
-            positions.current = fetchedMatchEvenementInfos.participations_evenement
+            // positions.current = fetchedMatchEvenementInfos.participations_evenement
+            //     .filter(
+            //         (participation) =>
+            //             participation.reponse === ParticipationsEvenementReponse.PRESENT &&
+            //             participation.utilisateurs?.joueurs?.id,
+            //     )
+            //     .map((participation) => ({
+            //         id: participation.utilisateurs!.joueurs!.id,
+            //         valueXY: new Animated.ValueXY(
+            //             fetchedCompositions[participation.utilisateurs!.joueurs!.id] || {
+            //                 x: 0,
+            //                 y: 0,
+            //             },
+            //         ),
+            //     }));
+            let joueurWithPosition = 0;
+            const initalPositions: Position[] = [];
+            fetchedMatchEvenementInfos.participations_evenement
                 .filter(
                     (participation) =>
                         participation.reponse === ParticipationsEvenementReponse.PRESENT &&
                         participation.utilisateurs?.joueurs?.id,
                 )
-                .map((participation) => ({
-                    id: participation.utilisateurs!.joueurs!.id,
-                    valueXY: new Animated.ValueXY(
-                        fetchedCompositions[participation.utilisateurs!.joueurs!.id] || {
-                            x: 0,
-                            y: 0,
-                        },
-                    ),
-                }));
+                .forEach((participation) => {
+                    initalPositions.push({
+                        id: participation.utilisateurs!.joueurs!.id,
+                        valueXY: new Animated.ValueXY(
+                            fetchedCompositions[participation.utilisateurs!.joueurs!.id] || {
+                                x: 0,
+                                y: joueurWithPosition * 60,
+                            },
+                        ),
+                    });
+
+                    if (!fetchedCompositions[participation.utilisateurs!.joueurs!.id]) {
+                        joueurWithPosition += 1;
+                    }
+                });
+
+            positions.current = initalPositions;
         } catch (error) {
             console.error('🎨 COMPOSITION: Erreur générale:', error);
             Alert.alert('Erreur', 'Impossible de charger les données.');

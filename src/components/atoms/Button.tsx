@@ -1,5 +1,3 @@
-// components/atoms/Button.tsx
-import React from 'react';
 import {
     TouchableOpacity,
     Text,

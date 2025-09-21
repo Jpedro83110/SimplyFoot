@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -19,7 +19,7 @@ import { useSession } from '@/hooks/useSession';
 const screenWidth = Dimensions.get('window').width;
 
 export default function NoteGlobaleEquipe() {
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [moyennes, setMoyennes] = useState<GetUtilisateurEvaluationsMoyennes | undefined>(
         undefined,
     );
@@ -62,10 +62,16 @@ export default function NoteGlobaleEquipe() {
         }
         return null;
     }
-    const moyenneGen = calcMoyenneGen(
-        moyennes?.evaluations_mentales[0].moyenne || null,
-        moyennes?.evaluations_techniques?.moyenne || null,
-    );
+
+    let moyenneGen = null;
+    if (moyennes) {
+        moyenneGen = calcMoyenneGen(
+            moyennes.evaluations_mentales.length > 0
+                ? moyennes.evaluations_mentales[0].moyenne
+                : null,
+            moyennes.evaluations_techniques?.moyenne || null,
+        );
+    }
 
     function getBadge(moyenneGen: number | null) {
         if (moyenneGen === null) {
@@ -105,6 +111,17 @@ export default function NoteGlobaleEquipe() {
         return <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />;
     }
 
+    if (!moyennes) {
+        return (
+            <View style={styles.container}>
+                <Text style={styles.title}>🏆 Note globale du joueur</Text>
+                <Text style={{ color: '#fff', marginTop: 20, fontSize: 16, textAlign: 'center' }}>
+                    Aucune note disponible pour le moment.
+                </Text>
+            </View>
+        );
+    }
+
     const isMobile = screenWidth < 600;
     const displayNote = (note: number | null) =>
         note !== null ? `${Math.round(note)}/100` : '—/100';
@@ -113,9 +130,7 @@ export default function NoteGlobaleEquipe() {
         <ScrollView contentContainerStyle={styles.container}>
             <Text style={styles.title}>🏆 Note globale du joueur</Text>
 
-            {/* Ligne principale avec mental, coupe, technique */}
             <View style={[styles.row, isMobile && styles.rowMobile]}>
-                {/* Bloc Mental */}
                 <View style={[styles.noteCard, isMobile && styles.noteCardMobile]}>
                     <MaterialCommunityIcons
                         name="emoticon-happy-outline"
@@ -124,11 +139,14 @@ export default function NoteGlobaleEquipe() {
                     />
                     <Text style={styles.label}>Mentale</Text>
                     <Text style={styles.note}>
-                        {displayNote(moyennes?.evaluations_mentales[0].moyenne || null)}
+                        {displayNote(
+                            moyennes.evaluations_mentales.length > 0
+                                ? moyennes.evaluations_mentales[0].moyenne
+                                : null,
+                        )}
                     </Text>
                 </View>
 
-                {/* Coupe au centre */}
                 <View style={styles.cupBlock}>
                     <Image
                         source={require('../../assets/coupe-simplyfoot.png')}
@@ -137,7 +155,6 @@ export default function NoteGlobaleEquipe() {
                     />
                 </View>
 
-                {/* Bloc Technique */}
                 <View style={[styles.noteCard, isMobile && styles.noteCardMobile]}>
                     <MaterialCommunityIcons
                         name="soccer"
@@ -146,12 +163,11 @@ export default function NoteGlobaleEquipe() {
                     />
                     <Text style={styles.label}>Technique</Text>
                     <Text style={styles.note}>
-                        {displayNote(moyennes?.evaluations_techniques?.moyenne || null)}
+                        {displayNote(moyennes.evaluations_techniques?.moyenne || null)}
                     </Text>
                 </View>
             </View>
 
-            {/* Badge centré en dessous */}
             <View style={styles.badgeBlock}>
                 <Text style={styles.badgeTitle}>Badge du joueur</Text>
                 {badge && (

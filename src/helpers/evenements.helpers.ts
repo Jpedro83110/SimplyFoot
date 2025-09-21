@@ -106,9 +106,11 @@ export type GetEvenementsInfosByUtilisateurId = Awaited<
 
 export const getEvenementsInfosByUtilisateurId = async ({
     utilisateurId,
+    clubId,
     since,
 }: {
     utilisateurId: string;
+    clubId: string;
     since?: Date;
 }) => {
     let request = supabase
@@ -116,8 +118,9 @@ export const getEvenementsInfosByUtilisateurId = async ({
         .select(
             `id, titre, date, heure, lieu, lieu_complement, type, adversaires, participations_evenement(id, reponse)`,
         )
-        .eq('participations_evenement.utilisateur_id', utilisateurId)
-        .not('participations_evenement', 'is', null);
+        .eq('club_id', clubId)
+        .eq('participations_evenement.utilisateur_id', utilisateurId);
+    // .not('participations_evenement', 'is', null);
 
     if (since) {
         request = request.gte('date', since.toISOString().split('T')[0]);
@@ -146,7 +149,7 @@ export const getEvenementInfosByUtilisateurId = async ({
     const { data, error } = await supabase
         .from('evenements')
         .select(
-            `id, titre, date, heure, lieu, lieu_complement, meteo, latitude, longitude, participations_evenement(id, besoin_transport, reponse, utilisateurs!utilisateur_id(id, prenom, nom, joueurs:joueur_id(decharges_generales(accepte_transport)))), messages_besoin_transport(id, etat, adresse_demande, heure_demande, signature_demandeur, signature_conducteur, utilisateurs:utilisateur_id(id, prenom, nom))`,
+            `id, titre, description, date, heure, lieu, lieu_complement, meteo, latitude, longitude, participations_evenement(id, besoin_transport, reponse, utilisateurs!utilisateur_id(id, prenom, nom, joueurs:joueur_id(decharges_generales(accepte_transport)))), messages_besoin_transport(id, etat, adresse_demande, heure_demande, signature_demandeur, signature_conducteur, utilisateurs:utilisateur_id(id, prenom, nom))`,
         )
         .neq('messages_besoin_transport.utilisateur_id', utilisateurId)
         .eq('participations_evenement.utilisateur_id', utilisateurId)
@@ -235,8 +238,8 @@ export const createEvenement = async ({
     dataToInsert: Database['public']['Tables']['evenements']['Insert'];
 }) => {
     // FIXME: change db schema to make equipe_id, created_by, and club_id not nullable
-    if (!dataToInsert.equipe_id || !dataToInsert.created_by || !dataToInsert.club_id) {
-        throw new Error('equipe_id, created_by, and club_id are required to create an evenement');
+    if (!dataToInsert.created_by || !dataToInsert.club_id) {
+        throw new Error('created_by, and club_id are required to create an evenement');
     }
 
     const { data: insertedEvenement, error: insertEvenementError } = await supabase

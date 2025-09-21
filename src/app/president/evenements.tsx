@@ -23,6 +23,8 @@ import {
     getEvenementsByClubId,
 } from '@/helpers/evenements.helpers';
 import { sendNotificationToClubUsers } from '@/helpers/notification.helpers';
+import InputDate from '@/components/molecules/InputDate';
+import { formatDateToYYYYMMDD } from '@/utils/date.utils';
 
 export default function Evenements() {
     const [events, setEvents] = useState<GetEvenementsByClubId | undefined>(undefined);
@@ -31,7 +33,7 @@ export default function Evenements() {
     const [categorie, setCategorie] = useState('repas');
     const [lieu, setLieu] = useState('');
     const [description, setDescription] = useState('');
-    const [dateStr, setDateStr] = useState('');
+    const [date, setDate] = useState<Date>(new Date());
     const [heureStr, setHeureStr] = useState('');
 
     const { utilisateur } = useSession();
@@ -54,25 +56,21 @@ export default function Evenements() {
     }, [events, loading, utilisateur?.club_id]);
 
     const handleSubmit = useCallback(async () => {
-        if (!titre || !lieu || !description || !dateStr || !heureStr) {
+        if (!titre || !lieu || !description || !heureStr) {
             return Alert.alert('Erreur', 'Tous les champs sont requis.');
         }
 
-        // Securité : clubId
         if (!utilisateur?.club_id) {
             return Alert.alert('Erreur', "Impossible de créer l'événement : club introuvable.");
         }
 
-        // Correction date/heure
-        const [jour, mois, annee] = dateStr.split('/');
-        const date = `${annee}-${mois}-${jour}`;
         const heure = heureStr;
 
         await createEvenement({
             dataToInsert: {
                 titre,
                 type: categorie,
-                date,
+                date: formatDateToYYYYMMDD(date) ?? '',
                 heure,
                 lieu,
                 description,
@@ -82,7 +80,7 @@ export default function Evenements() {
         });
 
         await sendNotificationToClubUsers({
-            message: `${titre} prévu le ${dateStr} à ${heureStr}`,
+            message: `${titre} prévu le ${date} à ${heureStr}`,
             clubId: utilisateur.club_id,
         });
         Alert.alert('✅ Créé', 'Événement ajouté avec succès !');
@@ -90,12 +88,12 @@ export default function Evenements() {
         setCategorie('repas');
         setLieu('');
         setDescription('');
-        setDateStr('');
+        setDate(new Date());
         setHeureStr('');
         fetchEvents(utilisateur.club_id);
     }, [
         categorie,
-        dateStr,
+        date,
         description,
         heureStr,
         lieu,
@@ -156,13 +154,10 @@ export default function Evenements() {
                         onChangeText={setLieu}
                     />
 
-                    <TextInput
-                        placeholder="Date (JJ/MM/AAAA)"
-                        placeholderTextColor="#888"
-                        style={styles.input}
-                        value={dateStr}
-                        onChangeText={setDateStr}
-                        keyboardType="numeric"
+                    <InputDate
+                        value={date}
+                        onChange={(newDate) => newDate && setDate(newDate)}
+                        placeholder="Date de l'évènement"
                     />
 
                     <TextInput

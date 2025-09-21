@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';

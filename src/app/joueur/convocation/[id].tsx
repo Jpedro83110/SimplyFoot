@@ -28,6 +28,7 @@ import {
     createMessageBesoinTransport,
     updateMessageBesoinTransport,
 } from '@/helpers/messagesBesoinTransport.helpers';
+import { COLOR_GREEN_300 } from '@/utils/styleContants.utils';
 
 dayjs.locale('fr');
 
@@ -220,7 +221,7 @@ export default function ConvocationReponse() {
     if (loading) {
         return (
             <View style={styles.container}>
-                <ActivityIndicator style={{ marginTop: 40 }} color="#00ff88" />
+                <ActivityIndicator style={{ marginTop: 40 }} color={COLOR_GREEN_300} />
                 <Text style={{ color: '#ccc', textAlign: 'center', marginTop: 10 }}>
                     Chargement de l&apos;événement...
                 </Text>
@@ -228,21 +229,30 @@ export default function ConvocationReponse() {
         );
     }
 
+    if (!evenementInfos) {
+        return (
+            <View style={styles.container}>
+                <Text style={{ color: '#ccc', textAlign: 'center', marginTop: 10 }}>
+                    Événement non trouvé.
+                </Text>
+            </View>
+        );
+    }
+
     return (
         <ScrollView style={styles.container}>
-            <Text style={styles.title}>{evenementInfos?.titre}</Text>
+            <Text style={styles.title}>{evenementInfos.titre}</Text>
             <Text style={styles.info}>
-                📅 {dayjs(evenementInfos?.date).format('dddd D MMMM YYYY')} à{' '}
-                {evenementInfos?.heure}
+                📅 {dayjs(evenementInfos.date).format('dddd D MMMM YYYY')} à {evenementInfos.heure}
             </Text>
-            <Text style={styles.info}>📍 {evenementInfos?.lieu}</Text>
-            {evenementInfos?.lieu_complement && (
+            <Text style={styles.info}>📍 {evenementInfos.lieu}</Text>
+            {evenementInfos.lieu_complement && (
                 <Text style={[styles.info, { fontStyle: 'italic', color: '#8fd6ff' }]}>
                     🏟️ {evenementInfos.lieu_complement}
                 </Text>
             )}
 
-            {evenementInfos?.meteo && (
+            {evenementInfos.meteo && (
                 <Text style={[styles.info, { color: '#62d4ff', fontWeight: '700' }]}>
                     <Ionicons name="cloud-outline" size={16} color="#62d4ff" />{' '}
                     {/* FIXME meteo est de type JSON, mais semble ne contenir qu'une string */}
@@ -250,14 +260,7 @@ export default function ConvocationReponse() {
                 </Text>
             )}
 
-            {/* Debug info */}
-            <Text style={styles.debugText}>
-                Réponse actuelle:{' '}
-                {(reponse ?? evenementInfos?.participations_evenement[0]?.reponse) || 'Aucune'} |
-                Transport: {besoinTransport ? 'Oui' : 'Non'}
-            </Text>
-
-            {evenementInfos?.latitude && evenementInfos?.longitude && (
+            {evenementInfos.latitude && evenementInfos.longitude && (
                 <TouchableOpacity
                     style={{
                         marginTop: 8,
@@ -276,238 +279,283 @@ export default function ConvocationReponse() {
                         }
                     }}
                 >
-                    <Text style={{ color: '#00ff88', fontSize: 14 }}>
-                        <Ionicons name="navigate-outline" size={15} color="#00ff88" /> Voir sur
-                        Google Maps
+                    <Text style={{ color: COLOR_GREEN_300, fontSize: 14 }}>
+                        <Ionicons name="navigate-outline" size={15} color={COLOR_GREEN_300} /> Voir
+                        sur Google Maps
                     </Text>
                 </TouchableOpacity>
             )}
+            <Text style={styles.info}>{evenementInfos.description}</Text>
+            {evenementInfos.participations_evenement.length > 0 && (
+                <>
+                    <Text style={styles.section}>Ta réponse :</Text>
 
-            <Text style={styles.section}>Ta réponse :</Text>
-
-            <View style={styles.buttons}>
-                <TouchableOpacity
-                    style={[
-                        styles.button,
-                        (reponse ?? evenementInfos?.participations_evenement[0]?.reponse) ===
-                            'present' && styles.selected,
-                    ]}
-                    onPress={() => {
-                        setBesoinTransport(false);
-                        envoyerReponse(ParticipationsEvenementReponse.PRESENT);
-                    }}
-                    disabled={reponseLoading}
-                >
-                    <Text
-                        style={[
-                            styles.buttonText,
-                            (reponse ?? evenementInfos?.participations_evenement[0]?.reponse) ===
-                                'present' && {
-                                color: '#111',
-                            },
-                        ]}
-                    >
-                        {reponseLoading ? '...' : '✅ Présent'}
-                    </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[
-                        styles.button,
-                        (reponse ?? evenementInfos?.participations_evenement[0]?.reponse) ===
-                            'absent' && styles.selected,
-                    ]}
-                    onPress={() => {
-                        setBesoinTransport(false);
-                        envoyerReponse(ParticipationsEvenementReponse.ABSENT);
-                    }}
-                    disabled={reponseLoading}
-                >
-                    <Text
-                        style={[
-                            styles.buttonText,
-                            (reponse ?? evenementInfos?.participations_evenement[0]?.reponse) ===
-                                'absent' && {
-                                color: '#111',
-                            },
-                        ]}
-                    >
-                        {reponseLoading ? '...' : '❌ Absent'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
-
-            {evenementInfos?.participations_evenement[0]?.utilisateurs?.joueurs
-                ?.decharges_generales[0]?.accepte_transport &&
-                (reponse ?? evenementInfos?.participations_evenement[0].reponse) === 'present' && (
-                    <View style={styles.switchBlock}>
-                        <Text style={styles.label}>Je n&apos;ai pas de moyen de transport</Text>
-                        <Switch
-                            value={besoinTransport}
-                            onValueChange={setBesoinTransport}
-                            thumbColor={besoinTransport ? '#00ff88' : '#666'}
-                            trackColor={{ false: '#333', true: '#00ff8860' }}
-                            disabled={
-                                (reponse ??
-                                    evenementInfos?.participations_evenement[0]?.reponse) !==
-                                'present'
-                            }
-                        />
-                    </View>
-                )}
-
-            {/* Affiche le bouton transport SEULEMENT si besoinTransport === true ET reponse === 'present' */}
-            {(reponse ?? evenementInfos?.participations_evenement[0]?.reponse) === 'present' &&
-                besoinTransport && (
-                    <TouchableOpacity
-                        style={styles.transportBtn}
-                        onPress={() => setShowTransportModal(true)}
-                    >
-                        <Ionicons name="car-outline" size={18} color="#fff" />
-                        <Text style={{ color: '#fff', marginLeft: 8, fontWeight: 'bold' }}>
-                            Messagerie Besoin de Transport
-                        </Text>
-                    </TouchableOpacity>
-                )}
-
-            {/* MODALE MESSAGERIE BESOIN DE TRANSPORT */}
-            <Modal
-                visible={showTransportModal}
-                animationType="slide"
-                onRequestClose={() => setShowTransportModal(false)}
-                transparent={false}
-            >
-                <ScrollView style={styles.modalContainer}>
-                    <Text style={styles.modalTitle}>
-                        🚗 Besoins de transport pour cet événement
-                    </Text>
-                    {evenementInfos?.messages_besoin_transport.length === 0 && (
-                        <Text style={{ color: '#aaa', marginTop: 25, textAlign: 'center' }}>
-                            Aucun besoin de transport déclaré.
-                        </Text>
-                    )}
-
-                    {evenementInfos?.messages_besoin_transport.map((messageBesoinTransport) => (
-                        <View key={messageBesoinTransport.id} style={styles.messageCard}>
-                            <Text style={{ color: '#00ff88', fontWeight: 'bold', fontSize: 16 }}>
-                                {messageBesoinTransport.utilisateurs?.prenom}{' '}
-                                {messageBesoinTransport.utilisateurs?.nom}{' '}
-                                {/* {messageBesoinTransport.utilisateurs[0]?.age
-                                    ? `(âge: ${messageBesoinTransport.utilisateurs[0]?.age})`
-                                    : ''} FIXME */}
-                            </Text>
-                            <Text style={{ color: '#fff', marginBottom: 4 }}>
-                                Statut :{' '}
-                                <Text style={{ color: '#00ff88' }}>
-                                    {messageBesoinTransport.etat}
-                                </Text>
-                            </Text>
-                            {messageBesoinTransport.adresse_demande && (
-                                <Text style={{ color: '#fff' }}>
-                                    Lieu : {messageBesoinTransport.adresse_demande}
-                                </Text>
-                            )}
-                            {messageBesoinTransport.heure_demande && (
-                                <Text style={{ color: '#fff' }}>
-                                    Heure : {messageBesoinTransport.heure_demande}
-                                </Text>
-                            )}
-                            <View style={{ flexDirection: 'row', marginTop: 6 }}>
-                                <TouchableOpacity
-                                    style={styles.proposeBtn}
-                                    onPress={() => {
-                                        setNouvelleAdresse('');
-                                        setNouvelleHeure('');
-                                        proposerLieuHeure(messageBesoinTransport.id);
-                                    }}
-                                    disabled={sendingProposition}
-                                >
-                                    <Ionicons name="navigate-outline" size={16} color="#111" />
-                                    <Text style={{ color: '#111', marginLeft: 5 }}>
-                                        Proposer lieu/heure
-                                    </Text>
-                                </TouchableOpacity>
-                                {/* Si besoin, boutons signature */}
-                                {!messageBesoinTransport.signature_demandeur && (
-                                    <TouchableOpacity
-                                        style={styles.signatureBtn}
-                                        onPress={() =>
-                                            signerTransport(messageBesoinTransport.id, 'demandeur')
-                                        }
-                                    >
-                                        <Ionicons name="pencil-outline" size={16} color="#00ff88" />
-                                        <Text style={{ color: '#00ff88', marginLeft: 5 }}>
-                                            Signer demandeur
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
-                                {messageBesoinTransport.signature_demandeur &&
-                                    !messageBesoinTransport.signature_conducteur && (
-                                        <TouchableOpacity
-                                            style={styles.signatureBtn}
-                                            onPress={() =>
-                                                signerTransport(
-                                                    messageBesoinTransport.id,
-                                                    'conducteur',
-                                                )
-                                            }
-                                        >
-                                            <Ionicons name="pencil" size={16} color="#00ff88" />
-                                            <Text style={{ color: '#00ff88', marginLeft: 5 }}>
-                                                Signer conducteur
-                                            </Text>
-                                        </TouchableOpacity>
-                                    )}
-                                {messageBesoinTransport.signature_demandeur &&
-                                    messageBesoinTransport.signature_conducteur && (
-                                        <Text
-                                            style={{
-                                                color: '#00ff88',
-                                                fontWeight: 'bold',
-                                                marginLeft: 10,
-                                            }}
-                                        >
-                                            ✔️ Signé par les deux parties
-                                        </Text>
-                                    )}
-                            </View>
-                        </View>
-                    ))}
-
-                    {/* ==== Champs à remplir pour ENVOYER LA DEMANDE ==== */}
-                    <View style={{ marginTop: 20 }}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Lieu de RDV"
-                            placeholderTextColor="#aaa"
-                            value={nouvelleAdresse}
-                            onChangeText={setNouvelleAdresse}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Heure"
-                            placeholderTextColor="#aaa"
-                            value={nouvelleHeure}
-                            onChangeText={setNouvelleHeure}
-                        />
+                    <View style={styles.buttons}>
                         <TouchableOpacity
-                            style={[styles.closeBtn, { backgroundColor: '#00ff88', marginTop: 10 }]}
-                            onPress={envoyerDemandeTransport}
-                            disabled={sendingProposition}
+                            style={[
+                                styles.button,
+                                (reponse ?? evenementInfos.participations_evenement[0]?.reponse) ===
+                                    'present' && styles.selected,
+                            ]}
+                            onPress={() => {
+                                setBesoinTransport(false);
+                                envoyerReponse(ParticipationsEvenementReponse.PRESENT);
+                            }}
+                            disabled={reponseLoading}
                         >
-                            <Text style={{ color: '#111', fontWeight: 'bold' }}>
-                                {sendingProposition ? 'Envoi...' : 'Envoyer la demande'}
+                            <Text
+                                style={[
+                                    styles.buttonText,
+                                    (reponse ??
+                                        evenementInfos.participations_evenement[0]?.reponse) ===
+                                        'present' && {
+                                        color: '#111',
+                                    },
+                                ]}
+                            >
+                                {reponseLoading ? '...' : '✅ Présent'}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[
+                                styles.button,
+                                (reponse ?? evenementInfos.participations_evenement[0]?.reponse) ===
+                                    'absent' && styles.selected,
+                            ]}
+                            onPress={() => {
+                                setBesoinTransport(false);
+                                envoyerReponse(ParticipationsEvenementReponse.ABSENT);
+                            }}
+                            disabled={reponseLoading}
+                        >
+                            <Text
+                                style={[
+                                    styles.buttonText,
+                                    (reponse ??
+                                        evenementInfos.participations_evenement[0]?.reponse) ===
+                                        'absent' && {
+                                        color: '#111',
+                                    },
+                                ]}
+                            >
+                                {reponseLoading ? '...' : '❌ Absent'}
                             </Text>
                         </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        style={styles.closeBtn}
-                        onPress={() => setShowTransportModal(false)}
+
+                    {evenementInfos.participations_evenement[0]?.utilisateurs?.joueurs
+                        ?.decharges_generales[0]?.accepte_transport &&
+                        (reponse ?? evenementInfos.participations_evenement[0].reponse) ===
+                            'present' && (
+                            <View style={styles.switchBlock}>
+                                <Text style={styles.label}>
+                                    Je n&apos;ai pas de moyen de transport
+                                </Text>
+                                <Switch
+                                    value={besoinTransport}
+                                    onValueChange={setBesoinTransport}
+                                    thumbColor={besoinTransport ? COLOR_GREEN_300 : '#666'}
+                                    trackColor={{ false: '#333', true: '#00ff8860' }}
+                                    disabled={
+                                        (reponse ??
+                                            evenementInfos.participations_evenement[0]?.reponse) !==
+                                        'present'
+                                    }
+                                />
+                            </View>
+                        )}
+
+                    {(reponse ?? evenementInfos.participations_evenement[0]?.reponse) ===
+                        'present' &&
+                        besoinTransport && (
+                            <TouchableOpacity
+                                style={styles.transportBtn}
+                                onPress={() => setShowTransportModal(true)}
+                            >
+                                <Ionicons name="car-outline" size={18} color="#fff" />
+                                <Text style={{ color: '#fff', marginLeft: 8, fontWeight: 'bold' }}>
+                                    Messagerie Besoin de Transport
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+
+                    <Modal
+                        visible={showTransportModal}
+                        animationType="slide"
+                        onRequestClose={() => setShowTransportModal(false)}
+                        transparent={false}
                     >
-                        <Text style={{ color: '#111', fontWeight: 'bold' }}>Fermer</Text>
-                    </TouchableOpacity>
-                </ScrollView>
-            </Modal>
+                        <ScrollView style={styles.modalContainer}>
+                            <Text style={styles.modalTitle}>
+                                🚗 Besoins de transport pour cet événement
+                            </Text>
+                            {evenementInfos.messages_besoin_transport.length === 0 && (
+                                <Text style={{ color: '#aaa', marginTop: 25, textAlign: 'center' }}>
+                                    Aucun besoin de transport déclaré.
+                                </Text>
+                            )}
+
+                            {evenementInfos.messages_besoin_transport.map(
+                                (messageBesoinTransport) => (
+                                    <View
+                                        key={messageBesoinTransport.id}
+                                        style={styles.messageCard}
+                                    >
+                                        <Text
+                                            style={{
+                                                color: COLOR_GREEN_300,
+                                                fontWeight: 'bold',
+                                                fontSize: 16,
+                                            }}
+                                        >
+                                            {messageBesoinTransport.utilisateurs?.prenom}{' '}
+                                            {messageBesoinTransport.utilisateurs?.nom}{' '}
+                                            {/* {messageBesoinTransport.utilisateurs[0]?.age
+                                    ? `(âge: ${messageBesoinTransport.utilisateurs[0]?.age})`
+                                    : ''} FIXME */}
+                                        </Text>
+                                        <Text style={{ color: '#fff', marginBottom: 4 }}>
+                                            Statut :{' '}
+                                            <Text style={{ color: COLOR_GREEN_300 }}>
+                                                {messageBesoinTransport.etat}
+                                            </Text>
+                                        </Text>
+                                        {messageBesoinTransport.adresse_demande && (
+                                            <Text style={{ color: '#fff' }}>
+                                                Lieu : {messageBesoinTransport.adresse_demande}
+                                            </Text>
+                                        )}
+                                        {messageBesoinTransport.heure_demande && (
+                                            <Text style={{ color: '#fff' }}>
+                                                Heure : {messageBesoinTransport.heure_demande}
+                                            </Text>
+                                        )}
+                                        <View style={{ flexDirection: 'row', marginTop: 6 }}>
+                                            <TouchableOpacity
+                                                style={styles.proposeBtn}
+                                                onPress={() => {
+                                                    setNouvelleAdresse('');
+                                                    setNouvelleHeure('');
+                                                    proposerLieuHeure(messageBesoinTransport.id);
+                                                }}
+                                                disabled={sendingProposition}
+                                            >
+                                                <Ionicons
+                                                    name="navigate-outline"
+                                                    size={16}
+                                                    color="#111"
+                                                />
+                                                <Text style={{ color: '#111', marginLeft: 5 }}>
+                                                    Proposer lieu/heure
+                                                </Text>
+                                            </TouchableOpacity>
+                                            {!messageBesoinTransport.signature_demandeur && (
+                                                <TouchableOpacity
+                                                    style={styles.signatureBtn}
+                                                    onPress={() =>
+                                                        signerTransport(
+                                                            messageBesoinTransport.id,
+                                                            'demandeur',
+                                                        )
+                                                    }
+                                                >
+                                                    <Ionicons
+                                                        name="pencil-outline"
+                                                        size={16}
+                                                        color={COLOR_GREEN_300}
+                                                    />
+                                                    <Text
+                                                        style={{
+                                                            color: COLOR_GREEN_300,
+                                                            marginLeft: 5,
+                                                        }}
+                                                    >
+                                                        Signer demandeur
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            )}
+                                            {messageBesoinTransport.signature_demandeur &&
+                                                !messageBesoinTransport.signature_conducteur && (
+                                                    <TouchableOpacity
+                                                        style={styles.signatureBtn}
+                                                        onPress={() =>
+                                                            signerTransport(
+                                                                messageBesoinTransport.id,
+                                                                'conducteur',
+                                                            )
+                                                        }
+                                                    >
+                                                        <Ionicons
+                                                            name="pencil"
+                                                            size={16}
+                                                            color={COLOR_GREEN_300}
+                                                        />
+                                                        <Text
+                                                            style={{
+                                                                color: COLOR_GREEN_300,
+                                                                marginLeft: 5,
+                                                            }}
+                                                        >
+                                                            Signer conducteur
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            {messageBesoinTransport.signature_demandeur &&
+                                                messageBesoinTransport.signature_conducteur && (
+                                                    <Text
+                                                        style={{
+                                                            color: COLOR_GREEN_300,
+                                                            fontWeight: 'bold',
+                                                            marginLeft: 10,
+                                                        }}
+                                                    >
+                                                        ✔️ Signé par les deux parties
+                                                    </Text>
+                                                )}
+                                        </View>
+                                    </View>
+                                ),
+                            )}
+
+                            <View style={{ marginTop: 20 }}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Lieu de RDV"
+                                    placeholderTextColor="#aaa"
+                                    value={nouvelleAdresse}
+                                    onChangeText={setNouvelleAdresse}
+                                />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Heure"
+                                    placeholderTextColor="#aaa"
+                                    value={nouvelleHeure}
+                                    onChangeText={setNouvelleHeure}
+                                />
+                                <TouchableOpacity
+                                    style={[
+                                        styles.closeBtn,
+                                        { backgroundColor: COLOR_GREEN_300, marginTop: 10 },
+                                    ]}
+                                    onPress={envoyerDemandeTransport}
+                                    disabled={sendingProposition}
+                                >
+                                    <Text style={{ color: '#111', fontWeight: 'bold' }}>
+                                        {sendingProposition ? 'Envoi...' : 'Envoyer la demande'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.closeBtn}
+                                onPress={() => setShowTransportModal(false)}
+                            >
+                                <Text style={{ color: '#111', fontWeight: 'bold' }}>Fermer</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </Modal>
+                </>
+            )}
         </ScrollView>
     );
 }
@@ -517,35 +565,28 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#00ff88',
+        color: COLOR_GREEN_300,
         textAlign: 'center',
         marginBottom: 10,
     },
     info: { color: '#ccc', textAlign: 'center', marginBottom: 6 },
-    debugText: {
-        color: '#666',
-        fontSize: 12,
-        textAlign: 'center',
-        marginVertical: 10,
-        fontStyle: 'italic',
-    },
     section: {
         marginTop: 30,
         fontSize: 18,
-        color: '#00ff88',
+        color: COLOR_GREEN_300,
         fontWeight: 'bold',
         marginBottom: 10,
     },
     buttons: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 30 },
     button: {
         backgroundColor: '#1e1e1e',
-        borderColor: '#00ff88',
+        borderColor: COLOR_GREEN_300,
         borderWidth: 2,
         borderRadius: 10,
         paddingVertical: 14,
         paddingHorizontal: 24,
     },
-    selected: { backgroundColor: '#00ff88' },
+    selected: { backgroundColor: COLOR_GREEN_300 },
     buttonText: { color: '#fff', fontWeight: 'bold' },
     switchBlock: {
         flexDirection: 'row',
@@ -560,7 +601,7 @@ const styles = StyleSheet.create({
     transportBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#00ff88',
+        backgroundColor: COLOR_GREEN_300,
         padding: 10,
         borderRadius: 10,
         marginVertical: 15,
@@ -568,7 +609,7 @@ const styles = StyleSheet.create({
     },
     modalContainer: { backgroundColor: '#181f22', flex: 1, padding: 20 },
     modalTitle: {
-        color: '#00ff88',
+        color: COLOR_GREEN_300,
         fontSize: 22,
         fontWeight: 'bold',
         textAlign: 'center',
@@ -587,7 +628,7 @@ const styles = StyleSheet.create({
     proposeBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#00ff88',
+        backgroundColor: COLOR_GREEN_300,
         borderRadius: 7,
         padding: 7,
         marginRight: 10,
@@ -599,7 +640,7 @@ const styles = StyleSheet.create({
         borderRadius: 7,
         padding: 7,
         borderWidth: 1,
-        borderColor: '#00ff88',
+        borderColor: COLOR_GREEN_300,
         marginRight: 10,
     },
     input: {
@@ -608,12 +649,12 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 9,
         marginTop: 8,
-        borderColor: '#00ff88',
+        borderColor: COLOR_GREEN_300,
         borderWidth: 1,
         marginBottom: 6,
     },
     closeBtn: {
-        backgroundColor: '#00ff88',
+        backgroundColor: COLOR_GREEN_300,
         borderRadius: 9,
         alignItems: 'center',
         marginTop: 16,
