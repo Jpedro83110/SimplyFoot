@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
     View,
     Text,
@@ -9,59 +9,42 @@ import {
     KeyboardAvoidingView,
     Platform,
     StatusBar,
-    Switch,
     Image,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { resetPassword } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import ReturnButton from '@/components/atoms/ReturnButton';
 import Button from '@/components/atoms/Button';
 import { useSession } from '@/hooks/useSession';
 
-export default function LoginJoueur() {
-    const router = useRouter();
+export default function LoginClub() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [rememberMe, setRememberMe] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     const { signIn } = useSession();
 
-    // Charger email enregistré si "Se souvenir de moi"
-    useEffect(() => {
-        AsyncStorage.getItem('remembered-email').then((savedEmail) => {
-            if (savedEmail) {
-                setEmail(savedEmail);
-            }
-        });
-    }, []);
-
-    // GESTION OUBLI MOT DE PASSE
     const handleForgotPassword = async () => {
         if (!email) {
             Alert.alert(
                 'Erreur',
                 "Entrez d'abord votre email pour recevoir un lien de réinitialisation.",
             );
-            console.log(
-                'Erreur',
-                "Entrez d'abord votre email pour recevoir un lien de réinitialisation.",
-            );
+            alert('Veuillez entrer votre email pour recevoir un lien de réinitialisation.'); //FIXME: Toast notification
             return;
         }
 
         await resetPassword(email);
         Alert.alert('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
-        console.log('Vérifiez vos emails', 'Un lien de réinitialisation a été envoyé.');
+        alert('Vérifiez vos emails, Un lien de réinitialisation a été envoyé.'); //FIXME: Toast notification
     };
 
     const handleLogin = async () => {
         if (loading) {
             return;
         }
+
         setLoading(true);
 
         try {
@@ -78,7 +61,7 @@ export default function LoginJoueur() {
             <StatusBar barStyle="light-content" />
             <View style={styles.container}>
                 <Image source={require('../../assets/logo-v2.png')} style={styles.logo} />
-                <Text style={styles.title}>Connexion Joueur / Parent</Text>
+                <Text style={styles.title}>Connexion Club</Text>
                 <TextInput
                     style={styles.input}
                     placeholder="Email"
@@ -91,7 +74,7 @@ export default function LoginJoueur() {
                     textContentType="username"
                 />
 
-                <View style={{ width: '100%', position: 'relative', marginBottom: 5 }}>
+                <View style={{ width: '100%', position: 'relative', marginBottom: 15 }}>
                     <TextInput
                         style={[styles.input, { paddingRight: 44 }]}
                         placeholder="Mot de passe"
@@ -112,16 +95,6 @@ export default function LoginJoueur() {
                     </TouchableOpacity>
                 </View>
 
-                <View style={{ ...styles.rememberContainer, marginBottom: 20 }}>
-                    <Switch
-                        value={rememberMe}
-                        onValueChange={setRememberMe}
-                        thumbColor={rememberMe ? '#4D8065' : '#333'}
-                        trackColor={{ false: '#333', true: '#4D8065' }}
-                    />
-                    <Text style={styles.rememberText}>Se souvenir de moi</Text>
-                </View>
-
                 <Button
                     text="Se connecter"
                     onPress={handleLogin}
@@ -129,18 +102,11 @@ export default function LoginJoueur() {
                     color="primary"
                 />
 
-                <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotContainer}>
-                    <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
-                </TouchableOpacity>
-
-                <View style={styles.separator} />
-
-                <Text style={styles.text}>Pas encore de compte ? </Text>
-                <Button
-                    text="Créer un compte Joueur"
-                    onPress={() => router.push('/auth/inscription-joueur')}
-                    color="secondary"
-                />
+                <View style={styles.forgotContainer}>
+                    <TouchableOpacity onPress={handleForgotPassword}>
+                        <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+                    </TouchableOpacity>
+                </View>
 
                 <ReturnButton forceBackRoute="/" />
             </View>
@@ -186,32 +152,6 @@ const styles = StyleSheet.create({
         padding: 5,
         zIndex: 2,
     },
-    button: {
-        backgroundColor: '#00ff88',
-        paddingVertical: 14,
-        borderRadius: 10,
-        alignItems: 'center',
-        marginTop: 8,
-        width: '100%',
-        maxWidth: 400,
-        elevation: 2,
-    },
-    buttonText: {
-        color: '#000',
-        fontWeight: '700',
-        fontSize: 16,
-    },
-    rememberContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        alignSelf: 'flex-start',
-        marginBottom: 18,
-    },
-    rememberText: {
-        color: '#fff',
-        fontSize: 14,
-        marginLeft: 10,
-    },
     forgotContainer: {
         width: '100%',
         alignItems: 'flex-end',
@@ -222,26 +162,5 @@ const styles = StyleSheet.create({
         marginTop: 18,
         textAlign: 'right',
         textDecorationLine: 'underline',
-    },
-    separator: {
-        height: 1,
-        backgroundColor: '#333',
-        width: '80%',
-        alignSelf: 'center',
-        marginVertical: 20,
-        marginTop: 30,
-    },
-    switchText: {
-        color: '#00ff88',
-        textDecorationLine: 'underline',
-        fontSize: 13,
-        textAlign: 'center',
-    },
-    text: {
-        fontSize: 13,
-        color: '#fff',
-        textAlign: 'center',
-        marginTop: 20,
-        marginBottom: 15,
     },
 });
