@@ -283,6 +283,7 @@ export type Database = {
                     equipe_id: string | null;
                     evenement_id: string | null;
                     id: string;
+                    is_masked: boolean | null;
                     joueurs: Json | null;
                     tactique: string | null;
                 };
@@ -292,6 +293,7 @@ export type Database = {
                     equipe_id?: string | null;
                     evenement_id?: string | null;
                     id?: string;
+                    is_masked?: boolean | null;
                     joueurs?: Json | null;
                     tactique?: string | null;
                 };
@@ -301,6 +303,7 @@ export type Database = {
                     equipe_id?: string | null;
                     evenement_id?: string | null;
                     id?: string;
+                    is_masked?: boolean | null;
                     joueurs?: Json | null;
                     tactique?: string | null;
                 };

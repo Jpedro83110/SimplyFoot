@@ -32,6 +32,7 @@ export const createMatchCompositions = async ({
     const dataToInsert: Database['public']['Tables']['compositions']['Insert'] = {
         evenement_id: evenementId,
         coach_id: coachId,
+        is_masked: false,
     };
 
     const { error } = await supabase.from('compositions').insert(dataToInsert);
