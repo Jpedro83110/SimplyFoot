@@ -606,7 +606,7 @@ export default function InscriptionCoach() {
                 disabled={!isFormValid}
                 color="primary"
             />
-            <ReturnButton style={{ marginBottom: 24 }} forceBackRoute="/auth/login-club" />
+            <ReturnButton style={{ marginBottom: 24 }} forceBackRoute="/" />
         </>
     );
 }

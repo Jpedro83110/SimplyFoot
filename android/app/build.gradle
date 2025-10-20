@@ -107,8 +107,8 @@ android {
         applicationId 'com.simplyfoot.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode getVersionCode()          // Récupère automatiquement depuis package.json
-        versionName getVersionName()          // Récupère automatiquement depuis package.json
+        versionCode 14
+        versionName 'simply-foot'
 
         // FIXME: fix build, but weird
         externalNativeBuild {

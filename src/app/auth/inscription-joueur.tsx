@@ -614,7 +614,7 @@ export default function InscriptionJoueur() {
                 disabled={!isFormValid}
                 color="primary"
             />
-            <ReturnButton style={{ marginBottom: 24 }} forceBackRoute="/auth/login-joueur" />
+            <ReturnButton style={{ marginBottom: 24 }} forceBackRoute="/" />
         </>
     );
 }

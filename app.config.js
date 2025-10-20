@@ -21,6 +21,9 @@ export default {
     ios: {
         supportsTablet: true,
         bundleIdentifier: 'com.simplyfoot.app',
+        infoPlist: {
+            ITSAppUsesNonExemptEncryption: false,
+        },
     },
     android: {
         package: 'com.simplyfoot.app',
@@ -48,7 +51,7 @@ export default {
     ],
     extra: {
         eas: {
-            projectId: 'c9c1a41e-d1ef-4769-9d5e-f531af72bd3b',
+            projectId: '5dbffa67-4d68-4bf7-91d4-bff1376f5086',
         },
     },
 };

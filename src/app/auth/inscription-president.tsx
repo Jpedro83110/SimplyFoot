@@ -717,7 +717,7 @@ export default function InscriptionPresident() {
                 disabled={!isFormValid}
                 color="primary"
             />
-            <ReturnButton style={{ marginBottom: 24 }} forceBackRoute="/auth/login-club" />
+            <ReturnButton style={{ marginBottom: 24 }} forceBackRoute="/" />
         </>
     );
 }
